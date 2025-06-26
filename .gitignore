@@ -10,6 +10,7 @@ docs/api/*
 
 # Databases
 *.db
+data/
 
 # Jupyter cache
 .jupyter_cache
