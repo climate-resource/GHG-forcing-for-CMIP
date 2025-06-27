@@ -16,3 +16,10 @@
 - combine_datasets
     - ak_to_cmip
 - clean_up
+
+## Flow for downloading CMIP data
+
++ finalize flow for downloading all data sets
++ create optional argument for deleting zip files after flow ended
++ combine data sets
++ add additional information about site code in AGAGE and GAGE datasets
