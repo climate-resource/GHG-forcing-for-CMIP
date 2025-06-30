@@ -16,6 +16,8 @@ import requests
 from prefect import flow, task
 from prefect.cache_policies import INPUTS, TASK_SOURCE
 
+from ghg_forcing_for_cmip_comparison import utils
+
 CACHE_POLICIES = TASK_SOURCE + INPUTS
 
 
@@ -76,7 +78,6 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     name="unzip_download",
     description="Unzip downloaded data",
     cache_policy=CACHE_POLICIES,
-    refresh_cache=True,
 )
 def unzip_download(pattern: str, path_to_zip: str, path_to_file: str) -> None:
     """
@@ -129,22 +130,19 @@ def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
     save_to_path :
         path to save downloaded data
     """
-    for type in ["in-situ", "flask"]:
-        if type == "in-situ":
-            type1, type2 = "in-situ", "insitu"
-        else:
-            type1, type2 = "flask", "flask"
-
-        url = f"https://gml.noaa.gov/aftp/data/greenhouse_gases/{gas}/{type1}/surface/{gas}_surface-{type2}_ccgg_text.zip"
+    for dir, sampling_strategy in zip(["in-situ", "flask"], ["insitu", "flask"]):
+        url = f"https://gml.noaa.gov/aftp/data/greenhouse_gases/{gas}/{dir}/surface/{gas}_surface-{sampling_strategy}_ccgg_text.zip"
         # create directory if it doesn't exist
         os.makedirs(save_to_path, exist_ok=True)
 
         response = requests.get(url)  # noqa: S113
 
         if response.status_code == 200:  # noqa: PLR2004
-            with open(save_to_path + f"/noaa_{gas}_surface_{type2}.zip", "wb") as f:
+            with open(
+                save_to_path + f"/noaa_{gas}_surface_{sampling_strategy}.zip", "wb"
+            ) as f:
                 f.write(response.content)
-            print(f"downloaded NOAA {gas} {type} data to {save_to_path}")
+            print(f"downloaded NOAA {gas} {sampling_strategy} data to {save_to_path}")
         else:
             print(f"Failed to download. Status code: {response.status_code}")
 
@@ -264,13 +262,16 @@ def txt_to_csv_file(
         df.rename(columns={"dev.": "numb", "std.": "std_dev"}, inplace=True)
         df["site_code"] = file_name.split("_")[1]
         df["network"] = "agage"
+        df["sampling_strategy"] = pd.NA
 
     if hardcode_skip_rows is not None:
         df["site_code"] = file_name.split("-")[0]
         df["network"] = "gage"
+        df["sampling_strategy"] = pd.NA
 
     if (not columns_in_comment) and (hardcode_skip_rows is None):
         df["network"] = "noaa"
+        df["sampling_strategy"] = file_name.split("_")[2]
 
     df.to_csv(create_sub_path + file_name)
 
@@ -416,6 +417,7 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
                 "longitude",
                 "altitude",
                 "network",
+                "sampling_strategy",
             ]
         )
         .agg(
@@ -519,19 +521,20 @@ def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
             },
             inplace=True,
         )
-        df2 = df2[df2.value != 0.0]
+        df2 = df2[(df2.value != 0.0)]
+
         df2["latitude"] = df2["site_code"].map(lat)
         df2["longitude"] = df2["site_code"].map(lon)
         df_combined = pd.concat([df1, df2])
 
     dfs_noaa = []
-    for type in ["flask", "insitu"]:
+    for sampling_type in ["flask", "insitu"]:
         df3 = pd.read_csv(
             path_to_save
-            + f"/{gas}/noaa/{gas}_surface-{type}_ccgg_text/"
-            + "clean/{gas}_noaa_processed.csv"
+            + f"/{gas}/noaa/{gas}_surface-{sampling_type}_ccgg_text/"
+            + f"clean/{gas}_noaa_processed.csv"
         )
-        df3["type"] = type
+        df3["insitu_vs_flask"] = sampling_type
         dfs_noaa.append(df3)
 
     df_noaa_combined = pd.concat(dfs_noaa)
@@ -540,11 +543,55 @@ def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
         df_noaa_combined["year"] + (df_noaa_combined["month"] - 0.5) / 12, decimals=3
     )
     if gas == "ch4":
-        pd.concat([df_combined, df_noaa_combined]).to_csv(
-            path_to_save + f"/{gas}/{gas}_raw.csv"
-        )
+        d_combined = pd.concat([df_combined, df_noaa_combined])
     else:
-        df_noaa_combined.to_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
+        d_combined = df_noaa_combined
+
+    # this condition is applied due to the raw data from MLO
+    # surface-insitu dataset in 2022/2023 are a few measures
+    # that have a non-zero value, but a std and nvalue of zero.
+    # as this makes no sense I delete these measurements entirely (row)
+    d_combined[d_combined.numb != 0.0].to_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
+
+
+@task(
+    name="postprocess_cmip_data",
+    description="postprocess cmip data and prepare for analysis",
+    cache_policy=CACHE_POLICIES,
+)
+def postprocess_cmip_data(path_to_save: str, gas: str) -> None:
+    """
+    Validate column types of dataframe using type schema
+
+    Parameters
+    ----------
+    path_to_save :
+        path to save combined csv files
+
+    gas :
+        target greenhouse gas variable
+    """
+    df = pd.read_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
+    df["time_fractional"] = df.time.astype(np.float64)
+    df["time"] = pd.to_datetime(
+        {"year": df.year, "month": df.month, "day": 16, "hour": 12}, utc=True
+    )
+    df["year"] = df.year.astype(np.int64)
+    df["month"] = df.month.astype(np.int64)
+    df["latitude"] = df.latitude.astype(np.float64)
+    df["longitude"] = df.longitude.astype(np.float64)
+    df["value"] = df.value.astype(np.float64)
+    df["std_dev"] = df.std_dev.astype(np.float64)
+    df["numb"] = df.numb.astype(np.int64)
+    df["site_code"] = df.site_code.astype(str)
+    df["network"] = df.network.astype(str)
+    df["altitude"] = df.altitude.astype(np.float64)
+    df["gas"] = gas
+    df["unit"] = np.where(gas == "ch4", "ppb", "ppm")
+
+    utils.GroundDataSchema.validate(df)
+
+    df.to_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
 
 
 @flow(name="get_cmip_data", description="Download and extract CMIP data")
@@ -590,15 +637,15 @@ def download_cmip_flow(save_to_path: str = "data/downloads") -> None:
     for gas in ["co2", "ch4"]:
         download_noaa(gas=gas, save_to_path=save_to_path)
 
-        for gas_type in ["insitu", "flask"]:
+        for sampling_strategy in ["surface_insitu", "surface_flask"]:
             unzip_download(
-                pattern=f"noaa_{gas}_surface_{gas_type}",
+                pattern=f"noaa_{gas}_{sampling_strategy}",
                 path_to_zip=save_to_path,
                 path_to_file=save_to_path + f"/{gas}/noaa/",
             )
 
             txt_to_csv_folder(
-                folder_pattern=f"{gas}_surface-{gas_type}",
+                folder_pattern=f"{gas}_{sampling_strategy.replace('_', '-')}",
                 file_endings=("MonthlyData.txt", "event.txt"),
                 path_to_dir=save_to_path + f"/{gas}/noaa/",
             )
@@ -607,16 +654,22 @@ def download_cmip_flow(save_to_path: str = "data/downloads") -> None:
                 gas=gas,
                 save_file_suffix="noaa",
                 path_to_csv=save_to_path
-                + f"/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text/csv",
+                + f"/{gas}/noaa/{gas}_{sampling_strategy.replace('_', '-')}"
+                + "_ccgg_text/csv",
                 path_to_save=save_to_path
-                + f"/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text/clean",
+                + f"/{gas}/noaa/{gas}_{sampling_strategy.replace('_', '-')}"
+                + "_ccgg_text/clean",
             )
 
             compute_total_monthly_std(
-                path_to_csv=f"data/downloads/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text/clean/{gas}_noaa.csv",
+                path_to_csv=f"data/downloads/{gas}/noaa/{gas}_"
+                + f"{sampling_strategy.replace('_', '-')}_ccgg_text"
+                + f"/clean/{gas}_noaa.csv",
             )
 
         combine_final_csv(gas=gas, path_to_save=save_to_path)
+
+        postprocess_cmip_data(path_to_save=save_to_path, gas=gas)
 
 
 @flow(name="get_obs4mips_data", description="Download and extract OBS4MIPs data")
@@ -643,7 +696,7 @@ def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
     name="get_raw_datasets",
     description="Download and extract OBS4MIPs and ground-based datasets",
 )
-def download_data_flow(
+def get_data_flow(
     save_to_path: str = "data/downloads",
     remove_zip_files: bool = True,
     remove_txt_files: bool = True,
@@ -669,6 +722,7 @@ def download_data_flow(
 
     download_obs4mips_flow(save_to_path=save_to_path)
 
+    # clean-up downloading directory
     if remove_zip_files:
         for zip_file in glob.glob(os.path.join(save_to_path, "*.zip")):
             os.remove(zip_file)
@@ -676,7 +730,3 @@ def download_data_flow(
     if remove_txt_files:
         for txt_file in Path(save_to_path).rglob("*.txt"):
             txt_file.unlink()
-
-
-if __name__ == "__main__":
-    download_data_flow()

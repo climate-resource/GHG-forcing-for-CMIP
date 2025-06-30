@@ -3,9 +3,6 @@
 - download_datasets
     - download_obs4mips
     - download_cmip
-- load_datasets
-    - load_cmip
-    - load_obs4mips
 - preprocess_datasets
     - preprocess_cmip
     - preprocess_obs4mips
