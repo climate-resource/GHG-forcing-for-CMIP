@@ -73,7 +73,7 @@ def select_and_replace_percentile(
     Parameters
     ----------
     d_binned :
-        binned pandas dataframme
+        binned pandas dataframe
 
     quantile :
         quantile used to select the corresponding

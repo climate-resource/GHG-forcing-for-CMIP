@@ -9,11 +9,13 @@ license = { text = "placeholder" }
 requires-python = ">=3.9"
 dependencies = [
     "cdsapi>=0.7.6",
+    "cftime>=1.6.4.post1",
     "pandas>=2.3.0",
     "pandera>=0.24.0",
     "pip>=24.3.1",
     "prefect>=3.3.1",
     "scipy>=1.13.1",
+    "xarray>=2024.7.0",
 ]
 readme = "README.md"
 classifiers = [
