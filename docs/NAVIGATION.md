@@ -10,6 +10,7 @@ See https://oprypin.github.io/mkdocs-literate-nav/
     - [Run code in a notebook](how-to-guides/run-code-in-a-notebook.py)
 - [Tutorials](tutorials/index.md)
 - [Further background](further-background/index.md)
+    - [Inspect raw data](further-background/inspect_raw_data.py)
     - [Dependency pinning and testing](further-background/dependency-pinning-and-testing.md)
 - [Development](development.md)
 - [API reference](api/ghg_forcing_for_cmip_comparison/)

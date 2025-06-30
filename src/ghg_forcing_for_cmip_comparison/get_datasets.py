@@ -578,7 +578,7 @@ def combine_final_csv(
         "RPB": -59.4320,
         "SMO": -170.5644,
         "THD": -124.1510,
-        "ORG": 124.0000,
+        "ORG": -124.0000,
     }
 
     if gas == "ch4":
