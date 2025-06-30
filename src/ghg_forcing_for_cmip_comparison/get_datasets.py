@@ -26,7 +26,6 @@ CACHE_POLICIES = TASK_SOURCE + INPUTS
     description="Download obs4mips zip from Climate Data Store",
     task_run_name="download_zip_from_cds_{gas}",
     cache_policy=CACHE_POLICIES,
-    refresh_cache=True,
 )
 def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     """
@@ -396,6 +395,8 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
     d = pd.read_csv(path_to_csv)
     # remove rows with missing values
     d = d[d.value != fill_value]
+    # insert NAN for missing std. values
+    d["value_unc"] = np.where(d.value_unc < 0.0, pd.NA, d.value_unc)
 
     d.rename(columns={"value_unc": "instrument_std"}, inplace=True)
     d["instrument_var"] = d["instrument_std"] ** 2
@@ -436,18 +437,22 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
         for col in d_grouped.columns
     ]
     # compute total variance as sum of instrument-variance and value-variance
+    d_grouped["value_var"] = d_grouped["value_var"].fillna(0)
     d_grouped["total_var"] = d_grouped["value_var"] + d_grouped["instrument_var_mean"]
     # derive total standard deviation
-    d_grouped["std_dev"] = np.sqrt(d_grouped["total_var"])
+    d_grouped["std_dev"] = np.sqrt(d_grouped.total_var.values.astype(np.float64))
+    # if data have NaN std_dev use mean of year as imputation
+    sd_mean_year = d_grouped.groupby("year").agg({"std_dev": "mean"}).reset_index()
+    sd_mean_year.rename(columns={"std_dev": "std_dev_year"}, inplace=True)
+    # add yearly averages to dataframe
+    d_grouped = d_grouped.merge(sd_mean_year, on="year")
+    d_grouped["std_dev"] = np.where(
+        d_grouped.std_dev.isna(), d_grouped["std_dev_year"], d_grouped["std_dev"]
+    )
     # if data is already monthly data, use count-value and std-value
     # as provided in dataset
     d_grouped["numb"] = np.where(
         d_grouped.value_count == 1, d_grouped.nvalue_mean, d_grouped.value_count
-    )
-    d_grouped["std_dev"] = np.where(
-        d_grouped.std_dev.isna(),
-        np.sqrt(d_grouped.instrument_var_mean),
-        d_grouped.std_dev,
     )
     # maintain relevant variables only
     d_grouped.drop(
@@ -457,6 +462,7 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
             "value_var",
             "value_count",
             "nvalue_mean",
+            "std_dev_year",
         ],
         inplace=True,
     )
@@ -466,11 +472,79 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
 
 
 @task(
+    name="add_lat_lon_bnds",
+    description="Add latitude and longitude bands",
+    cache_policy=CACHE_POLICIES,
+)
+def add_lat_lon_bnds(d_combined: pd.DataFrame, grid_cell_size: int) -> pd.DataFrame:
+    """
+    Add latitude and longitude boundaries to d_combined
+
+    Parameters
+    ----------
+    d_combined :
+        combined dataframe
+
+    grid_cell_size :
+        grid cell size in degrees
+
+    Returns
+    -------
+    :
+        combined dataframe with latitude and longitude boundaries
+    """
+    d_combined["lat_bnd/lower"] = np.where(
+        d_combined.latitude > 0,
+        np.floor(d_combined.latitude / grid_cell_size) * grid_cell_size,
+        np.ceil(d_combined.latitude / grid_cell_size) * grid_cell_size,
+    )
+    d_combined["lon_bnd/lower"] = np.where(
+        d_combined.longitude > 0,
+        np.floor(d_combined.longitude / grid_cell_size) * grid_cell_size,
+        np.ceil(d_combined.longitude / grid_cell_size) * grid_cell_size,
+    )
+    d_combined["lat_bnd/upper"] = np.where(
+        d_combined["lat_bnd/lower"] < 0,
+        d_combined["lat_bnd/lower"] - grid_cell_size,
+        d_combined["lat_bnd/lower"] + grid_cell_size,
+    )
+    d_combined["lon_bnd/upper"] = np.where(
+        d_combined["lon_bnd/lower"] < 0,
+        d_combined["lon_bnd/lower"] - grid_cell_size,
+        d_combined["lon_bnd/lower"] + grid_cell_size,
+    )
+    # this additional processing is done because of shipboard-flask measures
+    # from noaa-POC which has exactly lon=-180.0 (max/min boundary) as coordinate
+    d_combined.loc[d_combined.longitude == -180, "lon_bnd/upper"] = -180.0  # noqa: PLR2004
+    d_combined.loc[d_combined.longitude == -180, "lon_bnd/lower"] = -175.0  # noqa: PLR2004
+    d_combined["lat"] = (d_combined["lat_bnd/lower"] + d_combined["lat_bnd/upper"]) / 2
+    d_combined["lon"] = (d_combined["lon_bnd/lower"] + d_combined["lon_bnd/upper"]) / 2
+
+    d_bnd = d_combined.melt(
+        id_vars=[col for col in d_combined.columns if "bnd" not in col],
+        var_name="coord_bnd",
+        value_name="bnd_value",
+    )
+    d_bnd["coord"] = d_bnd["coord_bnd"].apply(lambda x: x.split("/")[0])
+    d_bnd["bnd"] = d_bnd["coord_bnd"].apply(lambda x: 0 if "lower" in x else 1)
+
+    d_bnd.drop(columns="coord_bnd", inplace=True)
+
+    return d_bnd.pivot(
+        index=[col for col in d_bnd.columns if col not in ["bnd_value", "coord"]],
+        columns="coord",
+        values="bnd_value",
+    ).reset_index()
+
+
+@task(
     name="combine_final_csv",
     description="Combine final csv files",
     cache_policy=CACHE_POLICIES,
 )
-def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
+def combine_final_csv(
+    gas: str, path_to_save: str = "data/downloads", grid_cell_size: int = 5
+) -> pd.DataFrame:
     """
     Combine final csv files from NOAA, AGAGE, and GAGE networks
 
@@ -481,6 +555,14 @@ def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
 
     path_to_save :
         path to save combined csv files
+
+    grid_cell_size :
+        size of single grid cell in degrees
+
+    Returns
+    -------
+    :
+        final pd.Dataframe
     """
     lat = {
         "CGO": -40.6833,
@@ -551,7 +633,9 @@ def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
     # surface-insitu dataset in 2022/2023 are a few measures
     # that have a non-zero value, but a std and nvalue of zero.
     # as this makes no sense I delete these measurements entirely (row)
-    d_combined[d_combined.numb != 0.0].to_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
+    d_combined = d_combined[d_combined.numb != 0.0]
+
+    return add_lat_lon_bnds(d_combined=d_combined, grid_cell_size=grid_cell_size)
 
 
 @task(
@@ -559,19 +643,21 @@ def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
     description="postprocess cmip data and prepare for analysis",
     cache_policy=CACHE_POLICIES,
 )
-def postprocess_cmip_data(path_to_save: str, gas: str) -> None:
+def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None:
     """
     Validate column types of dataframe using type schema
 
     Parameters
     ----------
+    df :
+       final pandas dataframe
+
     path_to_save :
-        path to save combined csv files
+        path to save file
 
     gas :
         target greenhouse gas variable
     """
-    df = pd.read_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
     df["time_fractional"] = df.time.astype(np.float64)
     df["time"] = pd.to_datetime(
         {"year": df.year, "month": df.month, "day": 16, "hour": 12}, utc=True
@@ -580,6 +666,10 @@ def postprocess_cmip_data(path_to_save: str, gas: str) -> None:
     df["month"] = df.month.astype(np.int64)
     df["latitude"] = df.latitude.astype(np.float64)
     df["longitude"] = df.longitude.astype(np.float64)
+    df["lat_bnd"] = df.lat_bnd.astype(np.int64)
+    df["lon_bnd"] = df.lon_bnd.astype(np.int64)
+    df["lat"] = df.lat.astype(np.float64)
+    df["lon"] = df.lon.astype(np.float64)
     df["value"] = df.value.astype(np.float64)
     df["std_dev"] = df.std_dev.astype(np.float64)
     df["numb"] = df.numb.astype(np.int64)
@@ -667,9 +757,9 @@ def download_cmip_flow(save_to_path: str = "data/downloads") -> None:
                 + f"/clean/{gas}_noaa.csv",
             )
 
-        combine_final_csv(gas=gas, path_to_save=save_to_path)
+        df = combine_final_csv(gas=gas, path_to_save=save_to_path)
 
-        postprocess_cmip_data(path_to_save=save_to_path, gas=gas)
+        postprocess_cmip_data(df=df, path_to_save=save_to_path, gas=gas)
 
 
 @flow(name="get_obs4mips_data", description="Download and extract OBS4MIPs data")
@@ -730,3 +820,7 @@ def get_data_flow(
     if remove_txt_files:
         for txt_file in Path(save_to_path).rglob("*.txt"):
             txt_file.unlink()
+
+
+if __name__ == "__main__":
+    download_cmip_flow()
