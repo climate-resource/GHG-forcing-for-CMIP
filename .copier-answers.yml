@@ -5,7 +5,7 @@ conda_release: false
 email: florence.bockting@climate-resource.com
 include_cli: false
 name: Florence Bockting
-notebook_based_docs: false
+notebook_based_docs: true
 package_manager: uv
 pandas_doctests: false
 plot_dependencies: true
