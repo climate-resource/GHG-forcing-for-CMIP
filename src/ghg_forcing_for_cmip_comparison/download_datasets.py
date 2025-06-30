@@ -2,22 +2,29 @@
 Download obs4mips and cmip data sets
 """
 
+import glob
 import os
 import re
 import zipfile
+from pathlib import Path
 from typing import Optional
 
 import cdsapi  # type: ignore
+import numpy as np
 import pandas as pd
 import requests
 from prefect import flow, task
+from prefect.cache_policies import INPUTS, TASK_SOURCE
+
+CACHE_POLICIES = TASK_SOURCE + INPUTS
 
 
 @task(
-    name="download_obs4mips_data",
-    description="Download obs4mips data from Climate Data Store",
-    task_run_name="download_obs4mips_{gas}_data",
-    cache_key_fn=None,
+    name="download_zip_from_cds",
+    description="Download obs4mips zip from Climate Data Store",
+    task_run_name="download_zip_from_cds_{gas}",
+    cache_policy=CACHE_POLICIES,
+    refresh_cache=True,
 )
 def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     """
@@ -66,9 +73,10 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
 
 
 @task(
-    name="unzip_downloaded_data",
+    name="unzip_download",
     description="Unzip downloaded data",
-    cache_key_fn=None,
+    cache_policy=CACHE_POLICIES,
+    refresh_cache=True,
 )
 def unzip_download(pattern: str, path_to_zip: str, path_to_file: str) -> None:
     """
@@ -105,9 +113,9 @@ def unzip_download(pattern: str, path_to_zip: str, path_to_file: str) -> None:
 
 
 @task(
-    name="download_NOAA_data",
-    description="Download NOAA data",
-    cache_key_fn=None,
+    name="download_zip_from_noaa_archive",
+    description="Download zip from NOAA archive link",
+    cache_policy=CACHE_POLICIES,
 )
 def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
     """
@@ -141,7 +149,11 @@ def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
             print(f"Failed to download. Status code: {response.status_code}")
 
 
-@task(name="download_agege_txtfiles", description="Download (a)gege text files")
+@task(
+    name="download_txt_from_agage_archive",
+    description="Download txt from AGAGE archive link",
+    cache_policy=CACHE_POLICIES,
+)
 def download_agage(
     save_to_path: str = "data/downloads", save_file_suffix: str = ""
 ) -> None:
@@ -196,28 +208,10 @@ def download_agage(
                 print(f"Failed to download. Status code: {response.status_code}")
 
 
-@flow(name="get_obs4mips_data", description="Download and extract OBS4MIPs data")
-def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
-    """
-    Download and extract OBS4MIPs data
-
-    Parameters
-    ----------
-    save_to_path :
-        path to save downloaded data
-    """
-    for gas in ("co2", "ch4"):
-        make_api_request(gas=gas, save_to_path=save_to_path)
-        unzip_download(
-            pattern=f"obs4mips_x{gas}",
-            path_to_zip=save_to_path,
-            path_to_file=save_to_path,
-        )
-
-
 @task(
-    name="textfile_to_dataframes",
-    description="Convert text files to pandas dataframes",
+    name="save_txt_as_df_csv",
+    description="Save txt file as pandas dataframe csv",
+    cache_policy=CACHE_POLICIES,
 )
 def txt_to_csv_file(
     file_path: str,
@@ -265,15 +259,27 @@ def txt_to_csv_file(
 
     # If the comment symbol '#' is mistakenly read as a column name, clean it
     if columns_in_comment:
-        df.columns = [col for col in df.columns if col != "#"] + [""]
+        df.columns = [col for col in df.columns if col not in ["#", "dev"]] + [""]
+        df = df.iloc[:, :-2]  # remove two last (empty) columns
+        df.rename(columns={"dev.": "numb", "std.": "std_dev"}, inplace=True)
+        df["site_code"] = file_name.split("_")[1]
+        df["network"] = "agage"
+
+    if hardcode_skip_rows is not None:
+        df["site_code"] = file_name.split("-")[0]
+        df["network"] = "gage"
+
+    if (not columns_in_comment) and (hardcode_skip_rows is None):
+        df["network"] = "noaa"
 
     df.to_csv(create_sub_path + file_name)
 
 
 @task(
-    name="textfiles_to_dataframes",
-    description="Convert text files to pandas dataframes",
-    task_run_name="txt_to_df-{folder_pattern}",
+    name="loop_over_txt_files",
+    description="Loop over txt files in stored folder",
+    task_run_name="loop_over_txt_files_in_folder-{folder_pattern}",
+    cache_policy=CACHE_POLICIES,
 )
 def txt_to_csv_folder(
     folder_pattern: str,
@@ -303,24 +309,29 @@ def txt_to_csv_folder(
         hardcode number of rows to skip in text file
     """
     files = os.listdir(path_to_dir)
+
     match_string = re.compile(f"{folder_pattern}")
 
     target_folder = next((f for f in files if match_string.match(f)), None)
 
+    save_subdir = path_to_dir + "/" + target_folder
+    os.makedirs(save_subdir, exist_ok=True)
+
     for file in os.listdir(path_to_dir + "/" + target_folder):
         if file.endswith(file_endings):
-            txt_to_csv_file.with_options(task_run_name=f"text_to_csv-{file}")(
+            txt_to_csv_file.with_options(task_run_name=f"save_txt_as_df_csv-{file}")(
                 file_path=path_to_dir + "/" + target_folder + "/" + file,
-                save_to_path=path_to_dir + "/" + target_folder,
+                save_to_path=save_subdir,
                 columns_in_comment=columns_in_comment,
                 hardcode_skip_rows=hardcode_skip_rows,
             )
 
 
 @task(
-    name="combine_csv_files",
-    description="Combine CSV files",
-    task_run_name="combined_csv_files-{gas}",
+    name="combine_csv_files_to_clean",
+    description="Combine csv files to final csv",
+    task_run_name="combine_csv_files_to_final-{gas}",
+    cache_policy=CACHE_POLICIES,
 )
 def combine_csv_files(
     gas: str,
@@ -347,6 +358,8 @@ def combine_csv_files(
     """
     csv_folder = os.listdir(path_to_csv)
 
+    os.makedirs(path_to_save, exist_ok=True)
+
     all_dfs = []
     for file in csv_folder:
         if gas in file:
@@ -355,7 +368,183 @@ def combine_csv_files(
                 df.rename(columns={"value_std_dev": "value_unc"}, inplace=True)
             all_dfs.append(df)
 
-    pd.concat(all_dfs).to_csv(path_to_save + f"/{gas}_{save_file_suffix}")
+    pd.concat(all_dfs).to_csv(path_to_save + f"/{gas}_{save_file_suffix}.csv")
+
+
+@task(
+    name="compute_total_monthly_std",
+    description="Compute total monthly std. as sum of value std and instrument std.",
+    cache_policy=CACHE_POLICIES,
+)
+def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> None:
+    """
+    Compute total monthly std. dev.
+
+    For flask noaa data this is the sum of value std and instrument std.
+    For insitu noaa data we use the std provided in the data set
+    (already monthly measurement)
+
+    Parameters
+    ----------
+    path_to_csv :
+        path to csv file with complete noaa data set
+
+    fill_value :
+        number used to indicate missing value
+    """
+    d = pd.read_csv(path_to_csv)
+    # remove rows with missing values
+    d = d[d.value != fill_value]
+
+    d.rename(columns={"value_unc": "instrument_std"}, inplace=True)
+    d["instrument_var"] = d["instrument_std"] ** 2
+
+    try:
+        d["nvalue"]
+    except KeyError:
+        d["nvalue"] = 1
+
+    # get monthly average
+    d_grouped = (
+        d[d.qcflag.str.startswith("..")]
+        .groupby(
+            [
+                "site_code",
+                "year",
+                "month",
+                "latitude",
+                "longitude",
+                "altitude",
+                "network",
+            ]
+        )
+        .agg(
+            {
+                "value": ["mean", "var", "count"],
+                "nvalue": "mean",
+                "instrument_var": "mean",
+            }
+        )
+        .reset_index()
+    )
+
+    # reset multi-index
+    d_grouped.columns = [
+        "_".join(col).strip() if len(col[1]) != 0 else col[0]
+        for col in d_grouped.columns
+    ]
+    # compute total variance as sum of instrument-variance and value-variance
+    d_grouped["total_var"] = d_grouped["value_var"] + d_grouped["instrument_var_mean"]
+    # derive total standard deviation
+    d_grouped["std_dev"] = np.sqrt(d_grouped["total_var"])
+    # if data is already monthly data, use count-value and std-value
+    # as provided in dataset
+    d_grouped["numb"] = np.where(
+        d_grouped.value_count == 1, d_grouped.nvalue_mean, d_grouped.value_count
+    )
+    d_grouped["std_dev"] = np.where(
+        d_grouped.std_dev.isna(),
+        np.sqrt(d_grouped.instrument_var_mean),
+        d_grouped.std_dev,
+    )
+    # maintain relevant variables only
+    d_grouped.drop(
+        columns=[
+            "instrument_var_mean",
+            "total_var",
+            "value_var",
+            "value_count",
+            "nvalue_mean",
+        ],
+        inplace=True,
+    )
+    d_grouped.rename(columns={"value_mean": "value"}, inplace=True)
+
+    d_grouped.to_csv(path_to_csv.replace("_noaa.csv", "_noaa_processed.csv"))
+
+
+@task(
+    name="combine_final_csv",
+    description="Combine final csv files",
+    cache_policy=CACHE_POLICIES,
+)
+def combine_final_csv(gas: str, path_to_save: str = "data/downloads") -> None:
+    """
+    Combine final csv files from NOAA, AGAGE, and GAGE networks
+
+    Parameters
+    ----------
+    gas :
+        target greenhouse gas variable
+
+    path_to_save :
+        path to save combined csv files
+    """
+    lat = {
+        "CGO": -40.6833,
+        "MHD": 53.3266,
+        "RPB": 13.1651,
+        "SMO": -14.2474,
+        "THD": 41.0541,
+        "ORG": 45.0000,
+    }
+    lon = {
+        "CGO": 144.6894,
+        "MHD": -9.9045,
+        "RPB": -59.4320,
+        "SMO": -170.5644,
+        "THD": -124.1510,
+        "ORG": 124.0000,
+    }
+
+    if gas == "ch4":
+        df1 = pd.read_csv(path_to_save + f"/{gas}/agage/clean/{gas}_agage.csv")
+        df1.dropna(subset="mean", inplace=True)
+        df1 = df1[[col for col in df1.columns if not col.startswith("Unnamed")]]
+        df1.rename(columns={"mean": "value", "std": "std_dev"}, inplace=True)
+        df1["latitude"] = df1["site_code"].map(lat)
+        df1["longitude"] = df1["site_code"].map(lon)
+
+        df2 = pd.read_csv(path_to_save + f"/{gas}/gage/clean/{gas}_gage.csv")
+        df2 = df2[
+            ["time", "MM", "YYYY", "numb.7", "CH4", "std..7", "site_code", "network"]
+        ]
+        df2.rename(
+            columns={
+                "numb.7": "numb",
+                "std..7": "std_dev",
+                "MM": "month",
+                "YYYY": "year",
+                "CH4": "value",
+            },
+            inplace=True,
+        )
+        df2 = df2[df2.value != 0.0]
+        df2["latitude"] = df2["site_code"].map(lat)
+        df2["longitude"] = df2["site_code"].map(lon)
+        df_combined = pd.concat([df1, df2])
+
+    dfs_noaa = []
+    for type in ["flask", "insitu"]:
+        df3 = pd.read_csv(
+            path_to_save
+            + f"/{gas}/noaa/{gas}_surface-{type}_ccgg_text/"
+            + "clean/{gas}_noaa_processed.csv"
+        )
+        df3["type"] = type
+        dfs_noaa.append(df3)
+
+    df_noaa_combined = pd.concat(dfs_noaa)
+    df_noaa_combined.drop(columns=["Unnamed: 0"], inplace=True)
+    df_noaa_combined["time"] = np.round(
+        df_noaa_combined["year"] + (df_noaa_combined["month"] - 0.5) / 12, decimals=3
+    )
+    if gas == "ch4":
+        pd.concat([df_combined, df_noaa_combined]).to_csv(
+            path_to_save + f"/{gas}/{gas}_raw.csv"
+        )
+    else:
+        df_noaa_combined.to_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
 
 
 @flow(name="get_cmip_data", description="Download and extract CMIP data")
@@ -394,7 +583,7 @@ def download_cmip_flow(save_to_path: str = "data/downloads") -> None:
             gas="ch4",
             save_file_suffix=network,
             path_to_csv=save_to_path + f"/ch4/{network}/csv",
-            path_to_save=save_to_path + f"/ch4/{network}",
+            path_to_save=save_to_path + f"/ch4/{network}/clean",
         )
 
     # download data of NOAA network
@@ -420,9 +609,74 @@ def download_cmip_flow(save_to_path: str = "data/downloads") -> None:
                 path_to_csv=save_to_path
                 + f"/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text/csv",
                 path_to_save=save_to_path
-                + f"/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text",
+                + f"/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text/clean",
             )
+
+            compute_total_monthly_std(
+                path_to_csv=f"data/downloads/{gas}/noaa/{gas}_surface-{gas_type}_ccgg_text/clean/{gas}_noaa.csv",
+            )
+
+        combine_final_csv(gas=gas, path_to_save=save_to_path)
+
+
+@flow(name="get_obs4mips_data", description="Download and extract OBS4MIPs data")
+def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
+    """
+    Download and extract OBS4MIPs data
+
+    Parameters
+    ----------
+    save_to_path :
+        path to save downloaded data
+    """
+    for gas in ("co2", "ch4"):
+        make_api_request(gas=gas, save_to_path=save_to_path)
+
+        unzip_download(
+            pattern=f"obs4mips_x{gas}",
+            path_to_zip=save_to_path,
+            path_to_file=save_to_path + f"/{gas}",
+        )
+
+
+@flow(
+    name="get_raw_datasets",
+    description="Download and extract OBS4MIPs and ground-based datasets",
+)
+def download_data_flow(
+    save_to_path: str = "data/downloads",
+    remove_zip_files: bool = True,
+    remove_txt_files: bool = True,
+) -> None:
+    """
+    Run main flow for downloading and extracting data
+
+    Downloading and extracting of OBS4MIPs and ground-based data
+    for CH4 and CO2
+
+    Parameters
+    ----------
+    save_to_path :
+        path to save downloaded data
+
+    remove_zip_files :
+        remove all zip files created during downloading and preprocessing
+
+    remove_txt_files :
+        remove all text files created during downloading and preprocessing
+    """
+    download_cmip_flow(save_to_path=save_to_path)
+
+    download_obs4mips_flow(save_to_path=save_to_path)
+
+    if remove_zip_files:
+        for zip_file in glob.glob(os.path.join(save_to_path, "*.zip")):
+            os.remove(zip_file)
+
+    if remove_txt_files:
+        for txt_file in Path(save_to_path).rglob("*.txt"):
+            txt_file.unlink()
 
 
 if __name__ == "__main__":
-    download_cmip_flow()
+    download_data_flow()
