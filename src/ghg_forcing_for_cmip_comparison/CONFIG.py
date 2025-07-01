@@ -11,6 +11,7 @@ CACHE_POLICIES = TASK_SOURCE + INPUTS
 # earth grid: latitudes
 LAT_BIN_BOUNDS = np.arange(-90, 91, 5)
 LAT_BIN_CENTRES = (LAT_BIN_BOUNDS[:-1] + LAT_BIN_BOUNDS[1:]) / 2
+
 # earth grid: longitudes
 LON_BIN_BOUNDS = np.arange(-180, 181, 5)
 LON_BIN_CENTRES = (LON_BIN_BOUNDS[:-1] + LON_BIN_BOUNDS[1:]) / 2

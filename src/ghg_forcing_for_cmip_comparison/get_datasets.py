@@ -16,7 +16,7 @@ import requests
 from prefect import flow, task
 from prefect.cache_policies import INPUTS, TASK_SOURCE
 
-from ghg_forcing_for_cmip_comparison import utils
+from ghg_forcing_for_cmip_comparison import CONFIG, utils
 
 CACHE_POLICIES = TASK_SOURCE + INPUTS
 
@@ -493,26 +493,30 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame, grid_cell_size: int) -> pd.DataFr
     :
         combined dataframe with latitude and longitude boundaries
     """
-    d_combined["lat_bnd/lower"] = np.where(
-        d_combined.latitude > 0,
-        np.floor(d_combined.latitude / grid_cell_size) * grid_cell_size,
-        np.ceil(d_combined.latitude / grid_cell_size) * grid_cell_size,
+    get_lat_idx = np.searchsorted(
+        CONFIG.LAT_BIN_BOUNDS, d_combined.latitude, side="right"
     )
-    d_combined["lon_bnd/lower"] = np.where(
-        d_combined.longitude > 0,
-        np.floor(d_combined.longitude / grid_cell_size) * grid_cell_size,
-        np.ceil(d_combined.longitude / grid_cell_size) * grid_cell_size,
+    get_lon_idx = np.searchsorted(
+        CONFIG.LON_BIN_BOUNDS, d_combined.longitude, side="right"
     )
-    d_combined["lat_bnd/upper"] = np.where(
-        d_combined["lat_bnd/lower"] < 0,
-        d_combined["lat_bnd/lower"] - grid_cell_size,
-        d_combined["lat_bnd/lower"] + grid_cell_size,
-    )
-    d_combined["lon_bnd/upper"] = np.where(
-        d_combined["lon_bnd/lower"] < 0,
-        d_combined["lon_bnd/lower"] - grid_cell_size,
-        d_combined["lon_bnd/lower"] + grid_cell_size,
-    )
+
+    lat_neg = d_combined.latitude < 0
+    lon_neg = d_combined.longitude < 0
+
+    d_combined["lat_bnd/lower"] = CONFIG.LAT_BIN_BOUNDS[
+        np.where(lat_neg, get_lat_idx, get_lat_idx - 1)
+    ]
+    d_combined["lat_bnd/upper"] = CONFIG.LAT_BIN_BOUNDS[
+        np.where(lat_neg, get_lat_idx - 1, get_lat_idx)
+    ]
+
+    d_combined["lon_bnd/lower"] = CONFIG.LON_BIN_BOUNDS[
+        np.where(lon_neg, get_lon_idx, get_lon_idx - 1)
+    ]
+    d_combined["lon_bnd/upper"] = CONFIG.LON_BIN_BOUNDS[
+        np.where(lon_neg, get_lon_idx - 1, get_lon_idx)
+    ]
+
     # this additional processing is done because of shipboard-flask measures
     # from noaa-POC which has exactly lon=-180.0 (max/min boundary) as coordinate
     d_combined.loc[d_combined.longitude == -180, "lon_bnd/upper"] = -180.0  # noqa: PLR2004
@@ -823,4 +827,4 @@ def get_data_flow(
 
 
 if __name__ == "__main__":
-    download_cmip_flow()
+    get_data_flow()
