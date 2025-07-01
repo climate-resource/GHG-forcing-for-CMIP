@@ -53,6 +53,7 @@ def get_round_the_world_grid(
     name="interpolate_binned_data",
     description="Interpolate binned data",
     cache_policy=CONFIG.CACHE_POLICIES,
+    refresh_cache=True,
 )
 def interpolate(
     ymdf: pd.DataFrame, value_column: str = "value"
@@ -198,6 +199,7 @@ def interpolation_flow(
     interpolated_dat_l = []
 
     d_binned_avg = pd.read_csv(path_to_csv + f"/{gas}/{gas}_binned.csv")
+
     # required for merging later (otherwise time has type object)
     d_binned_avg["time"] = pd.to_datetime(d_binned_avg.time.astype(str), utc=True)
 
@@ -236,12 +238,22 @@ def interpolation_flow(
         d_binned_avg.drop(columns="value"), on=["time", "lon", "lat"], how="outer"
     )
 
+    time_frac = d_binned_avg[["time", "time_fractional"]].drop_duplicates()
+    df_out["time_fractional"] = df_out["time"].map(
+        time_frac.set_index("time")["time_fractional"]
+    )
+
+    df_out["month"] = df_out.time.dt.month
+    df_out["year"] = df_out.time.dt.year
+    df_out["gas"] = gas
+    df_out["unit"] = np.where(gas == "ch4", "ppb", "ppm")
+
     # remove NAN from dataframe and drop duplicates
-    df_out.dropna(inplace=True)
+    df_out.dropna(subset="value", inplace=True)
     df_out.drop_duplicates(inplace=True)
 
     df_out.to_csv(path_to_csv + f"/{gas}/{gas}_interpolated.csv")
 
 
 if __name__ == "__main__":
-    interpolation_flow(path_to_csv="data/downloads", gas="co2")
+    interpolation_flow(path_to_csv="data/downloads", gas="ch4")

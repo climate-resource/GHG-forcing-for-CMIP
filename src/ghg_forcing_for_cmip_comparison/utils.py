@@ -12,6 +12,8 @@ import pandera.pandas as pa
 from pandera.typing.pandas import Series
 from prefect.tasks import task_input_hash
 
+from ghg_forcing_for_cmip_comparison import CONFIG
+
 
 def is_pytest_running() -> bool:
     """
@@ -33,6 +35,58 @@ def custom_cache_key_fn() -> Optional[Any]:
     else:
         # Normal caching key, e.g. hash of inputs
         return task_input_hash
+
+
+def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
+    """
+    Compute the weighted average of ghg concentrations
+
+    weighted according to area
+
+    Parameters
+    ----------
+    d:
+        dataset with ghg concentrations and lat, lon
+        information
+
+    grouping_vars:
+        list of variables to group by or that should be
+        maintained
+
+    Returns
+    -------
+    :
+        dataset with weighted ghg concentrations
+    """
+    d1 = d.copy()
+
+    # Define constants
+    delta_deg = CONFIG.GRID_CELL_SIZE
+    deg2rad = np.deg2rad
+
+    # Calculate bounds
+    lat_bnd_0 = deg2rad(d1.lat + delta_deg)
+    lat_bnd_1 = deg2rad(d1.lat - delta_deg)
+    lon_bnd_0 = deg2rad(d1.lon + delta_deg)
+    lon_bnd_1 = deg2rad(d1.lon - delta_deg)
+
+    # weighted average
+    delta_lat = np.abs(np.sin(lat_bnd_0) - np.sin(lat_bnd_1))
+    delta_lon = np.abs(lon_bnd_0 - lon_bnd_1)
+    d1["weight"] = delta_lon * delta_lat
+
+    # Compute weighted value
+    d1["value_weighted"] = d1.value * d1.weight
+
+    d2 = (
+        d1.groupby(grouping_vars)
+        .agg({"weight": "sum", "value_weighted": "sum"})
+        .reset_index()
+    )
+
+    d2["value"] = d2.value_weighted / d2.weight
+    d2.drop(columns=["value_weighted", "weight"], inplace=True)
+    return d2
 
 
 class GroundDataSchema(pa.DataFrameModel):
