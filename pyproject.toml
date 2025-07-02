@@ -5,7 +5,7 @@ description = "Intercomparison of CMIP7 data with earth observations as part of 
 authors = [
     { name = "Florence Bockting", email = "florence.bockting@climate-resource.com" },
 ]
-license = { text = "placeholder" }
+license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 dependencies = [
     "cdsapi>=0.7.6",
@@ -26,7 +26,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     ## If you apply an OSI-approved licence, you should uncomment the below
-    # "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: BSD License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
