@@ -8,7 +8,10 @@ import pandas as pd
 from prefect import flow, task
 
 from ghg_forcing_for_cmip_comparison import CONFIG
-from ghg_forcing_for_cmip_comparison.utils import compute_weighted_avg
+from ghg_forcing_for_cmip_comparison.utils import (
+    compute_weighted_avg,
+    save_data,
+)
 
 
 @task(
@@ -111,14 +114,14 @@ def from_wide_to_long(
     # rename original value
     d_long.rename(
         columns={
-            "value": "value_orig",
+            "value": "value_without_vertical",
             "value_new": "value",
             "pressure": "pre",
         },
         inplace=True,
     )
 
-    columns_all = [*id_vars, "value", "value_orig", "pre"]
+    columns_all = [*id_vars, "value", "value_without_vertical", "pre"]
 
     return d_long[columns_all]
 
@@ -176,8 +179,50 @@ def add_required_variables(
     return d_interpol
 
 
+@task(
+    name="postprocess_vertical_dataset",
+    description="clean vertical dataset for further analysis",
+    cache_policy=CONFIG.CACHE_POLICIES,
+)
+def postprocess_vertical_dataset(d_vertical: pd.DataFrame, gas: str) -> pd.DataFrame:
+    """
+    Postprocess dataset to get final vertical_dataset
+
+    Parameters
+    ----------
+    d_vertical:
+        dataset after modelling the vertical dimension
+
+    gas:
+        target greenhouse gas variable
+
+    Returns
+    -------
+    :
+        clean vertical dataset
+    """
+    if gas == "co2":
+        d_vertical.drop(
+            columns=["global_annual", "global_5yrs", "100hPa_value", "Unnamed: 0"],
+            inplace=True,
+        )
+    elif gas == "ch4":
+        d_vertical.drop(
+            columns=[
+                "global_annual",
+                "global_1yrs",
+                "p_tropo",
+                "scaling_factor",
+                "Unnamed: 0",
+            ],
+            inplace=True,
+        )
+
+    return d_vertical
+
+
 @flow(name="add_vertical")
-def vertical_flow(path_to_csv: str, gas: str) -> None:
+def add_vertical_flow(path_to_csv: str, gas: str) -> None:
     """
     Add vertical distribution to ghg concentration data
 
@@ -208,11 +253,18 @@ def vertical_flow(path_to_csv: str, gas: str) -> None:
         d_pressure, id_vars=list(d_interpol.columns), var_name="pressure"
     )
 
-    # remove NAN from dataframe and drop duplicates
-    d_vertical.dropna(subset="value", inplace=True)
+    # clean dataset
+    d_vertical_clean = postprocess_vertical_dataset(d_vertical, gas=gas)
 
-    d_vertical.to_csv(path_to_csv + f"/{gas}/{gas}_vertical.csv")
+    # remove NAN from dataframe
+    d_vertical_clean.dropna(subset="value", inplace=True)
+    # drop duplicated columns
+    d_vertical_clean = d_vertical_clean.loc[
+        :, ~d_vertical_clean.columns.duplicated()
+    ].copy()
+
+    save_data(d_vertical_clean, path_to_csv, gas, "vertical")
 
 
 if __name__ == "__main__":
-    vertical_flow("data/downloads", "ch4")
+    add_vertical_flow("data/downloads", "ch4")

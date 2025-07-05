@@ -13,19 +13,17 @@ import cdsapi  # type: ignore
 import numpy as np
 import pandas as pd
 import requests
+import xarray as xr
 from prefect import flow, task
-from prefect.cache_policies import INPUTS, TASK_SOURCE
 
 from ghg_forcing_for_cmip_comparison import CONFIG, utils
-
-CACHE_POLICIES = TASK_SOURCE + INPUTS
 
 
 @task(
     name="download_zip_from_cds",
     description="Download obs4mips zip from Climate Data Store",
     task_run_name="download_zip_from_cds_{gas}",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     """
@@ -76,7 +74,7 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
 @task(
     name="unzip_download",
     description="Unzip downloaded data",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def unzip_download(pattern: str, path_to_zip: str, path_to_file: str) -> None:
     """
@@ -115,7 +113,7 @@ def unzip_download(pattern: str, path_to_zip: str, path_to_file: str) -> None:
 @task(
     name="download_zip_from_noaa_archive",
     description="Download zip from NOAA archive link",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
     """
@@ -149,7 +147,7 @@ def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
 @task(
     name="download_txt_from_agage_archive",
     description="Download txt from AGAGE archive link",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def download_agage(
     save_to_path: str = "data/downloads", save_file_suffix: str = ""
@@ -208,7 +206,7 @@ def download_agage(
 @task(
     name="save_txt_as_df_csv",
     description="Save txt file as pandas dataframe csv",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def txt_to_csv_file(
     file_path: str,
@@ -279,7 +277,7 @@ def txt_to_csv_file(
     name="loop_over_txt_files",
     description="Loop over txt files in stored folder",
     task_run_name="loop_over_txt_files_in_folder-{folder_pattern}",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def txt_to_csv_folder(
     folder_pattern: str,
@@ -331,7 +329,7 @@ def txt_to_csv_folder(
     name="combine_csv_files_to_clean",
     description="Combine csv files to final csv",
     task_run_name="combine_csv_files_to_final-{gas}",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def combine_csv_files(
     gas: str,
@@ -368,13 +366,15 @@ def combine_csv_files(
                 df.rename(columns={"value_std_dev": "value_unc"}, inplace=True)
             all_dfs.append(df)
 
-    pd.concat(all_dfs).to_csv(path_to_save + f"/{gas}_{save_file_suffix}.csv")
+    d_combined = pd.concat(all_dfs)
+
+    utils.save_data(d_combined, path_to_save, gas, save_file_suffix)
 
 
 @task(
     name="compute_total_monthly_std",
     description="Compute total monthly std. as sum of value std and instrument std.",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> None:
     """
@@ -474,9 +474,9 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
 @task(
     name="add_lat_lon_bnds",
     description="Add latitude and longitude bands",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
-def add_lat_lon_bnds(d_combined: pd.DataFrame, grid_cell_size: int) -> pd.DataFrame:
+def add_lat_lon_bnds(d_combined: pd.DataFrame) -> pd.DataFrame:
     """
     Add latitude and longitude boundaries to d_combined
 
@@ -484,9 +484,6 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame, grid_cell_size: int) -> pd.DataFr
     ----------
     d_combined :
         combined dataframe
-
-    grid_cell_size :
-        grid cell size in degrees
 
     Returns
     -------
@@ -544,7 +541,7 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame, grid_cell_size: int) -> pd.DataFr
 @task(
     name="combine_final_csv",
     description="Combine final csv files",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def combine_final_csv(
     gas: str, path_to_save: str = "data/downloads", grid_cell_size: int = 5
@@ -643,9 +640,63 @@ def combine_final_csv(
 
 
 @task(
+    name="postprocess_obs4mips_data",
+    description="postprocess obs4mips data and prepare for analysis",
+    cache_policy=CONFIG.CACHE_POLICIES,
+)
+def postprocess_obs4mips_data(
+    path_to_nc: str, gas: str = "co2", factor: float = 1e6
+) -> None:
+    """
+    Preprocess OBS4MIPS data from nc to csv format
+
+    Parameters
+    ----------
+    path_to_nc:
+        path where OBS4MIPS dataset is stored as nc format
+
+    gas:
+        target greenhouse gas variable
+
+    factor:
+        factor for converting ghg concentration from
+        unitless to ppb (ch4; factor = 1e9) or
+        ppm (co2; factor = 1e6)
+    """
+    all_files = os.listdir(path_to_nc + f"/{gas}/")
+    ds = next(file for file in all_files if "OBS4MIPS" in file)
+
+    df_raw = xr.open_dataset(path_to_nc + f"/{gas}/{ds}").to_dataframe().reset_index()
+    df_raw = df_raw[df_raw[f"x{gas}"] != np.float32(1e20)].reset_index()
+    df = pd.DataFrame({})
+
+    df["time"] = pd.to_datetime(df_raw.time, utc=True)
+    df["year"] = df_raw.time.dt.year.astype(np.int64)
+    df["month"] = df_raw.time.dt.month.astype(np.int64)
+    df["lat_bnd"] = df_raw.lat_bnds.astype(np.int64)
+    df["lon_bnd"] = df_raw.lon_bnds.astype(np.int64)
+    df["bnd"] = df_raw.bnds.astype(np.int64)
+    df["lat"] = df_raw.lat.astype(np.float64)
+    df["lon"] = df_raw.lon.astype(np.float64)
+    df["value"] = df_raw[f"x{gas}"].astype(np.float64) * factor
+    df["std_dev"] = df_raw[f"x{gas}_stddev"].astype(np.float64) * factor
+    df["numb"] = df_raw[f"x{gas}_nobs"].astype(np.int64)
+    df["gas"] = gas
+    df["unit"] = np.where(gas == "ch4", "ppb", "ppm")
+    df["pre"] = df_raw.pre.astype(np.float64)
+    df["column_averaging_kernel"] = df_raw.column_averaging_kernel.astype(np.float64)
+    df["vmr_profile_apriori"] = (
+        df_raw[f"vmr_profile_{gas}_apriori"].astype(np.float64) * factor
+    )
+
+    utils.EODataSchema.validate(df)
+    utils.save_data(df, path_to_nc, gas, "eo_raw")
+
+
+@task(
     name="postprocess_cmip_data",
     description="postprocess cmip data and prepare for analysis",
-    cache_policy=CACHE_POLICIES,
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None:
     """
@@ -684,8 +735,7 @@ def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None
     df["unit"] = np.where(gas == "ch4", "ppb", "ppm")
 
     utils.GroundDataSchema.validate(df)
-
-    df.to_csv(path_to_save + f"/{gas}/{gas}_raw.csv")
+    utils.save_data(df, path_to_save, gas, "raw")
 
 
 @flow(name="get_cmip_data", description="Download and extract CMIP data")
@@ -785,6 +835,10 @@ def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
             path_to_file=save_to_path + f"/{gas}",
         )
 
+        postprocess_obs4mips_data(
+            path_to=save_to_path, gas=gas, factor=np.where(gas == "ch4", 1e9, 1e6)
+        )
+
 
 @flow(
     name="get_raw_datasets",
@@ -827,4 +881,5 @@ def get_data_flow(
 
 
 if __name__ == "__main__":
-    get_data_flow()
+    # get_data_flow()
+    postprocess_obs4mips_data("data/downloads", "ch4", 1e9)

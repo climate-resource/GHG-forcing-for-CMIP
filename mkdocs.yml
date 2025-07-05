@@ -132,7 +132,11 @@ markdown_extensions:
   - pymdownx.snippets
   # Support more complicated indents etc.
   # https://facelessuser.github.io/pymdown-extensions/extensions/superfences/
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: python/name:pymdownx.superfences.fence_code_format
   # Tabbed sections (e.g. for our installation options)
   # https://facelessuser.github.io/pymdown-extensions/extensions/tabbed/
   - pymdownx.tabbed:

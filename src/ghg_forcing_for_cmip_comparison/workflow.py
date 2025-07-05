@@ -6,6 +6,8 @@ from prefect import flow
 
 from ghg_forcing_for_cmip_comparison.bin_dataset_gb import bin_dataset_flow
 from ghg_forcing_for_cmip_comparison.get_datasets import get_data_flow
+from ghg_forcing_for_cmip_comparison.interpolate_dataset_gb import interpolation_flow
+from ghg_forcing_for_cmip_comparison.vertical_to_dataset_gb import add_vertical_flow
 
 
 @flow(
@@ -21,6 +23,10 @@ def run_pipeline_comparison(
     get_data_flow(save_to_path=save_to_path)
 
     bin_dataset_flow(path_to_csv=save_to_path, gas=gas, quantile=quantile)
+
+    interpolation_flow(path_to_csv=save_to_path, gas=gas)
+
+    add_vertical_flow(path_to_csv=save_to_path, gas=gas)
 
 
 if __name__ == "__main__":

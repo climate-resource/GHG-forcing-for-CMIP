@@ -24,7 +24,7 @@ from ghg_forcing_for_cmip_comparison import plotting
 
 # %%
 # load data sets
-path = "../../data/downloads/ch4/"
+path = "data/downloads/ch4/"
 d_binned = pd.read_csv(path + "ch4_binned.csv")
 
 d_binned.head()
@@ -47,7 +47,7 @@ plotting.plot_map_grid(d_binned)
 
 # %%
 # load data sets
-path = "../../data/downloads/co2/"
+path = "data/downloads/co2/"
 d_binned = pd.read_csv(path + "co2_binned.csv")
 
 d_binned.head()

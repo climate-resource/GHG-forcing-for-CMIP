@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from ghg_forcing_for_cmip_comparison.download_datasets import (
+from ghg_forcing_for_cmip_comparison.get_datasets import (
     download_noaa,
     make_api_request,
     unzip_download,
@@ -15,7 +15,7 @@ from ghg_forcing_for_cmip_comparison.download_datasets import (
 )
 def test_make_api_request(input_gas, save_path, version="v4_5"):
     # download obs4mips data
-    make_api_request(input_gas, save_path)
+    make_api_request.with_options(refresh_cache=True)(input_gas, save_path)
 
     # check whether zip file has been downloaded
     assert os.path.isfile(save_path + f"/obs4mips_x{input_gas}_{version}.zip")
@@ -39,11 +39,10 @@ def test_unzip_obs4mips_download(
     input_gas, expected_file, save_path="tests/unit/download_test"
 ):
     # download obs4mips data
-    make_api_request(input_gas, save_path)
+    make_api_request.with_options(refresh_cache=True)(input_gas, save_path)
 
     # unzip downloaded files
-    unzip_download(
-        input_gas,
+    unzip_download.with_options(refresh_cache=True)(
         pattern=f"obs4mips_x{input_gas}",
         path_to_zip=save_path,
         path_to_file=save_path,
@@ -59,7 +58,7 @@ def test_unzip_obs4mips_download(
 )
 def test_download_noaa(input_gas, save_path):
     # download NOAA data
-    download_noaa(input_gas, save_path)
+    download_noaa.with_options(refresh_cache=True)(input_gas, save_path)
 
     # check whether zip file has been downloaded
     assert os.path.isfile(save_path + f"/noaa_{input_gas}_surface_flask.zip")
@@ -70,11 +69,10 @@ def test_download_noaa(input_gas, save_path):
 @pytest.mark.parametrize("type", ("flask", "insitu"))
 def test_unzip_noaa_download(input_gas, type, save_path="tests/unit/download_test"):
     # download obs4mips data
-    download_noaa(input_gas, save_path)
+    download_noaa.with_options(refresh_cache=True)(input_gas, save_path)
 
     # unzip downloaded files
-    unzip_download(
-        input_gas,
+    unzip_download.with_options(refresh_cache=True)(
         pattern=f"noaa_{input_gas}_surface_{type}",
         path_to_zip=save_path,
         path_to_file=save_path,

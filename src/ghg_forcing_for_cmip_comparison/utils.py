@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pandera.pandas as pa
 from pandera.typing.pandas import Series
+from prefect import task
 from prefect.tasks import task_input_hash
 
 from ghg_forcing_for_cmip_comparison import CONFIG
@@ -119,3 +120,51 @@ class GroundDataSchema(pa.DataFrameModel):
     )
     gas: Series[str] = pa.Field(isin=["ch4", "co2"])
     unit: Series[str] = pa.Field(isin=["ppb", "ppm"])
+
+
+class EODataSchema(pa.DataFrameModel):
+    """
+    validate columns of satellite dataset
+
+    """
+
+    time: Series[pd.DatetimeTZDtype] = pa.Field(
+        dtype_kwargs={"unit": "ns", "tz": "UTC"}
+    )
+    year: Series[np.int64] = pa.Field(ge=1968, le=datetime.now().year)
+    month: Series[np.int64] = pa.Field(ge=1, le=12)
+    lat_bnd: Series[np.int64] = pa.Field(ge=-90, le=90)
+    lon_bnd: Series[np.int64] = pa.Field(ge=-180, le=180)
+    bnd: Series[np.int64] = pa.Field(isin=[0, 1])
+    lat: Series[np.float64] = pa.Field(gt=-90, lt=90)
+    lon: Series[np.float64] = pa.Field(gt=-180, lt=180)
+    value: Series[np.float64] = pa.Field(gt=0.0, lt=9999.0)
+    std_dev: Series[np.float64] = pa.Field(ge=0)
+    numb: Series[np.int64] = pa.Field(gt=0)
+    gas: Series[str] = pa.Field(isin=["ch4", "co2"])
+    unit: Series[str] = pa.Field(isin=["ppb", "ppm"])
+    pre: Series[np.float64] = pa.Field(gt=0, lt=1)
+    column_averaging_kernel: Series[np.float64]
+    vmr_profile_apriori: Series[np.float64]
+
+
+@task(name="save_dataset")
+def save_data(d: pd.DataFrame, path_to_save: str, gas: str, dataset_name: str) -> None:
+    """
+    Save dataset to disk
+
+    Parameters
+    ----------
+    d:
+        dataset to save
+
+    path_to_save:
+        path to save dataset
+
+    gas:
+        target greenhouse gas variable
+
+    dataset_name:
+        suffix for file name to discriminate dataset files
+    """
+    d.to_csv(path_to_save + f"/{gas}/{gas}_{dataset_name}.csv")

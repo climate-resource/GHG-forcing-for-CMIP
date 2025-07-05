@@ -24,10 +24,10 @@ from ghg_forcing_for_cmip_comparison import plotting
 
 # %%
 # load data sets
-path = "../../data/downloads/ch4/"
-d_interpol = pd.read_csv(path + "ch4_interpolated.csv")
-d_binned = pd.read_csv(path + "ch4_binned.csv")
-d_vertical = pd.read_csv(path + "ch4_vertical.csv")
+path = "data/downloads/ch4/"
+d_interpol = pd.read_csv(path+"ch4_interpolated.csv")
+d_binned = pd.read_csv(path+"ch4_binned.csv")
+
 d_interpol.head()
 
 # %%
@@ -41,30 +41,33 @@ print(np.sort(d_interpol.lon.unique()))
 
 # %%
 plotting.plot_map_interpolated(
-    d_interpol, d_binned, year=2007, month=6, gas="ch4", vmin=None, vmax=None
+    d_interpol, d_binned, year=2007, month=6, gas="ch4",
+    vmin=None, vmax=None
 )
 
 # %%
 plotting.plot_map_interpolated(
-    d_interpol, d_binned, year=2017, month=6, gas="co2", vmin=None, vmax=None
+    d_interpol, d_binned, year=2017, month=6, gas="co2",
+    vmin=None, vmax=None
 )
 
 
 # %%
-plotting.plot_annual_concentration(d_interpol, gas="ch4")
-
-# %%
-plotting.plot_vertical(d_vertical, gas="ch4", lat=2.5, p_surface=0.95, p_top=0.05)
+plotting.plot_annual_concentration(
+    d_interpol, gas="ch4"
+)
 
 # %% [markdown]
 # ## Carbon Dioxide ($CO_2$)
 
 # %%
 # load data sets
-path = "../../data/downloads/co2/"
-d_interpol = pd.read_csv(path + "co2_interpolated.csv")
-d_binned = pd.read_csv(path + "co2_binned.csv")
-d_vertical = pd.read_csv(path + "co2_vertical.csv")
+path = "data/downloads/co2/"
+d_interpol = pd.read_csv(path+"co2_interpolated.csv")
+d_binned = pd.read_csv(path+"co2_binned.csv")
+d_vertical = pd.read_csv(path+"co2_vertical.csv")
+d_compare = pd.read_csv(path+"co2_joint_comparison.csv")
+
 d_interpol.head()
 
 # %%
@@ -78,14 +81,16 @@ print(np.sort(d_interpol.lon.unique()))
 
 # %%
 plotting.plot_map_interpolated(
-    d_interpol, d_binned, year=2007, month=6, gas="co2", vmin=None, vmax=None
+    d_interpol, d_binned, year=2007, month=6, gas="co2",
+    vmin=None, vmax=None
 )
 
 # %%
-plotting.plot_map_interpolated(d_interpol, d_binned, year=2017, month=6, gas="co2")
+plotting.plot_map_interpolated(
+    d_interpol, d_binned, year=2017, month=6, gas="co2"
+)
 
 # %%
-plotting.plot_annual_concentration(d_interpol, gas="co2")
-
-# %%
-plotting.plot_vertical(d_vertical, gas="co2", lat=2.5, p_surface=0.95, p_top=0.05)
+plotting.plot_annual_concentration(
+    d_interpol, gas="co2"
+)
