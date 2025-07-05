@@ -30,4 +30,4 @@ def run_pipeline_comparison(
 
 
 if __name__ == "__main__":
-    run_pipeline_comparison()
+    run_pipeline_comparison()  # type: ignore

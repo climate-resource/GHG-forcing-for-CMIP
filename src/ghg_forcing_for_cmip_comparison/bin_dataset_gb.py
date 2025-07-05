@@ -4,7 +4,7 @@ Compute average concentrations per grid cell
 
 import numpy as np
 import pandas as pd
-import scipy
+import scipy  # type: ignore
 from prefect import flow, task
 from prefect.cache_policies import INPUTS, TASK_SOURCE
 
@@ -55,7 +55,7 @@ def compute_average_per_grid_cell(path_to_csv: str, gas: str) -> pd.DataFrame:
         inplace=True,
     )
 
-    d_avg.columns = [col[0] for col in d_avg.columns]
+    d_avg.columns = pd.Index([col[0] for col in d_avg.columns])
     return d_avg
 
 

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from geodatasets import get_path
+from geodatasets import get_path  # type: ignore
 
 from ghg_forcing_for_cmip_comparison.utils import compute_weighted_avg
 

@@ -254,7 +254,9 @@ def txt_to_csv_file(
 
     # If the comment symbol '#' is mistakenly read as a column name, clean it
     if columns_in_comment:
-        df.columns = [col for col in df.columns if col not in ["#", "dev"]] + [""]
+        df.columns = pd.Index(
+            [col for col in df.columns if col not in ["#", "dev"]] + [""]
+        )
         df = df.iloc[:, :-2]  # remove two last (empty) columns
         df.rename(columns={"dev.": "numb", "std.": "std_dev"}, inplace=True)
         df["site_code"] = file_name.split("_")[1]
@@ -311,6 +313,8 @@ def txt_to_csv_folder(
     match_string = re.compile(f"{folder_pattern}")
 
     target_folder = next((f for f in files if match_string.match(f)), None)
+    if target_folder is None:
+        raise ValueError("target folder not found")  # noqa: TRY003
 
     save_subdir = path_to_dir + "/" + target_folder
     os.makedirs(save_subdir, exist_ok=True)
@@ -396,7 +400,7 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
     # remove rows with missing values
     d = d[d.value != fill_value]
     # insert NAN for missing std. values
-    d["value_unc"] = np.where(d.value_unc < 0.0, pd.NA, d.value_unc)
+    d["value_unc"] = d.value_unc.where(d.value_unc >= 0.0, pd.NA)
 
     d.rename(columns={"value_unc": "instrument_std"}, inplace=True)
     d["instrument_var"] = d["instrument_std"] ** 2
@@ -432,10 +436,12 @@ def compute_total_monthly_std(path_to_csv: str, fill_value: float = -999.99) -> 
     )
 
     # reset multi-index
-    d_grouped.columns = [
-        "_".join(col).strip() if len(col[1]) != 0 else col[0]
-        for col in d_grouped.columns
-    ]
+    d_grouped.columns = pd.Index(
+        [
+            "_".join(col).strip() if len(col[1]) != 0 else col[0]
+            for col in d_grouped.columns
+        ]
+    )
     # compute total variance as sum of instrument-variance and value-variance
     d_grouped["value_var"] = d_grouped["value_var"].fillna(0)
     d_grouped["total_var"] = d_grouped["value_var"] + d_grouped["instrument_var_mean"]
@@ -634,9 +640,9 @@ def combine_final_csv(
     # surface-insitu dataset in 2022/2023 are a few measures
     # that have a non-zero value, but a std and nvalue of zero.
     # as this makes no sense I delete these measurements entirely (row)
-    d_combined = d_combined[d_combined.numb != 0.0]
+    d_combined = d_combined[d_combined.numb != 0.0]  # type: ignore
 
-    return add_lat_lon_bnds(d_combined=d_combined, grid_cell_size=grid_cell_size)
+    return add_lat_lon_bnds(d_combined=d_combined, grid_cell_size=grid_cell_size)  # type: ignore
 
 
 @task(
@@ -715,7 +721,8 @@ def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None
     """
     df["time_fractional"] = df.time.astype(np.float64)
     df["time"] = pd.to_datetime(
-        {"year": df.year, "month": df.month, "day": 16, "hour": 12}, utc=True
+        pd.DataFrame({"year": df.year, "month": df.month, "day": 16, "hour": 12}),
+        utc=True,
     )
     df["year"] = df.year.astype(np.int64)
     df["month"] = df.month.astype(np.int64)

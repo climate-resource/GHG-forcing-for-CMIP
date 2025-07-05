@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import cast
 
-import cftime
+import cftime  # type: ignore
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
