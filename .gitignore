@@ -14,6 +14,15 @@ docs/api/*
 # Databases
 *.db
 data/
+!data/downloads/ch4/ch4_binned.csv
+!data/downloads/ch4/ch4_interpolated.csv
+!data/downloads/ch4/ch4_vertical.csv
+!data/downloads/ch4/ch4_joint_comparison.csv
+
+!data/downloads/co2/co2_binned.csv
+!data/downloads/co2/co2_interpolated.csv
+!data/downloads/co2/co2_vertical.csv
+!data/downloads/co2/co2_joint_comparison.csv
 
 # Jupyter cache
 .jupyter_cache
