@@ -12,6 +12,7 @@ dependencies = [
     "cftime>=1.6.4.post1",
     "geodatasets>=2024.8.0",
     "geopandas>=1.0.1",
+    "mkdocs-jupyter>=0.25.1",
     "pandas>=2.3.0",
     "pandera[mypy]>=0.24.0",
     "pip>=24.3.1",

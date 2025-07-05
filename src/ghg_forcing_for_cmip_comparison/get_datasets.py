@@ -711,7 +711,7 @@ def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None
     Parameters
     ----------
     df :
-       final pandas dataframe
+        final pandas dataframe
 
     path_to_save :
         path to save file
