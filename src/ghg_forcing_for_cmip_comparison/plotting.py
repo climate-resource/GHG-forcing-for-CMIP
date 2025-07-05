@@ -2,7 +2,7 @@
 Plotting helpers for inspecting datasets
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import geopandas
 import matplotlib.pyplot as plt
@@ -186,8 +186,8 @@ def plot_vertical(
     d_vertical: pd.DataFrame,
     gas: str,
     lat: float = 2.5,
-    p_surface: int | float = 950,
-    p_top: int | float = 50,
+    p_surface: Union[int, float] = 950,
+    p_top: Union[int, float] = 50,
 ) -> None:
     """
     Plot vertical dimension of ground-based (interpolated data)

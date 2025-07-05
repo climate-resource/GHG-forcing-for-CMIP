@@ -96,7 +96,7 @@ class GroundDataSchema(pa.DataFrameModel):
 
     """
 
-    time_fractional: Series[np.float64]
+    time_fractional: Series[float]
     time: Series[pd.DatetimeTZDtype] = pa.Field(
         dtype_kwargs={"unit": "ns", "tz": "UTC"}
     )
