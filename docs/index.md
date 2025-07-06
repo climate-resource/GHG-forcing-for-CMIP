@@ -43,3 +43,12 @@ graph TB
   G -.-> G2@{ shape: bow-rect, label: "{gas}_joint_comparison.csv" }
   style G2 fill:#cee4d8,stroke:#007a3d
 ```
+
+``` mermaid
+graph LR
+  A[Start] --> B{Error?};
+  B -->|Yes| C[Hmm...];
+  C --> D[Debug];
+  D --> B;
+  B ---->|No| E[Yay!];
+```
