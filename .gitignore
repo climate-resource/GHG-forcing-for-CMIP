@@ -1,3 +1,6 @@
+# Large files
+uv.lock
+
 # Notebooks
 *.ipynb
 
@@ -10,6 +13,7 @@ docs/api/*
 
 # Databases
 *.db
+data/
 
 # Jupyter cache
 .jupyter_cache
