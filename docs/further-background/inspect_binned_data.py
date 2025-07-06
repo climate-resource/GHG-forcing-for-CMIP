@@ -15,8 +15,8 @@
 #%%
 import numpy as np
 
-from . import plotting
-from .utils import load_data
+from ghg_forcing_for_cmip.data_comparison import plotting
+from ghg_forcing_for_cmip.data_comparison.utils import load_data
 #%% [markdown]
 # # Inspect binned data
 #%% md
