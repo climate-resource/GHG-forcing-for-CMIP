@@ -13,5 +13,5 @@ See https://oprypin.github.io/mkdocs-literate-nav/
     - [Inspect interpolated data](further-background/inspect_interpolated_data.py)
     - [Inspect vertical and data comparison](further-background/inspect_vertical_comparison.py)
 - [Development](development.md)
-- [API reference](api/ghg_forcing_for_cmip_comparison/)
+- [API reference](api/ghg_forcing_for_cmip/)
 - [Changelog](changelog.md)
