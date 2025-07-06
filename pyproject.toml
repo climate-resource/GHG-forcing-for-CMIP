@@ -279,7 +279,7 @@ build-backend = "pdm.backend"
 [tool.pdm.build]
 locked = true
 includes = [
-    "src",
+    "src/ghg_forcing_for_cmip",
     "LICENCE",
 ]
 
