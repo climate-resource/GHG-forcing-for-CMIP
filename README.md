@@ -9,8 +9,11 @@ Intercomparison of CMIP7 data with earth observations as part of GHG forcing for
 [![Licence](https://img.shields.io/pypi/l/ghg-forcing-for-cmip-comparison?label=licence)](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/blob/main/LICENCE)
 
 **PyPI :**
+TODO
+<!--
 [![PyPI](https://img.shields.io/pypi/v/ghg-forcing-for-cmip-comparison.svg)](https://pypi.org/project/ghg-forcing-for-cmip-comparison/)
 [![PyPI install](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/actions/workflows/install-pypi.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/actions/workflows/install-pypi.yaml)
+-->
 
 **Tests :**
 [![CI](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/actions/workflows/ci.yaml)
