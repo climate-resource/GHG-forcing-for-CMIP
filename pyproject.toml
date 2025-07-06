@@ -381,7 +381,7 @@ convention = "numpy"
 docstring-code-format = true
 
 [tool.towncrier]
-package = "ghg_forcing_for_cmip_comparison"
+package = "ghg_forcing_for_cmip"
 package_dir = "src"
 filename = "docs/changelog.md"
 directory = "changelog/"
