@@ -6,10 +6,7 @@ Compare CMIP7 data with earth observations as part of GHG forcing for CMIP proje
 
 import importlib.metadata
 
-from ghg_forcing_for_cmip import (
-    data_assimilation,
-    data_comparison,
-)
+from ghg_forcing_for_cmip import data_assimilation, data_comparison
 
 __version__ = importlib.metadata.version("ghg_forcing_for_cmip")
 
