@@ -56,14 +56,14 @@ See the pdm-bump docs for the
 The steps required are the following:
 
 1. Bump the version: manually trigger the "bump" workflow from the main branch
-   (see here: [bump workflow](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/actions/workflows/bump.yaml)).
+   (see here: [bump workflow](https://github.com/climate-resource/ghg-forcing-for-cmip/actions/workflows/bump.yaml)).
    A valid "bump_rule" (see [pdm-bump's docs](https://github.com/carstencodes/pdm-bump#usage))
    will need to be specified.
    This will then trigger a draft release.
 
 1. Edit the draft release which has been created
    (see here:
-   [project releases](https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases)).
+   [project releases](https://github.com/climate-resource/ghg-forcing-for-cmip/releases)).
    Once you are happy with the release
    (removed placeholders, added key announcements etc.)
    then hit 'Publish release'.
@@ -93,4 +93,4 @@ a service for which we are very grateful.
 The RtD configuration can be found in the `.readthedocs.yaml` file
 in the root of this repository.
 The docs are automatically deployed at
-[ghg-forcing-for-cmip-comparison.readthedocs.io](https://ghg-forcing-for-cmip-comparison.readthedocs.io/en/latest/).
+[ghg-forcing-for-cmip.readthedocs.io](https://ghg-forcing-for-cmip.readthedocs.io/en/latest/).

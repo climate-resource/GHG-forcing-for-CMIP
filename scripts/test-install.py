@@ -9,7 +9,7 @@ Thanks https://stackoverflow.com/a/25562415/10473080
 import importlib
 import pkgutil
 
-import ghg_forcing_for_cmip_comparison
+import ghg_forcing_for_cmip
 
 
 def import_submodules(package_name: str) -> None:
@@ -25,5 +25,5 @@ def import_submodules(package_name: str) -> None:
             import_submodules(full_name)
 
 
-import_submodules("ghg_forcing_for_cmip_comparison")
-print(ghg_forcing_for_cmip_comparison.__version__)
+import_submodules("ghg_forcing_for_cmip")
+print(ghg_forcing_for_cmip.__version__)

@@ -61,5 +61,5 @@ jobs:
           token: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
           draft: true
           files: |
-            dist/ghg_forcing_for_cmip_comparison-${{ env.PROJECT_VERSION }}-py3-none-any.whl
-            dist/ghg_forcing_for_cmip_comparison-${{ env.PROJECT_VERSION }}.tar.gz
+            dist/ghg_forcing_for_cmip-${{ env.PROJECT_VERSION }}-py3-none-any.whl
+            dist/ghg_forcing_for_cmip-${{ env.PROJECT_VERSION }}.tar.gz

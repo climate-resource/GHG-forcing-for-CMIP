@@ -5,7 +5,7 @@ i.e. short files that contain a small markdown-formatted bit of text
 that will be added to the CHANGELOG when it is next compiled.
 
 The CHANGELOG will be read by users,
-so this description should be aimed to GHG-forcing-for-CMIP-comparison users
+so this description should be aimed to ghg-forcing-for-cmip users
 instead of describing internal changes which are only relevant to developers.
 Merge requests in combination with our git history
 provide additional developer-centric information.

@@ -5,8 +5,8 @@ combine earth observations and ground-based data in one dataset
 import pandas as pd
 from prefect import flow, task
 
-from ghg_forcing_for_cmip_comparison import CONFIG
-from ghg_forcing_for_cmip_comparison.utils import save_data
+from . import CONFIG
+from .utils import save_data
 
 
 @task(

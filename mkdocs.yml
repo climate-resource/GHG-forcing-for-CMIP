@@ -1,10 +1,10 @@
-site_name: GHG-forcing-for-CMIP-comparison
+site_name: ghg-forcing-for-cmip
 site_description: Intercomparison of CMIP7 data with earth observations as part of GHG forcing for CMIP project.
-site_url: https://ghg-forcing-for-cmip-comparison.readthedocs.io
+site_url: https://ghg-forcing-for-cmip.readthedocs.io
 edit_uri: blob/master/docs/
 
-repo_name: climate-resource/GHG-forcing-for-CMIP-comparison
-repo_url: https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison
+repo_name: climate-resource/ghg-forcing-for-cmip
+repo_url: https://github.com/climate-resource/ghg-forcing-for-cmip
 
 theme:
   name: "material"

@@ -11,8 +11,8 @@ pandas_doctests: false
 plot_dependencies: true
 project_description_short: Intercomparison of CMIP7 data with earth observations as
     part of GHG forcing for CMIP project.
-project_name_human: GHG-forcing-for-CMIP-comparison
-project_name_pip: ghg-forcing-for-cmip-comparison
-project_name_python: ghg_forcing_for_cmip_comparison
-project_url: https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison
+project_name_human: ghg-forcing-for-cmip
+project_name_pip: ghg-forcing-for-cmip
+project_name_python: ghg_forcing_for_cmip
+project_url: https://github.com/climate-resource/ghg-forcing-for-cmip
 track_lock_file: true

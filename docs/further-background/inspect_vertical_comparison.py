@@ -13,11 +13,9 @@
 # ---
 
 # %%
-import numpy as np
-import pandas as pd
 
-from ghg_forcing_for_cmip_comparison import plotting
-from ghg_forcing_for_cmip_comparison.utils import load_data
+from ghg_forcing_for_cmip.data_comparison import plotting
+from ghg_forcing_for_cmip.data_comparison.utils import load_data
 
 # %% [markdown]
 # # Inspect vertical distribution for ground-based data and final comparison with satellite data
