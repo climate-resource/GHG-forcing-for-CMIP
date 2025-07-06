@@ -2,13 +2,16 @@
 Global helper functions
 """
 
+import io
 import os
+import zipfile
 from datetime import datetime
 from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 import pandera.pandas as pa
+import requests
 from pandera.typing.pandas import Series
 from prefect import task
 from prefect.tasks import task_input_hash
@@ -168,3 +171,53 @@ def save_data(d: pd.DataFrame, path_to_save: str, gas: str, dataset_name: str) -
         suffix for file name to discriminate dataset files
     """
     d.to_csv(path_to_save + f"/{gas}/{gas}_{dataset_name}.csv")
+
+
+def download_data() -> None:
+    """
+    Download data for jupyter notebooks in documentation
+
+    Returns
+    -------
+    :
+        downloaded data (ch4, co2)
+    """
+    link = "https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases/download/"
+    release_version = "v0.1.0-alpha"
+    url_ch4 = link + release_version + "/ch4.zip"
+    url_co2 = link + release_version + "/co2.zip"
+
+    if not os.path.exists("docs/data"):
+        os.makedirs("docs/data", exist_ok=True)
+        for url in [url_ch4, url_co2]:
+            response = requests.get(url)  # noqa: S113
+
+            # Open the zip file in memory
+            with zipfile.ZipFile(io.BytesIO(response.content)) as thezip:
+                # Loop through each file inside the zip
+                for filename in thezip.namelist():
+                    if filename.endswith(".csv"):
+                        with thezip.open(filename) as file:
+                            # Read CSV into pandas dataframe
+                            pd.read_csv(file).to_csv(
+                                f"docs/data/{filename}", index=False
+                            )
+
+
+def load_data(dataset_name: str) -> pd.DataFrame:
+    """
+    Load datasets from release assets for documentation
+
+    Parameters
+    ----------
+    dataset_name:
+        dataset to load (incl. file-ending .csv)
+
+    Returns
+    -------
+    :
+        loaded pandas dataframe
+    """
+    download_data()
+
+    return pd.read_csv("docs/data/" + dataset_name)

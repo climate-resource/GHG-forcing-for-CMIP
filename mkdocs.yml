@@ -136,7 +136,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: python/name:pymdownx.superfences.fence_code_format
+          format: pymdownx.superfences.fence_code_format
   # Tabbed sections (e.g. for our installation options)
   # https://facelessuser.github.io/pymdown-extensions/extensions/tabbed/
   - pymdownx.tabbed:

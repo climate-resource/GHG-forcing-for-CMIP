@@ -15,39 +15,19 @@
 # %%
 import matplotlib.pyplot as plt
 import pandas as pd
-import requests
-import zipfile
-import io
 
 from ghg_forcing_for_cmip_comparison import plotting
+from ghg_forcing_for_cmip_comparison.utils import load_data
 
 # %% [markdown] editable=true slideshow={"slide_type": ""}
 # # Inspect raw data
-
-# %%
-url_ch4 = "https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases/download/v0.1.0-alpha/ch4.zip"
-url_co2 = "https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases/download/v0.1.0-alpha/co2.zip"
-
-dfs_ch4, dfs_co2 = ({}, {})
-
-for url, dfs in zip([url_ch4, url_co2], [dfs_ch4, dfs_co2]):
-    response = requests.get(url)
-
-    # Open the zip file in memory
-    with zipfile.ZipFile(io.BytesIO(response.content)) as thezip:
-        # Loop through each file inside the zip
-        for filename in thezip.namelist():
-            if filename.endswith('raw.csv'):
-                with thezip.open(filename) as file:
-                    # Read CSV into pandas dataframe
-                    dfs[filename] = pd.read_csv(file)
 
 # %% [markdown]
 # ## Methane ($CH_4$)
 
 # %%
 # load data set
-d_raw = dfs_ch4["ch4_raw.csv"]
+d_raw = load_data("ch4_raw.csv")
 
 d_raw.head()
 
@@ -180,7 +160,7 @@ plotting.plot_map(d=d_flask_surf, title=r"$CH_4$ - NOAA flask: Surface")
 
 # %%
 # load data set
-d_raw = dfs_co2["co2_raw.csv"]
+d_raw = load_data("co2_raw.csv")
 
 d_raw.head()
 
