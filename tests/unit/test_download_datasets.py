@@ -1,7 +1,8 @@
 import os
 
 import pytest
-from data_comparison.get_datasets import (
+
+from ghg_forcing_for_cmip.data_comparison.get_datasets import (
     download_noaa,
     unzip_download,
 )
