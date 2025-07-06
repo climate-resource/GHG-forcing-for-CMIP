@@ -22,3 +22,12 @@ build:
 mkdocs:
   configuration: mkdocs.yml
   fail_on_warning: true
+
+python:
+  install:
+    - requirements: requirements.txt
+    - method: pip
+      path: .
+    - method: pip
+      packages:
+        - mkdocs-jupyter
