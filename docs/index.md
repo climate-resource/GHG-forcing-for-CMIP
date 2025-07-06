@@ -1,7 +1,7 @@
 ---8<--- "README.md:description"
 
 
-``` mermaid
+```mermaid
 graph TB
   A01@{ shape: lean-r, label: "gas: CH4 or CO2" }
   A02@{ shape: lean-r, label: "quantile in [0,100]" }
