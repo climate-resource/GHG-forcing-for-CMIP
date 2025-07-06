@@ -25,7 +25,7 @@ attrs==25.3.0
 cachetools==5.5.2
     # via prefect
 cdsapi==0.7.6
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 certifi==2025.6.15
     # via
     #   apprise
@@ -37,7 +37,7 @@ certifi==2025.6.15
 cffi==1.17.1
     # via cryptography
 cftime==1.6.4.post1
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 charset-normalizer==3.4.2
     # via requests
 click==8.1.8
@@ -76,9 +76,9 @@ fonttools==4.58.5
 fsspec==2025.5.1
     # via prefect
 geodatasets==2024.8.0
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 geopandas==1.0.1
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 graphviz==0.21
     # via prefect
 greenlet==3.2.3
@@ -140,7 +140,7 @@ markupsafe==3.0.2
     #   mako
 matplotlib==3.7.1
     # via
-    #   ghg-forcing-for-cmip-comparison (pyproject.toml)
+    #   ghg-forcing-for-cmip (pyproject.toml)
     #   seaborn
 mdurl==0.1.2
     # via markdown-it-py
@@ -178,14 +178,14 @@ packaging==24.2
     #   xarray
 pandas==2.3.0
     # via
-    #   ghg-forcing-for-cmip-comparison (pyproject.toml)
+    #   ghg-forcing-for-cmip (pyproject.toml)
     #   geopandas
     #   seaborn
     #   xarray
 pandas-stubs==2.3.0.250703
     # via pandera
 pandera==0.24.0
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 pathspec==0.12.1
     # via prefect
 pendulum==3.1.0
@@ -193,13 +193,13 @@ pendulum==3.1.0
 pillow==11.3.0
     # via matplotlib
 pip==24.3.1
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 platformdirs==4.3.8
     # via pooch
 pooch==1.8.2
     # via geodatasets
 prefect==3.3.1
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 prometheus-client==0.22.1
     # via prefect
 pycparser==2.22
@@ -287,9 +287,9 @@ ruamel-yaml==0.18.14
 ruamel-yaml-clib==0.2.12
     # via ruamel-yaml
 scipy==1.13.1
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 seaborn==0.13.2
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 shapely==2.1.1
     # via geopandas
 shellingham==1.5.4
@@ -369,6 +369,6 @@ uvicorn==0.35.0
 websockets==15.0.1
     # via prefect
 xarray==2024.7.0
-    # via ghg-forcing-for-cmip-comparison (pyproject.toml)
+    # via ghg-forcing-for-cmip (pyproject.toml)
 zipp==3.23.0
     # via importlib-metadata

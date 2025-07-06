@@ -118,13 +118,13 @@ whether our dependencies have set their minimum support dependencies correctly,
 which isn't our problem to solve.
 
 Once a week, we also test what happens when a user installs from PyPI on the 'happy path'.
-In other words, they do `pip install ghg-forcing-for-cmip-comparison`.
+In other words, they do `pip install ghg-forcing-for-cmip`.
 We check that such an install passes all the tests that don't require extras
 (for developers, this is why we have `tests-min` and `tests-full` dev dependency groups,
 they allow us to test a truly minimal testing environment,
 separate from any extras we install to get full coverage).
 Finally, we also check the installation of the locked versions of the package,
-i.e. installation with `pip install 'ghg-forcing-for-cmip-comparison[locked]'`.
+i.e. installation with `pip install 'ghg-forcing-for-cmip[locked]'`.
 These tests give us the greatest coverage of Python versions and operating systems
 and help alert us to places where users may face issues.
 Having said that, these tests do require 30 separate jobs,

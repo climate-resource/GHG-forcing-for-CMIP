@@ -16,7 +16,7 @@ from pandera.typing.pandas import Series
 from prefect import task
 from prefect.tasks import task_input_hash
 
-from ghg_forcing_for_cmip_comparison import CONFIG
+from ghg_forcing_for_cmip.data_comparison import CONFIG
 
 
 def is_pytest_running() -> bool:
@@ -182,7 +182,7 @@ def download_data() -> None:
     :
         downloaded data (ch4, co2)
     """
-    link = "https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases/download/"
+    link = "https://github.com/climate-resource/ghg-forcing-for-cmip/releases/download/"
     release_version = "v0.1.0-alpha"
     url_ch4 = link + release_version + "/ch4.zip"
     url_co2 = link + release_version + "/co2.zip"

@@ -25,7 +25,7 @@ jobs:
         # Test against all security and bugfix versions: https://devguide.python.org/versions/
         python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
         # Check both 'library' install and the 'application' (i.e. locked) install
-        install-target: ["ghg-forcing-for-cmip-comparison", "ghg-forcing-for-cmip-comparison[locked]"]
+        install-target: ["ghg-forcing-for-cmip", "ghg-forcing-for-cmip[locked]"]
     runs-on: "${{ matrix.os }}"
     steps:
     - name: Set up Python "${{ matrix.python-version }}"

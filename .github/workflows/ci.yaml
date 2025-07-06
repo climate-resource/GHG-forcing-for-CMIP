@@ -65,7 +65,7 @@ jobs:
         with:
           # Exclude local links
           # and the template link in pyproject.toml
-          args: "--exclude 'file://' --exclude '^https://github\\.com/climate-resource/GHG-forcing-for-CMIP-comparison/pull/\\{issue\\}$' ."
+          args: "--exclude 'file://' --exclude '^https://github\\.com/climate-resource/ghg-forcing-for-cmip/pull/\\{issue\\}$' ."
 
   tests:
     strategy:

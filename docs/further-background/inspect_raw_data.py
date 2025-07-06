@@ -14,10 +14,9 @@
 
 # %%
 import matplotlib.pyplot as plt
-import pandas as pd
 
-from ghg_forcing_for_cmip_comparison import plotting
-from ghg_forcing_for_cmip_comparison.utils import load_data
+from ghg_forcing_for_cmip.data_comparison import plotting
+from ghg_forcing_for_cmip.data_comparison.utils import load_data
 
 # %% [markdown] editable=true slideshow={"slide_type": ""}
 # # Inspect raw data
