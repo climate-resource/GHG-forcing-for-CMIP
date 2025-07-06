@@ -16,7 +16,7 @@ import requests
 import xarray as xr
 from prefect import flow, task
 
-from ghg_forcing_for_cmip.data_comparison import CONFIG, utils
+from . import CONFIG, utils
 
 
 @task(

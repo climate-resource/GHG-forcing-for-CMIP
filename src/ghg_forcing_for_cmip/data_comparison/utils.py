@@ -16,7 +16,7 @@ from pandera.typing.pandas import Series
 from prefect import task
 from prefect.tasks import task_input_hash
 
-from ghg_forcing_for_cmip.data_comparison import CONFIG
+from . import CONFIG
 
 
 def is_pytest_running() -> bool:

@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sns
 from geodatasets import get_path  # type: ignore
 
-from ghg_forcing_for_cmip.data_comparison.utils import compute_weighted_avg
+from .utils import compute_weighted_avg
 
 
 def plot_map(d: pd.DataFrame, title: str) -> None:

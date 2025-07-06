@@ -7,8 +7,8 @@ import numpy.typing as npt
 import pandas as pd
 from prefect import flow, task
 
-from ghg_forcing_for_cmip.data_comparison import CONFIG
-from ghg_forcing_for_cmip.data_comparison.utils import (
+from . import CONFIG
+from .utils import (
     compute_weighted_avg,
     save_data,
 )

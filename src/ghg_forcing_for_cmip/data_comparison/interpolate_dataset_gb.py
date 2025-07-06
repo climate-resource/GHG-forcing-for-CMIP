@@ -14,7 +14,7 @@ import xarray as xr
 from prefect import flow, task
 from scipy.interpolate import griddata  # type: ignore
 
-from ghg_forcing_for_cmip.data_comparison import CONFIG
+from . import CONFIG
 
 
 @task(

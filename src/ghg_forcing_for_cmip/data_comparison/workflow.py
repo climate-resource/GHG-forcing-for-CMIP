@@ -4,14 +4,10 @@ Main workflow
 
 from prefect import flow
 
-from ghg_forcing_for_cmip.data_comparison.bin_dataset_gb import bin_dataset_flow
-from ghg_forcing_for_cmip.data_comparison.get_datasets import get_data_flow
-from ghg_forcing_for_cmip.data_comparison.interpolate_dataset_gb import (
-    interpolation_flow,
-)
-from ghg_forcing_for_cmip.data_comparison.vertical_to_dataset_gb import (
-    add_vertical_flow,
-)
+from .bin_dataset_gb import bin_dataset_flow
+from .get_datasets import get_data_flow
+from .interpolate_dataset_gb import interpolation_flow
+from .vertical_to_dataset_gb import add_vertical_flow
 
 
 @flow(
