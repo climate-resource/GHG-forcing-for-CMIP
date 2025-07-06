@@ -239,8 +239,8 @@ jobs:
           uv build
       - name: Check build
         run: |
-          tar -tvf dist/ghg_forcing_for_cmip_comparison-*.tar.gz --wildcards '*ghg_forcing_for_cmip_comparison/py.typed'
-          tar -tvf dist/ghg_forcing_for_cmip_comparison-*.tar.gz --wildcards 'ghg_forcing_for_cmip_comparison-*/LICENCE'
+          tar -tvf dist/ghg_forcing_for_cmip-*.tar.gz --wildcards '*ghg_forcing_for_cmip/py.typed'
+          tar -tvf dist/ghg_forcing_for_cmip-*.tar.gz --wildcards 'ghg_forcing_for_cmip-*/LICENCE'
 
   check-dependency-licences:
     strategy:
