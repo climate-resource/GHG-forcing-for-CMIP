@@ -15,7 +15,7 @@
 #%%
 import numpy as np
 
-from ghg_forcing_for_cmip import plotting
+from . import plotting
 from .utils import load_data
 #%% [markdown]
 # # Inspect binned data
