@@ -15,18 +15,40 @@
 # %%
 import numpy as np
 import pandas as pd
+import requests
+import zipfile
+import io
 
 from ghg_forcing_for_cmip_comparison import plotting
 
 # %% [markdown]
 # # Inspect interpolated data
+
+# %%
+url_ch4 = "https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases/download/v0.1.0-alpha/ch4.zip"
+url_co2 = "https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison/releases/download/v0.1.0-alpha/co2.zip"
+
+dfs_ch4, dfs_co2 = ({}, {})
+
+for url, dfs in zip([url_ch4, url_co2], [dfs_ch4, dfs_co2]):
+    response = requests.get(url)
+
+    # Open the zip file in memory
+    with zipfile.ZipFile(io.BytesIO(response.content)) as thezip:
+        # Loop through each file inside the zip
+        for filename in thezip.namelist():
+            if filename.endswith(('binned.csv', 'interpolated.csv')):
+                with thezip.open(filename) as file:
+                    # Read CSV into pandas dataframe
+                    dfs[filename] = pd.read_csv(file)
+
+# %% [markdown]
 # ## Methane ($CH_4$)
 
 # %%
 # load data sets
-path = "data/downloads/ch4/"
-d_interpol = pd.read_csv(path+"ch4_interpolated.csv")
-d_binned = pd.read_csv(path+"ch4_binned.csv")
+d_interpol = dfs_ch4["ch4_interpolated.csv"]
+d_binned = dfs_ch4["ch4_binned.csv"]
 
 d_interpol.head()
 
@@ -62,11 +84,8 @@ plotting.plot_annual_concentration(
 
 # %%
 # load data sets
-path = "data/downloads/co2/"
-d_interpol = pd.read_csv(path+"co2_interpolated.csv")
-d_binned = pd.read_csv(path+"co2_binned.csv")
-d_vertical = pd.read_csv(path+"co2_vertical.csv")
-d_compare = pd.read_csv(path+"co2_joint_comparison.csv")
+d_interpol = dfs_co2["co2_interpolated.csv"]
+d_binned = dfs_co2["co2_binned.csv"]
 
 d_interpol.head()
 
