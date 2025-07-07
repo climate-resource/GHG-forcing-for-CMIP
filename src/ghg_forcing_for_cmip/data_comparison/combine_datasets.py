@@ -103,7 +103,6 @@ def join_datasets_wide(path_to_csv: str, gas: str) -> pd.DataFrame:
     d_gb = pd.read_csv(path_to_csv + f"/{gas}/{gas}_vertical.csv")
     d_eo = pd.read_csv(path_to_csv + f"/{gas}/{gas}_eo_raw.csv")
 
-    d_gb.drop(columns=["Unnamed: 0"], inplace=True)
     d_gb.rename(
         columns={
             "value": "ground_based",
@@ -113,7 +112,7 @@ def join_datasets_wide(path_to_csv: str, gas: str) -> pd.DataFrame:
     )
 
     d_eo.drop(
-        columns=["Unnamed: 0", "lat_bnd", "lon_bnd", "bnd", "std_dev", "numb"],
+        columns=["lat_bnd", "lon_bnd", "bnd", "std_dev", "numb"],
         inplace=True,
     )
     d_eo.rename(columns={"value": "satellite"}, inplace=True)

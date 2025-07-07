@@ -20,6 +20,9 @@ dependencies = [
     "scipy>=1.13.1",
     "seaborn>=0.13.2",
     "xarray>=2024.7.0",
+    "tensorflow-io-gcs-filesystem==0.31.0", # data assimilation (fix version as later version don't support windows)
+    "arviz>=0.17.1", # data assimilation
+    "types-tensorflow>=2.18.0.20250516",
 ]
 readme = "README.md"
 classifiers = [

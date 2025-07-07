@@ -334,6 +334,7 @@ def txt_to_csv_folder(
     description="Combine csv files to final csv",
     task_run_name="combine_csv_files_to_final-{gas}",
     cache_policy=CONFIG.CACHE_POLICIES,
+    refresh_cache=True,
 )
 def combine_csv_files(
     gas: str,
@@ -372,7 +373,9 @@ def combine_csv_files(
 
     d_combined = pd.concat(all_dfs)
 
-    utils.save_data(d_combined, path_to_save, gas, save_file_suffix)
+    utils.save_data(
+        d_combined, path_to_save, gas, save_file_suffix, include_gas_dir=False
+    )
 
 
 @task(
@@ -642,7 +645,7 @@ def combine_final_csv(
     # as this makes no sense I delete these measurements entirely (row)
     d_combined = d_combined[d_combined.numb != 0.0]  # type: ignore
 
-    return add_lat_lon_bnds(d_combined=d_combined, grid_cell_size=grid_cell_size)  # type: ignore
+    return add_lat_lon_bnds(d_combined=d_combined)  # type: ignore
 
 
 @task(
@@ -842,9 +845,8 @@ def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
             path_to_file=save_to_path + f"/{gas}",
         )
 
-        postprocess_obs4mips_data(
-            path_to=save_to_path, gas=gas, factor=np.where(gas == "ch4", 1e9, 1e6)
-        )
+        factor = 1e9 if gas == "ch4" else 1e6
+        postprocess_obs4mips_data(path_to_nc=save_to_path, gas=gas, factor=factor)
 
 
 @flow(
