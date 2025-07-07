@@ -19,8 +19,6 @@ from ghg_forcing_for_cmip.data_comparison.utils import load_data
 
 # %% [markdown]
 # # Inspect vertical distribution for ground-based data and final comparison with satellite data
-
-# %% [markdown]
 # ## Methane ($CH_4$)
 
 # %%
@@ -60,7 +58,7 @@ plotting.plot_annual_concentration(
 # %%
 plotting.plot_map_combined(
     d_gb_modelled,
-    years=[2004, 2006, 2008, 2010],
+    years=[2004, 2007, 2010],
     month=8,
     gas="ch4"
 )
@@ -68,7 +66,7 @@ plotting.plot_map_combined(
 # %%
 plotting.plot_map_combined(
     d_gb_modelled,
-    years=[2015, 2018, 2020, 2022],
+    years=[2015, 2019, 2022],
     month=8,
     gas="ch4"
 )
@@ -124,7 +122,7 @@ plotting.plot_annual_concentration(
 # %%
 plotting.plot_map_combined(
     d_gb_modelled,
-    years=[2004, 2006, 2008, 2010],
+    years=[2004, 2007, 2010],
     month=8,
     gas="co2"
 )
@@ -132,7 +130,7 @@ plotting.plot_map_combined(
 # %%
 plotting.plot_map_combined(
     d_gb_modelled,
-    years=[2015, 2018, 2020, 2022],
+    years=[2015, 2019, 2022],
     month=8,
     gas="co2"
 )

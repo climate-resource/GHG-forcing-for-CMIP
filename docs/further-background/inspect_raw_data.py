@@ -20,8 +20,6 @@ from ghg_forcing_for_cmip.data_comparison.utils import load_data
 
 # %% [markdown] editable=true slideshow={"slide_type": ""}
 # # Inspect raw data
-
-# %% [markdown]
 # ## Methane ($CH_4$)
 
 # %%
