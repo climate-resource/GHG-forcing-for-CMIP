@@ -114,7 +114,7 @@ docs = [
     "pymdown-extensions==10.13",
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-mermaid2-plugin>=1.2.1",
-    "ruff==0.8.6",
+    "ruff==0.12.2",
     # Implied by the key dependencies above
     # -------------------------------------
     "babel==2.16.0",

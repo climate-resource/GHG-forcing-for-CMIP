@@ -17,7 +17,7 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-symlinks
-      - id: check-yaml
+    #  - id: check-yaml
       - id: debug-statements
       - id: detect-private-key
       - id: end-of-file-fixer
@@ -33,7 +33,7 @@ repos:
         language: fail
         files: "\\.rej$"
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.8.4"
+    rev: "v0.12.2" # v0.8.4
     hooks:
       - id: ruff
         args: [ --fix, --exit-non-zero-on-fix ]

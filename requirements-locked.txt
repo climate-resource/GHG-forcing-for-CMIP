@@ -26,6 +26,8 @@ attrs==24.3.0
     #   ecmwf-datastores-client
     #   jsonschema
     #   referencing
+babel==2.16.0
+    # via mkdocs-material
 cachetools==5.5.2
     # via prefect
 cdsapi==0.7.6
@@ -47,6 +49,7 @@ charset-normalizer==3.4.1
 click==8.1.8
     # via
     #   apprise
+    #   mkdocs
     #   prefect
     #   typer
     #   uvicorn
@@ -56,6 +59,8 @@ colorama==0.4.6
     # via
     #   click
     #   griffe
+    #   mkdocs
+    #   mkdocs-material
     #   tqdm
 contourpy==1.3.0 ; python_full_version < '3.10'
     # via matplotlib
@@ -89,6 +94,8 @@ geopandas==1.0.1 ; python_full_version < '3.10'
     # via ghg-forcing-for-cmip
 geopandas==1.1.1 ; python_full_version >= '3.10'
     # via ghg-forcing-for-cmip
+ghp-import==2.1.0
+    # via mkdocs
 graphviz==0.21
     # via prefect
 greenlet==3.2.3
@@ -123,6 +130,8 @@ idna==3.10
 importlib-metadata==8.7.0
     # via
     #   markdown
+    #   mkdocs
+    #   mkdocs-get-deps
     #   opentelemetry-api
     #   prefect
     #   typeguard
@@ -131,6 +140,8 @@ importlib-resources==6.5.2 ; python_full_version < '3.10'
 jinja2==3.1.5
     # via
     #   jinja2-humanize-extension
+    #   mkdocs
+    #   mkdocs-material
     #   prefect
 jinja2-humanize-extension==0.4.0
     # via prefect
@@ -149,19 +160,36 @@ kiwisolver==1.4.8 ; python_full_version >= '3.10'
 mako==1.3.10
     # via alembic
 markdown==3.7
-    # via apprise
+    # via
+    #   apprise
+    #   mkdocs
+    #   mkdocs-material
+    #   pymdown-extensions
 markdown-it-py==3.0.0
     # via rich
 markupsafe==3.0.2
     # via
     #   jinja2
     #   mako
+    #   mkdocs
 matplotlib==3.9.4 ; python_full_version < '3.10'
     # via seaborn
 matplotlib==3.10.3 ; python_full_version >= '3.10'
     # via seaborn
 mdurl==0.1.2
     # via markdown-it-py
+mergedeep==1.3.4
+    # via
+    #   mkdocs
+    #   mkdocs-get-deps
+mkdocs==1.6.1
+    # via mkdocs-material
+mkdocs-get-deps==0.2.0
+    # via mkdocs
+mkdocs-material==9.5.49
+    # via ghg-forcing-for-cmip
+mkdocs-material-extensions==1.3.1
+    # via mkdocs-material
 multiurl==0.3.5
     # via ecmwf-datastores-client
 mypy-extensions==1.0.0
@@ -215,11 +243,14 @@ packaging==24.2
     # via
     #   geopandas
     #   matplotlib
+    #   mkdocs
     #   pandera
     #   pooch
     #   prefect
     #   pyogrio
     #   xarray
+paginate==0.5.7
+    # via mkdocs-material
 pandas==2.3.0
     # via
     #   geopandas
@@ -233,7 +264,9 @@ pandas-stubs==2.2.3.250308 ; python_full_version >= '3.10'
 pandera==0.24.0
     # via ghg-forcing-for-cmip
 pathspec==0.12.1
-    # via prefect
+    # via
+    #   mkdocs
+    #   prefect
 pendulum==3.1.0 ; python_full_version < '3.13'
     # via prefect
 pillow==11.3.0
@@ -241,7 +274,9 @@ pillow==11.3.0
 pip==24.3.1
     # via ghg-forcing-for-cmip
 platformdirs==4.3.6
-    # via pooch
+    # via
+    #   mkdocs-get-deps
+    #   pooch
 pooch==1.8.2
     # via geodatasets
 prefect==3.3.1
@@ -266,7 +301,11 @@ pydantic-extra-types==2.10.5
 pydantic-settings==2.10.1
     # via prefect
 pygments==2.19.1
-    # via rich
+    # via
+    #   mkdocs-material
+    #   rich
+pymdown-extensions==10.13
+    # via mkdocs-material
 pyogrio==0.11.0
     # via geopandas
 pyparsing==3.2.3
@@ -278,6 +317,7 @@ pyproj==3.7.1 ; python_full_version >= '3.10'
 python-dateutil==2.9.0.post0
     # via
     #   dateparser
+    #   ghp-import
     #   matplotlib
     #   multiurl
     #   pandas
@@ -300,7 +340,13 @@ pywin32==308 ; sys_platform == 'win32'
 pyyaml==6.0.2
     # via
     #   apprise
+    #   mkdocs
+    #   mkdocs-get-deps
     #   prefect
+    #   pymdown-extensions
+    #   pyyaml-env-tag
+pyyaml-env-tag==0.1
+    # via mkdocs
 readchar==4.2.1
     # via prefect
 referencing==0.35.1
@@ -308,13 +354,16 @@ referencing==0.35.1
     #   jsonschema
     #   jsonschema-specifications
 regex==2024.11.6
-    # via dateparser
+    # via
+    #   dateparser
+    #   mkdocs-material
 requests==2.32.3
     # via
     #   apprise
     #   cdsapi
     #   docker
     #   ecmwf-datastores-client
+    #   mkdocs-material
     #   multiurl
     #   pooch
     #   requests-oauthlib
@@ -425,6 +474,8 @@ uv==0.7.19
     # via prefect
 uvicorn==0.35.0
     # via prefect
+watchdog==6.0.0
+    # via mkdocs
 websockets==15.0.1
     # via prefect
 whenever==0.7.3 ; python_full_version >= '3.13'
