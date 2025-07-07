@@ -1,5 +1,8 @@
 ---8<--- "README.md:description"
 
+## Conceptual workflow
+Visualization of pipeline used to model ground-based data for comparison with earth observations.
+
 ```mermaid
 graph TB
 A01[/"gas: CH4 or CO2"/] --> ide1

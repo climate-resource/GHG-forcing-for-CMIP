@@ -20,8 +20,6 @@ from ghg_forcing_for_cmip.data_comparison.utils import load_data
 
 # %% [markdown]
 # # Inspect interpolated data
-
-# %% [markdown]
 # ## Methane ($CH_4$)
 
 # %%
@@ -48,7 +46,7 @@ plotting.plot_map_interpolated(
 
 # %%
 plotting.plot_map_interpolated(
-    d_interpol, d_binned, year=2017, month=6, gas="co2",
+    d_interpol, d_binned, year=2017, month=6, gas="ch4",
     vmin=None, vmax=None
 )
 
