@@ -6,7 +6,7 @@ authors = [
     { name = "Florence Bockting", email = "florence.bockting@climate-resource.com" },
 ]
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9, <3.14"
+requires-python = ">=3.9, <3.12"
 dependencies = [
     "cdsapi>=0.7.6",
     "cftime>=1.6.4.post1",
@@ -414,10 +414,12 @@ authorized_licenses = [
     "bsd license",
     "BSD 3-Clause",
     'BSD-3-Clause',
+    "3-Clause BSD",
     "CC0",
     "apache",
     "apache 2.0",
     'Apache-2.0',
+    "Apache License 2.0",
     "apache software",
     "apache software license",
     "Apache License, Version 2.0",
@@ -453,3 +455,6 @@ unauthorized_licenses = [
     "gpl v1",
     "gplv1",
 ]
+
+[tool.liccheck.authorized_packages]
+namex = "0.1.0"
