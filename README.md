@@ -6,8 +6,10 @@ Intercomparison of CMIP7 data with earth observations as part of GHG forcing for
 **Key info :**
 [![Docs](https://readthedocs.org/projects/ghg-forcing-for-cmip/badge/?version=latest)](https://ghg-forcing-for-cmip.readthedocs.io)
 [![Main branch: supported Python versions](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fclimate-resource%2Fghg-forcing-for-cmip%2Fmain%2Fpyproject.toml)](https://github.com/climate-resource/ghg-forcing-for-cmip/blob/main/pyproject.toml)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+<!--
 [![Licence](https://img.shields.io/pypi/l/ghg-forcing-for-cmip?label=licence)](https://github.com/climate-resource/ghg-forcing-for-cmip/blob/main/LICENCE)
-
+-->
 **PyPI :**
 TODO
 <!--
