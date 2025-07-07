@@ -18,6 +18,7 @@ repos:
       - id: check-merge-conflict
       - id: check-symlinks
       - id: check-yaml
+        exclude: ^mkdocs\.yml$ # TODO: syntax in mkdocs.yml !!python/name:mermaid2.fence_mermaid fails
       - id: debug-statements
       - id: detect-private-key
       - id: end-of-file-fixer
@@ -33,7 +34,7 @@ repos:
         language: fail
         files: "\\.rej$"
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.8.4"
+    rev: "v0.12.2"
     hooks:
       - id: ruff
         args: [ --fix, --exit-non-zero-on-fix ]
