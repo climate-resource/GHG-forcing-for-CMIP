@@ -17,15 +17,15 @@ dependencies = [
     "pandera[mypy]>=0.24.0",
     "pip>=24.3.1",
     "prefect>=3.3.1",
-    "scipy>=1.13.1; python_version>'3.9'",
+    "scipy>=1.13.1",
     "seaborn>=0.13.2",
     "xarray>=2024.7.0",
-    "tensorflow-io-gcs-filesystem==0.31.0; python_version<'3.12' ", # data assimilation (fix version as later version don't support windows)
+    "tensorflow-io-gcs-filesystem==0.31.0", # data assimilation (fix version as later version don't support windows)
     "arviz>=0.17.1", # data assimilation
     "types-tensorflow>=2.18.0.20250516", # data assimilation
-    "tensorflow>=2.19.0; python_version<'3.12'", # data assimilation
-    "tensorflow-probability>=0.25.0; python_version<'3.12'", # data assimilation
-    "tf-keras>=2.19.0; python_version<'3.12'", # data assimilation
+    "tensorflow>=2.19.0", # data assimilation
+    "tensorflow-probability>=0.25.0", # data assimilation
+    "tf-keras>=2.19.0", # data assimilation
 ]
 readme = "README.md"
 classifiers = [
