@@ -14,7 +14,7 @@ import xarray as xr
 from prefect import flow, task
 from scipy.interpolate import griddata  # type: ignore
 
-from . import CONFIG
+from ghg_forcing_for_cmip.data_comparison import CONFIG
 
 
 @task(
@@ -213,6 +213,7 @@ def interpolation_flow(
             continue
 
         ymdf.dropna(inplace=True)
+
         interpolated_ym = interpolate(ymdf)
 
         if np.isnan(interpolated_ym).any():

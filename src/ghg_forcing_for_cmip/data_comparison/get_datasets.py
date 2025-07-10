@@ -16,7 +16,7 @@ import requests
 import xarray as xr
 from prefect import flow, task
 
-from . import CONFIG, utils
+from ghg_forcing_for_cmip.data_comparison import CONFIG, utils
 
 
 @task(
@@ -334,6 +334,7 @@ def txt_to_csv_folder(
     description="Combine csv files to final csv",
     task_run_name="combine_csv_files_to_final-{gas}",
     cache_policy=CONFIG.CACHE_POLICIES,
+    refresh_cache=True,
 )
 def combine_csv_files(
     gas: str,
@@ -372,7 +373,9 @@ def combine_csv_files(
 
     d_combined = pd.concat(all_dfs)
 
-    utils.save_data(d_combined, path_to_save, gas, save_file_suffix)
+    utils.save_data(
+        d_combined, path_to_save, gas, save_file_suffix, include_gas_dir=False
+    )
 
 
 @task(
@@ -642,7 +645,7 @@ def combine_final_csv(
     # as this makes no sense I delete these measurements entirely (row)
     d_combined = d_combined[d_combined.numb != 0.0]  # type: ignore
 
-    return add_lat_lon_bnds(d_combined=d_combined, grid_cell_size=grid_cell_size)  # type: ignore
+    return add_lat_lon_bnds(d_combined=d_combined)  # type: ignore
 
 
 @task(
@@ -675,10 +678,17 @@ def postprocess_obs4mips_data(
     df_raw = xr.open_dataset(path_to_nc + f"/{gas}/{ds}").to_dataframe().reset_index()
     df_raw = df_raw[df_raw[f"x{gas}"] != np.float32(1e20)].reset_index()
     df = pd.DataFrame({})
-
-    df["time"] = pd.to_datetime(df_raw.time, utc=True)
+    # only temporarily
+    # (redefine time afterwards such that all days have the same number)
+    # otherwise mid of month is either 16 or 15
+    # I define mid of month to 16.
+    df_raw["time"] = pd.to_datetime(df_raw.time)
     df["year"] = df_raw.time.dt.year.astype(np.int64)
     df["month"] = df_raw.time.dt.month.astype(np.int64)
+    df["time"] = pd.to_datetime(
+        pd.DataFrame({"year": df.year, "month": df.month, "day": 16, "hour": 12}),
+        utc=True,
+    )
     df["lat_bnd"] = df_raw.lat_bnds.astype(np.int64)
     df["lon_bnd"] = df_raw.lon_bnds.astype(np.int64)
     df["bnd"] = df_raw.bnds.astype(np.int64)
@@ -694,7 +704,6 @@ def postprocess_obs4mips_data(
     df["vmr_profile_apriori"] = (
         df_raw[f"vmr_profile_{gas}_apriori"].astype(np.float64) * factor
     )
-
     utils.EODataSchema.validate(df)
     utils.save_data(df, path_to_nc, gas, "eo_raw")
 
@@ -842,9 +851,8 @@ def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
             path_to_file=save_to_path + f"/{gas}",
         )
 
-        postprocess_obs4mips_data(
-            path_to=save_to_path, gas=gas, factor=np.where(gas == "ch4", 1e9, 1e6)
-        )
+        factor = 1e9 if gas == "ch4" else 1e6
+        postprocess_obs4mips_data(path_to_nc=save_to_path, gas=gas, factor=factor)
 
 
 @flow(
@@ -889,4 +897,4 @@ def get_data_flow(
 
 if __name__ == "__main__":
     # get_data_flow()
-    postprocess_obs4mips_data("data/downloads", "ch4", 1e9)
+    postprocess_obs4mips_data("data/downloads", "co2", 1e6)

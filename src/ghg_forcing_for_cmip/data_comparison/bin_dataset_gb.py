@@ -122,7 +122,7 @@ def bin_dataset_flow(path_to_csv: str, gas: str, quantile: float = 0.5) -> None:
         greenhouse gas target variable
 
     quantile :
-        quantile in percentage (between 0 and 100) to select the
+        quantile in percentage (between 0 and 1) to select the
         corresponding ghg-concentration value (used for uncertainty
         quantification)
     """
@@ -136,4 +136,4 @@ def bin_dataset_flow(path_to_csv: str, gas: str, quantile: float = 0.5) -> None:
 
 
 if __name__ == "__main__":
-    bin_dataset_flow("data/downloads", "co2", 0.5)
+    bin_dataset_flow("data/downloads", "ch4", 0.5)

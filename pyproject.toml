@@ -20,6 +20,12 @@ dependencies = [
     "scipy>=1.13.1",
     "seaborn>=0.13.2",
     "xarray>=2024.7.0",
+    "tensorflow-io-gcs-filesystem==0.31.0", # data assimilation (fix version as later version don't support windows)
+    "arviz>=0.17.1", # data assimilation
+    "types-tensorflow>=2.18.0.20250516", # data assimilation
+    "tensorflow>=2.19.0", # data assimilation
+    "tensorflow-probability>=0.25.0", # data assimilation
+    "tf-keras>=2.19.0", # data assimilation
 ]
 readme = "README.md"
 classifiers = [
@@ -408,10 +414,12 @@ authorized_licenses = [
     "bsd license",
     "BSD 3-Clause",
     'BSD-3-Clause',
+    "3-Clause BSD",
     "CC0",
     "apache",
     "apache 2.0",
     'Apache-2.0',
+    "Apache License 2.0",
     "apache software",
     "apache software license",
     "Apache License, Version 2.0",
@@ -447,3 +455,6 @@ unauthorized_licenses = [
     "gpl v1",
     "gplv1",
 ]
+
+[tool.liccheck.authorized_packages]
+namex = "0.1.0"

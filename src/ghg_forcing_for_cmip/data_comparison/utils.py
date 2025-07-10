@@ -152,7 +152,13 @@ class EODataSchema(pa.DataFrameModel):
 
 
 @task(name="save_dataset")
-def save_data(d: pd.DataFrame, path_to_save: str, gas: str, dataset_name: str) -> None:
+def save_data(
+    d: pd.DataFrame,
+    path_to_save: str,
+    gas: str,
+    dataset_name: str,
+    include_gas_dir: bool = True,
+) -> None:
     """
     Save dataset to disk
 
@@ -169,8 +175,15 @@ def save_data(d: pd.DataFrame, path_to_save: str, gas: str, dataset_name: str) -
 
     dataset_name:
         suffix for file name to discriminate dataset files
+
+    include_gas_dir:
+        whether to include gas-sub directory: /{gas}/file.csv
+        or not /file.csv
     """
-    d.to_csv(path_to_save + f"/{gas}/{gas}_{dataset_name}.csv")
+    if include_gas_dir:
+        d.to_csv(path_to_save + f"/{gas}/{gas}_{dataset_name}.csv", index=False)
+    else:
+        d.to_csv(path_to_save + f"/{gas}_{dataset_name}.csv", index=False)
 
 
 def download_data() -> None:

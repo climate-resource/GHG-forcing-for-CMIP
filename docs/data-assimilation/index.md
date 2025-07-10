@@ -1,4 +1,4 @@
-# Further background
+# Data Assimilation
 
 This part of the project documentation
 will focus on an **understanding-oriented** approach.
@@ -13,3 +13,9 @@ Points we will aim to cover:
 
 We will aim to avoid writing instructions or technical descriptions here,
 they belong elsewhere.
+
+## Overview
+
++ [Simple timeseries regression](simple_regression_model.py)
++ [Generalized additive model](generalized_additive_model.py)
++ [Autoregressive model](autoregresive_models.py)
