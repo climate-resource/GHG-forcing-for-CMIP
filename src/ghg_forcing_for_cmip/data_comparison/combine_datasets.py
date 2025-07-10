@@ -5,15 +5,14 @@ combine earth observations and ground-based data in one dataset
 import pandas as pd
 from prefect import flow, task
 
-from . import CONFIG
-from .utils import save_data
+from ghg_forcing_for_cmip.data_comparison import CONFIG
+from ghg_forcing_for_cmip.data_comparison.utils import save_data
 
 
 @task(
     name="apply_averaging_kernel",
     description="Apply averaging kernel to ground-based data",
     cache_policy=CONFIG.CACHE_POLICIES,
-    refresh_cache=True,
 )
 def apply_averaging_kernel(d_joint_wide: pd.DataFrame) -> pd.DataFrame:
     """
@@ -46,7 +45,6 @@ def apply_averaging_kernel(d_joint_wide: pd.DataFrame) -> pd.DataFrame:
     name="join_datasets_long",
     description="Join datasets in long format with value-column",
     cache_policy=CONFIG.CACHE_POLICIES,
-    refresh_cache=True,
 )
 def joint_dataset_long(d_joint_AK: pd.DataFrame) -> pd.DataFrame:
     """
@@ -81,7 +79,6 @@ def joint_dataset_long(d_joint_AK: pd.DataFrame) -> pd.DataFrame:
     name="join_gb-eo_datasets",
     description="Combine earth observations and ground-based data in one dataset",
     cache_policy=CONFIG.CACHE_POLICIES,
-    refresh_cache=True,
 )
 def join_datasets_wide(path_to_csv: str, gas: str) -> pd.DataFrame:
     """
@@ -166,4 +163,4 @@ def join_datasets_flow(path_to_csv: str, gas: str) -> None:
 
 
 if __name__ == "__main__":
-    join_datasets_flow("data/downloads", "ch4")
+    join_datasets_flow("data/downloads", "co2")

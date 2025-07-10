@@ -3,7 +3,7 @@ bayesian time series regression to model ghg concentrations
 """
 
 from itertools import product
-from typing import Any
+from typing import Any, Optional
 
 import arviz as az
 import numpy as np
@@ -15,8 +15,53 @@ tfd = tfp.distributions  # type: ignore
 root = tfd.JointDistributionCoroutine.Root
 
 
+def compute_X_source(
+    observed: bool, d_source: pd.Series, n_years_pred: int, n_months: int = 12
+) -> np.ndarray:
+    """
+    Compute predictor design variable for grouping variable "source"
+
+    Parameters
+    ----------
+    observed:
+        if true, the number of observed observations is
+        used, else the total_number=observed+predicted
+        is used
+
+    d_source :
+        column with observed groups (satellite or ground_based
+
+    n_years_pred :
+        number of predicted years
+
+    n_months :
+        number of month
+
+    Returns
+    -------
+    :
+        design matrix for predictor
+    """
+    source = pd.get_dummies(d_source).values
+    n_groups = len(d_source.unique())
+
+    if observed:
+        X_source = source
+    else:
+        n_total = n_years_pred * n_months
+        # Create one-hot encodings for predicted data
+        source_pred = np.tile(np.eye(n_groups), (n_total, 1))
+        X_source = np.concatenate([source, source_pred])
+
+    return X_source
+
+
 def compute_X_seasonality(
-    observed: bool, n_years_obs: int, n_years_pred: int, n_months: int = 12
+    observed: bool,
+    d: pd.DataFrame,
+    n_years_pred: int,
+    n_months: int = 12,
+    n_groups: int = 1,
 ) -> np.ndarray:
     """
     Compute predictor design variable for seasonality
@@ -28,8 +73,8 @@ def compute_X_seasonality(
         used, else the total_number=observed+predicted
         is used
 
-    n_years_obs :
-        number of observed years
+    d :
+        data frame with observed values
 
     n_years_pred :
         number of predicted years
@@ -37,28 +82,40 @@ def compute_X_seasonality(
     n_months :
         number of month
 
+    n_groups :
+        number of groups (levels in grouping var)
+
     Returns
     -------
     :
         design matrix for predictor
     """
-    n_years = n_years_obs + n_years_pred
+    # Create one-hot encodings for observed data
+    seasonality = np.eye(n_months)[np.array(d.month, dtype=int) - 1]
 
-    # One-hot encode month indices for seasonality
-    seasonality = np.eye(n_months, dtype=np.float32)[
-        np.tile(np.arange(n_months), n_years)
-    ]
-
-    if not observed:
+    if observed:
         X_seasonality = seasonality
     else:
         n_total = n_years_pred * n_months
-        X_seasonality = seasonality[:-n_total, :]
+        # Create one-hot encodings for predicted data
+        # repeat every row according to groups
+        seasonality_pred = np.repeat(
+            np.repeat(
+                np.eye(n_months)[np.arange(n_total) % n_months],
+                repeats=len(d.lat.unique()),
+                axis=0,
+            ),
+            repeats=n_groups,
+            axis=0,
+        )
+
+        X_seasonality = np.concatenate([seasonality, seasonality_pred])
+
     return X_seasonality
 
 
 def compute_X_trend(
-    observed: bool, n_years_obs: int, n_years_pred: int, n_months: int = 12
+    observed: bool, d: pd.DataFrame, n_years_pred: int, n_groups: int = 1
 ) -> np.ndarray:
     """
     Compute predictor design variable for trend
@@ -70,40 +127,78 @@ def compute_X_trend(
         used, else the total_number=observed+predicted
         is used
 
-    n_years_obs :
-        number of observed years
+    d :
+        pandas DataFrame with obs. values
 
     n_years_pred :
         number of predicted years
 
-    n_months :
-        number of month
+    n_groups :
+        number of groups (levels in grouping var)
 
     Returns
     -------
     :
         design matrix for predictor
     """
-    n_years = n_years_obs + n_years_pred
-    n_total = n_months * n_years
-
     # Linear trend feature
-    trend = np.linspace(0.0, 1.0, n_total, dtype=np.float32)[:, None]
+    nobs = d.shape[0]
 
-    if not observed:
-        X_trend = trend
+    if observed:
+        X_trend = np.linspace(0.0, 1.0, nobs, dtype=np.float32)[:, None]
     else:
-        n_total = n_years_pred * n_months
-        X_trend = trend[:-n_total, :]
+        n_pred = len(d.month.unique()) * len(d.lat.unique()) * n_years_pred
+        X_trend = np.linspace(0.0, 1.0, n_pred + nobs, dtype=np.float32)[:, None]
+
     return X_trend
 
 
+def compute_X_latitude(
+    observed: bool, d: pd.DataFrame, n_years_pred: int, n_groups: int = 1
+) -> np.ndarray:
+    """
+    Compute predictor design variable for trend
+
+    Parameters
+    ----------
+    observed:
+        if true, the number of observed observations is
+        used, else the total_number=observed+predicted
+        is used
+
+    d :
+        dataframe with observed values
+
+    n_years_pred :
+        number of predicted years
+
+    n_groups :
+        number of groups (levels in grouping var)
+
+    Returns
+    -------
+    :
+        design matrix for predictor
+    """
+    lat_array = np.array(pd.get_dummies(d.lat), dtype=float)
+
+    if observed:
+        X_latitude = lat_array
+    else:
+        lat_unique = np.array(pd.get_dummies(d.lat.unique()), dtype=float)
+        predicted_lats = np.repeat(
+            np.tile(lat_unique, (n_years_pred * len(d.month.unique()), 1)),
+            repeats=n_groups,
+            axis=0,
+        )
+
+        X_latitude = np.concatenate([lat_array, predicted_lats])
+
+    return X_latitude
+
+
 def compute_X_time(
-    observed: bool,
-    n_years_obs: int,
-    n_years_pred: int,
-    year_min: int,
-    n_months: int = 12,
+    observed: bool, d: pd.DataFrame, n_years_pred: int, n_groups: int = 1
 ) -> np.ndarray:
     """
     Compute time variable
@@ -115,38 +210,95 @@ def compute_X_time(
         used, else the total_number=observed+predicted
         is used
 
-    n_years_obs :
-        number of observed years
+    d :
+        dataframe with observed values
 
     n_years_pred :
         number of predicted years
 
-    year_min:
-        the minimum year
-
-    n_months :
-        number of month
+    n_groups :
+        number of groups (levels in grouping var)
 
     Returns
     -------
     :
         time variable
     """
-    n_years = n_years_obs + n_years_pred
+    time_temp = np.array([f"{y}-{m:02d}" for y, m in zip(d.year.values, d.month)])
 
-    # Monthly datetime labels
-    months = np.arange(1, n_months + 1)
-    years = np.arange(year_min, year_min + n_years)
-    time = np.array(
-        [f"{y}-{m:02d}" for y, m in product(years, months)], dtype="datetime64"
-    )[:, None]
-
-    if not observed:
-        X_time = time
+    if observed:
+        X_time = time_temp
     else:
-        n_total = n_years_pred * n_months
-        X_time = time[:-n_total, :]
+        months = np.repeat(
+            np.arange(1, len(d.month.unique()) + 1), repeats=len(d.lat.unique()), axis=0
+        )
+        years = np.arange(d.year.values[-1] + 1, d.year.values[-1] + 1 + n_years_pred)
+        time_pred = np.array([f"{y}-{m:02d}" for y, m in product(years, months)])
+        time_pred = np.repeat(time_pred, repeats=n_groups, axis=0)
+
+        X_time = np.concatenate([time_temp, time_pred])
+
     return X_time
+
+
+def compute_Xs(
+    d: pd.DataFrame, n_years_pred: int, n_groups: int, observed: bool, incl_source: bool
+) -> dict[str, np.ndarray]:
+    """
+    Get design matrices for predictor variables (wrapper function)
+
+    Parameters
+    ----------
+    d:
+        dataset with observed values
+
+    n_years_pred:
+        number of predicted years
+
+    n_groups :
+        number of groups in source variable
+        (levels in source variable)
+
+    observed :
+        if true, design matrix for observed values
+        (as in dataset) are constructed
+        if false, design matrix for observed and
+        predicted values (years other than obs.)
+        are constructed
+
+    incl_source :
+        whether the variable "source" is included in
+        the dataset
+
+    Returns
+    -------
+    :
+        dictionary of predictor design variables
+    """
+    X_seasonality = compute_X_seasonality(
+        observed=observed, d=d, n_years_pred=n_years_pred, n_groups=n_groups
+    )
+    X_trend = compute_X_trend(
+        observed=observed, d=d, n_years_pred=n_years_pred, n_groups=n_groups
+    )
+    X_time = compute_X_time(
+        observed=observed, d=d, n_years_pred=n_years_pred, n_groups=n_groups
+    )
+    X_latitude = compute_X_latitude(
+        observed=observed, d=d, n_years_pred=n_years_pred, n_groups=n_groups
+    )
+
+    res = dict(
+        seasonality=X_seasonality, trend=X_trend, time=X_time, latitude=X_latitude
+    )
+
+    if incl_source:
+        X_source = compute_X_source(
+            observed=observed, d_source=d.source, n_years_pred=n_years_pred
+        )
+        res["source"] = X_source
+
+    return res
 
 
 def get_prior_samples(
@@ -243,34 +395,600 @@ def fit_model(
     return mcmc_samples, regression_idata
 
 
-def get_posterior_predictions(
-    mcmc_samples: Any, X_trend_pred: tf.Tensor, X_seasonality_pred: tf.Tensor
-) -> tf.Tensor:
+class PrepareGAM:
     """
-    Compute posterior predictions from mcmc samples
+    prepare hyperparameter for generalized additive model
+    """
+
+    def __init__(self, n_changepoints: int, X_seasonality: np.ndarray):
+        self.n_changepoints = n_changepoints
+        n_tp = X_seasonality.shape[0]
+        self.t = np.linspace(0, 1, n_tp, dtype=np.float64)
+        self.s = np.linspace(0, max(self.t), n_changepoints + 2, dtype=np.float64)[1:-1]
+        self.A = (self.t[:, None] > self.s).astype(np.float64)
+        # Generate seasonality design matrix
+        # Set n=6 here so that there are 12 columns (same as `seasonality_all`)
+        self.X_pred = self.gen_fourier_basis(
+            np.where(X_seasonality)[1], p=X_seasonality.shape[-1], n=6
+        )
+        self.n_pred = self.X_pred.shape[-1]
+
+    def __call__(self):
+        """
+        Return computed hyperparameter for GAM
+
+        Returns
+        -------
+        :
+            tuple with hyperparameters
+        """
+        return self.n_changepoints, self.t, self.s, self.A, self.X_pred, self.n_pred
+
+    def gen_fourier_basis(self, t: np.ndarray, p: float, n: int) -> np.ndarray:
+        """
+        Compute Fourier basis functions
+
+        Parameters
+        ----------
+        t :
+            time step
+
+        p :
+            regular period of the time series (p=365.25 for yearly data or
+            p=7 for weekly data)
+
+        n :
+            number of predictors divided by two
+
+        Returns
+        -------
+        :
+            results from Fourier basis functions
+        """
+        x = 2 * np.pi * (np.arange(n) + 1) * t[:, None] / p
+        return np.concatenate((np.cos(x), np.sin(x)), axis=1, dtype=np.float64)
+
+
+def run_gam_model(
+    d: pd.DataFrame,
+    X_seasonality: np.ndarray,
+    X_latitude: np.ndarray,
+    prior: bool,
+    X_latitude_pred: Optional[np.ndarray] = None,
+) -> dict[str, Any]:
+    """
+    Run generalized additive model
 
     Parameters
     ----------
-    mcmc_samples :
-        mcmc samples from fitting stage
+    d:
+        dataset with observed data
 
-    X_trend_pred :
-        trend design variable incl. predicted years
+    X_seasonality:
+        design matrix for "seasonality" variable
 
-    X_seasonality_pred :
-        seasonality design variable incl. predicted years
+    X_latitude :
+        design matrix for "latitude" variable
+
+    prior :
+        whether prior samples should be drawn and
+        prior predictions be computed
+        if false; model is fitted and posterior
+        predictions are returned
+
+    X_latitude_pred :
+        design matrix for "latitude" variable
+        incl. future (non-observed) years
 
     Returns
     -------
     :
-        posterior predictions (n_chains, samples, time_obs)
+        results from model run either
+        prior samples/prior predictions or
+        fitted model/posterior predictions
     """
-    trend = mcmc_samples.intercept + tf.einsum(
-        "ij,...->i...", X_trend_pred, mcmc_samples.trend
+    prepare_gam = PrepareGAM(n_changepoints=12, X_seasonality=X_seasonality)
+    n_changepoints, t, s, A, X_pred, n_pred = prepare_gam()
+
+    @tfd.JointDistributionCoroutine
+    def gam():
+        beta = yield root(
+            tfd.Sample(tfd.Normal(0.0, 1.0), sample_shape=n_pred, name="beta")
+        )
+        seasonality_gam = tf.einsum("ij,...j->...i", X_pred, beta)
+
+        k = yield root(tfd.HalfNormal(10.0, name="k"))
+        m = yield root(
+            tfd.Normal(tf.cast(d.value.mean(), tf.float32), scale=5.0, name="m")
+        )
+        tau = yield root(tfd.HalfNormal(10.0, name="tau"))
+        delta = yield tfd.Sample(
+            tfd.Laplace(0.0, tau), sample_shape=n_changepoints, name="delta"
+        )
+        latitude = yield root(
+            tfd.Sample(
+                tfd.Normal(loc=0.0, scale=10.0),
+                sample_shape=X_latitude.shape[-1],
+                name="latitude",
+            )
+        )
+
+        growth_rate = k[..., None] + tf.einsum("ij,...j->...i", A, delta)
+        offset = m[..., None] + tf.einsum("ij,...j->...i", A, -s * delta)
+        trend = growth_rate * t + offset
+        lat = tf.einsum("ij,...j->...i", X_latitude, latitude)
+
+        y_hat = seasonality_gam + trend + lat
+        y_hat = y_hat[..., : d.value.shape[0]]
+
+        noise_sigma = yield root(tfd.HalfNormal(scale=5.0, name="noise_sigma"))
+        yield tfd.Independent(
+            tfd.Normal(y_hat, noise_sigma[..., None]),
+            reinterpreted_batch_ndims=1,
+            name="observed",
+        )
+
+    if prior:
+        prior_samples = get_prior_samples(model=gam, n_samples=1000)
+        prior_predictions = get_prior_predictions(prior_samples)
+        return {"prior_pred": prior_predictions, "prior_samples": prior_samples}
+
+    else:
+        mcmc_samples, fitted_model = fit_model(model=gam, y_obs=d.value)
+
+        seasonality = tf.einsum("ij,...j->...i", X_pred, mcmc_samples.beta)
+        growth_rate = mcmc_samples.k[..., None] + tf.einsum(
+            "ij,...j->...i", A, mcmc_samples.delta
+        )
+        offset = mcmc_samples.m[..., None] + tf.einsum(
+            "ij,...j->...i", A, -s * mcmc_samples.delta
+        )
+        trend = growth_rate * t + offset
+        latitude = tf.einsum("ij,...j->i...", X_latitude_pred, mcmc_samples.latitude)
+        print(latitude.shape)
+        mu = seasonality + trend + tf.transpose(latitude, perm=[1, 2, 0])
+
+        y_pred = tfd.Normal(mu, mcmc_samples.noise_sigma[..., None]).sample()
+        posterior_pred = tf.transpose(y_pred, perm=[1, 0, 2])
+
+        return {
+            "posterior_pred": posterior_pred,
+            "mcmc_samples": mcmc_samples,
+            "fitted_model": fitted_model,
+        }
+
+
+def run_simple_reg_model(  # noqa PLR0913
+    d: pd.DataFrame,
+    X_seasonality: np.ndarray,
+    X_trend: np.ndarray,
+    X_latitude: np.ndarray,
+    prior: bool,
+    X_trend_pred: Optional[np.ndarray] = None,
+    X_seasonality_pred: Optional[np.ndarray] = None,
+    X_latitude_pred: Optional[np.ndarray] = None,
+) -> dict[str, Any]:
+    """
+    Run simple regression model
+
+    Parameters
+    ----------
+    d:
+        dataset with observed values
+
+    X_seasonality:
+        design matrix of seasonality
+        only for observed years
+
+    X_trend:
+        design matrix of trend
+        only for observed years
+
+    X_latitude :
+        design matrix of latitude
+        only for observed yéars
+
+    prior :
+        whether prior samples/prior predictions
+        should be computed
+        if false the model is fitted and posterior
+        predictions are returned
+
+    X_trend_pred :
+        design matrix of trend incl.
+        non-observed years (forecast)
+
+    X_seasonality_pred :
+        design matrix of seasonality incl.
+        non-observed years (forecast)
+
+    X_latitude_pred :
+        design matrix of latitude variable incl
+        non-observed years (forecast)
+
+    Returns
+    -------
+    :
+        dictionary with results incl. prior
+        samples/prior predictions or posterior
+        predictions/fitted model
+    """
+
+    @tfd.JointDistributionCoroutine
+    def ts_regression_model():
+        intercept = yield root(
+            tfd.Normal(
+                loc=tf.cast(d.value.mean(), tf.float32), scale=10.0, name="intercept"
+            )
+        )
+
+        trend = yield root(tfd.Normal(loc=0.0, scale=10.0, name="trend"))
+
+        seasonality = yield root(
+            tfd.Sample(
+                tfd.Normal(loc=0.0, scale=1.0),
+                sample_shape=X_seasonality.shape[-1],
+                name="seasonality",
+            )
+        )
+
+        latitude = yield root(
+            tfd.Sample(
+                tfd.Normal(loc=0.0, scale=10.0),
+                sample_shape=X_latitude.shape[-1],
+                name="latitude",
+            )
+        )
+
+        random_noise = yield root(
+            tfd.HalfCauchy(loc=0.0, scale=5.0, name="random_noise")
+        )
+
+        mu = (
+            intercept[..., None]
+            + tf.einsum("ij,...->...i", X_trend, trend)
+            + tf.einsum("ij,...j->...i", X_seasonality, seasonality)
+            + tf.einsum("ij,...j->...i", X_latitude, latitude)
+        )
+
+        yield tfd.Independent(
+            tfd.Normal(mu, random_noise[..., None]),
+            reinterpreted_batch_ndims=1,
+            name="observed",
+        )
+
+    if prior:
+        prior_samples = get_prior_samples(model=ts_regression_model, n_samples=1000)
+        prior_predictions = get_prior_predictions(prior_samples)
+        return {"prior_pred": prior_predictions, "prior_samples": prior_samples}
+
+    else:
+        mcmc_samples, fitted_model = fit_model(model=ts_regression_model, y_obs=d.value)
+
+        # posterior predictions
+        trend = tf.einsum("ij,...->i...", X_trend_pred, mcmc_samples.trend)
+        seasonality = tf.einsum(
+            "ij,...j->i...", X_seasonality_pred, mcmc_samples.seasonality
+        )
+        latitude = tf.einsum("ij,...j->i...", X_latitude_pred, mcmc_samples.latitude)
+        mu = mcmc_samples.intercept + trend + seasonality + latitude
+        y_pred = tfd.Normal(mu, mcmc_samples.random_noise).sample()
+        posterior_pred = tf.transpose(y_pred, [2, 1, 0])
+
+        return {
+            "posterior_pred": posterior_pred,
+            "mcmc_samples": mcmc_samples,
+            "fitted_model": fitted_model,
+        }
+
+
+def run_mlm_model(  # noqa: PLR0913
+    d: pd.DataFrame,
+    X_seasonality: np.ndarray,
+    X_trend: np.ndarray,
+    X_source: np.ndarray,
+    prior: bool,
+    X_seasonality_pred: Optional[np.ndarray] = None,
+    X_trend_pred: Optional[np.ndarray] = None,
+    X_source_pred: Optional[np.ndarray] = None,
+) -> dict[str, Any]:
+    """
+    Run hierarchical regression model
+
+    Parameters
+    ----------
+    d:
+        dataset with observed values
+
+    X_seasonality:
+        design matrix of seasonality
+        only for observed years
+
+    X_trend:
+        design matrix of trend
+        only for observed years
+
+    X_latitude :
+        design matrix of latitude
+        only for observed yéars
+
+    prior :
+        whether prior samples/prior predictions
+        should be computed
+        if false the model is fitted and posterior
+        predictions are returned
+
+    X_trend_pred :
+        design matrix of trend incl.
+        non-observed years (forecast)
+
+    X_seasonality_pred :
+        design matrix of seasonality incl.
+        non-observed years (forecast)
+
+    X_latitude_pred :
+        design matrix of latitude variable incl
+        non-observed years (forecast)
+
+    Returns
+    -------
+    :
+        dictionary with results incl. prior
+        samples/prior predictions or posterior
+        predictions/fitted model
+    """
+
+    @tfd.JointDistributionCoroutine
+    def ts_multilevel_model():
+        intercept = yield root(
+            tfd.Normal(
+                loc=tf.cast(d.value.mean(), tf.float32), scale=10.0, name="intercept"
+            )
+        )
+
+        source_sd = yield tfd.HalfCauchy(loc=0.0, scale=5.0, name="source_sd")
+
+        varying_intercept = yield root(
+            tfd.Sample(
+                tfd.Normal(loc=0, scale=source_sd),
+                sample_shape=(2),
+                name="varying_intercept",
+            )
+        )
+
+        trend = yield root(tfd.Normal(loc=0.0, scale=10.0, name="trend"))
+
+        seasonality = yield root(
+            tfd.Sample(
+                tfd.Normal(loc=0.0, scale=1.0),
+                sample_shape=X_seasonality.shape[-1],
+                name="seasonality",
+            )
+        )
+
+        random_noise = yield root(
+            tfd.HalfCauchy(loc=0.0, scale=5.0, name="random_noise")
+        )
+
+        mu = (
+            intercept[..., None]
+            + tf.einsum("ij,...j->...i", X_source, varying_intercept)
+            + tf.einsum("ij,...->...i", X_trend, trend)
+            + tf.einsum("ij,...j->...i", X_seasonality, seasonality)
+        )
+
+        yield tfd.Independent(
+            tfd.Normal(mu, random_noise[..., None]),
+            reinterpreted_batch_ndims=1,
+            name="observed",
+        )
+
+    if prior:
+        prior_samples = get_prior_samples(model=ts_multilevel_model, n_samples=1000)
+        prior_predictions = get_prior_predictions(prior_samples)
+        return {"prior_pred": prior_predictions, "prior_samples": prior_samples}
+
+    else:
+        mcmc_samples, fitted_model = fit_model(model=ts_multilevel_model, y_obs=d.value)
+
+        # posterior predictions
+        intercept = mcmc_samples.intercept[..., None] + tf.einsum(
+            "ij,...j->i...", X_source_pred, mcmc_samples.varying_intercept
+        )
+        trend = tf.einsum("ij,...->i...", X_trend_pred, mcmc_samples.trend)
+        seasonality = tf.einsum(
+            "ij,...j->i...", X_seasonality_pred, mcmc_samples.seasonality
+        )
+        mu = intercept + trend + seasonality
+        y_pred = tfd.Normal(mu, mcmc_samples.random_noise).sample()
+        posterior_pred = tf.transpose(y_pred, [2, 1, 0])
+
+        return {
+            "posterior_pred": posterior_pred,
+            "mcmc_samples": mcmc_samples,
+            "fitted_model": fitted_model,
+        }
+
+
+def run_latent_ar_gam_model(
+    d: pd.DataFrame,
+    X_seasonality: np.ndarray,
+    prior: bool,
+) -> dict[str, Any]:
+    """
+    Run generalized additive model with latent AR
+
+    Parameters
+    ----------
+    d:
+        dataset with obverved values
+
+    X_seasonality :
+        design matrix of seasonality
+
+    prior:
+        whether to run prior-only model (getting
+        back prior samples/prior predictions) or
+        fitting model (getting back posteriors)
+
+    Returns
+    -------
+    :
+        restructured dictionary with results
+    """
+    prepare_gam = PrepareGAM(n_changepoints=12, X_seasonality=X_seasonality)
+    n_changepoints, t, s, A, X_pred, n_pred = prepare_gam()
+
+    def gam_trend_seasonality():
+        beta = yield root(
+            tfd.Sample(tfd.Normal(0.0, 1.0), sample_shape=n_pred, name="beta")
+        )
+        seasonality = tf.einsum("ij,...j->...i", X_pred, beta)
+
+        k = yield root(tfd.HalfNormal(10.0, name="k"))
+        m = yield root(
+            tfd.Normal(tf.cast(d.value.mean(), tf.float32), scale=5.0, name="m")
+        )
+        tau = yield root(tfd.HalfNormal(10.0, name="tau"))
+        delta = yield tfd.Sample(
+            tfd.Laplace(0.0, tau), sample_shape=n_changepoints, name="delta"
+        )
+
+        growth_rate = k[..., None] + tf.einsum("ij,...j->...i", A, delta)
+        offset = m[..., None] + tf.einsum("ij,...j->...i", A, -s * delta)
+        trend = growth_rate * t + offset
+        noise_sigma = yield root(tfd.HalfNormal(scale=5.0, name="noise_sigma"))
+        return seasonality, trend, noise_sigma
+
+    def generate_gam_ar_latent(training_set=True):
+        @tfd.JointDistributionCoroutine
+        def gam_with_latent_ar():
+            seasonality, trend, noise_sigma = yield from gam_trend_seasonality()
+
+            # Latent AR(1)
+            ar_sigma = yield root(tfd.HalfNormal(0.1, name="ar_sigma"))
+            rho = yield root(tfd.Uniform(-1.0, 1.0, name="rho"))
+
+            def ar_fun(y):
+                loc = (
+                    tf.concat([tf.zeros_like(y[..., :1]), y[..., :-1]], axis=-1)
+                    * rho[..., None]
+                )
+                return tfd.Independent(
+                    tfd.Normal(loc=loc, scale=ar_sigma[..., None]),
+                    reinterpreted_batch_ndims=1,
+                )
+
+            temporal_error = yield tfd.Autoregressive(
+                distribution_fn=ar_fun,
+                sample0=tf.zeros_like(trend),
+                num_steps=trend.shape[-1],
+                name="temporal_error",
+            )
+
+            # Linear prediction
+            y_hat = seasonality + trend + temporal_error
+            if training_set:
+                y_hat = y_hat[..., : d.shape[0]]
+
+            # Likelihood
+            yield tfd.Independent(
+                tfd.Normal(y_hat, noise_sigma[..., None]),
+                reinterpreted_batch_ndims=1,
+                name="observed",
+            )
+
+        return gam_with_latent_ar
+
+    gam_with_latent_ar = generate_gam_ar_latent()
+
+    if prior:
+        prior_samples = get_prior_samples(model=gam_with_latent_ar, n_samples=1000)
+        prior_predictions = get_prior_predictions(prior_samples)
+        return {"prior_pred": prior_predictions, "prior_samples": prior_samples}
+
+    else:
+        mcmc_samples, fitted_model = fit_model(model=gam_with_latent_ar, y_obs=d.value)
+
+        # posterior predictions
+        seasonality = tf.einsum("ij,...j->...i", X_pred, mcmc_samples.beta)
+        growth_rate = mcmc_samples.k[..., None] + tf.einsum(
+            "ij,...j->...i", A, mcmc_samples.delta
+        )
+        offset = mcmc_samples.m[..., None] + tf.einsum(
+            "ij,...j->...i", A, -s * mcmc_samples.delta
+        )
+        trend = growth_rate * t + offset
+
+        mu = seasonality + trend + mcmc_samples.temporal_error
+
+        y_pred = tfd.Normal(mu, mcmc_samples.noise_sigma[..., None]).sample()
+
+        posterior_pred = tf.transpose(y_pred, perm=[1, 0, 2])
+
+        return {
+            "posterior_pred": posterior_pred,
+            "mcmc_samples": mcmc_samples,
+            "fitted_model": fitted_model,
+        }
+
+
+def combine_pred_obs(
+    d: pd.DataFrame,
+    posterior_predictions: Any,
+    X_pred_time: np.ndarray,
+    n_years_pred: int,
+    n_months: int = 12,
+) -> pd.DataFrame:
+    """
+    Combine observed values with fitted and predicted values
+
+    Parameters
+    ----------
+    d:
+        dataframe with observed values
+
+    posterior_predictions :
+        posterior predictions from fitted model
+
+    n_years_pred :
+        number of years predicted
+
+    n_months :
+        number of months considered
+
+    Returns
+    -------
+    :
+        dataframe with observed/fitted and predicted values
+    """
+    # compute dataframe with predictions
+    df_pred = pd.DataFrame(
+        {
+            "time": pd.to_datetime(X_pred_time[d.shape[0] :]),
+            "lat": np.tile(d.lat.unique()[:, None], (n_months * n_years_pred, 1))[:, 0],
+            "ypred_mean": tf.reduce_mean(posterior_predictions[0, :, d.shape[0] :], 0),
+            "ypred_sd": tf.math.reduce_std(
+                posterior_predictions[0, :, d.shape[0] :], 0
+            ),
+        }
     )
-    seasonality = tf.einsum(
-        "ij,...j->i...", X_seasonality_pred, mcmc_samples.seasonality
+
+    df_pred["year"] = df_pred["time"].dt.year
+    df_pred["month"] = df_pred["time"].dt.month
+    df_pred["value"] = 0
+
+    # add fitted values to corresponding observed values
+    d2 = d.copy()
+    d2["ypred_mean"] = tf.reduce_mean(posterior_predictions[0, :, : d.shape[0]], 0)
+    d2["ypred_sd"] = tf.math.reduce_std(posterior_predictions[0, :, : d.shape[0]], 0)
+
+    # combine observed/fitted values and predictions
+    df = pd.concat([d2, df_pred])
+    # overwrite time to have less issues with seaborn due to datetime
+    df["time"] = pd.to_datetime(
+        pd.DataFrame({"year": df.year, "month": df.month, "day": 16})
     )
-    mu = trend + seasonality
-    y_pred = tfd.Normal(mu, mcmc_samples.random_noise).sample()
-    return tf.transpose(y_pred, [2, 1, 0])
+    # additional time obj which might sometimes be better for plotting
+    df["year_month"] = df.time.astype(str)
+    return df

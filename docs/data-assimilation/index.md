@@ -16,4 +16,6 @@ they belong elsewhere.
 
 ## Overview
 
-+ [Model data using Bayesian Timeseries Regression](Bayesian_timeseries.py)
++ [Simple timeseries regression](simple_regression_model.py)
++ [Generalized additive model](generalized_additive_model.py)
++ [Autoregressive model](autoregresive_models.py)
