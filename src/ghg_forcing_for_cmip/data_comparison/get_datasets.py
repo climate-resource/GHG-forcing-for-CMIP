@@ -16,7 +16,7 @@ import requests
 import xarray as xr
 from prefect import flow, task
 
-from . import CONFIG, utils
+from ghg_forcing_for_cmip.data_comparison import CONFIG, utils
 
 
 @task(
@@ -642,7 +642,7 @@ def combine_final_csv(
     # as this makes no sense I delete these measurements entirely (row)
     d_combined = d_combined[d_combined.numb != 0.0]  # type: ignore
 
-    return add_lat_lon_bnds(d_combined=d_combined, grid_cell_size=grid_cell_size)  # type: ignore
+    return add_lat_lon_bnds(d_combined=d_combined)  # type: ignore
 
 
 @task(
@@ -888,5 +888,4 @@ def get_data_flow(
 
 
 if __name__ == "__main__":
-    # get_data_flow()
-    postprocess_obs4mips_data("data/downloads", "ch4", 1e9)
+    get_data_flow()

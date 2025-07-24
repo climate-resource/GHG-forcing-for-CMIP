@@ -5,6 +5,7 @@ Compute average concentrations per grid cell
 import numpy as np
 import pandas as pd
 import scipy  # type: ignore
+import xarray as xr
 from prefect import flow, task
 from prefect.cache_policies import INPUTS, TASK_SOURCE
 
@@ -131,9 +132,33 @@ def bin_dataset_flow(path_to_csv: str, gas: str, quantile: float = 0.5) -> None:
     d_binned_updated = select_and_replace_percentile(
         d_binned=d_binned, quantile=quantile
     )
+    d_binned_updated["time"] = pd.to_datetime(d_binned_updated["time"]).dt.tz_localize(
+        None
+    )
 
+    ds_binned = xr.Dataset(
+        data_vars=dict(
+            value=d_binned_updated.set_index(["year", "month", "lat", "lon"])[
+                "value"
+            ].to_xarray(),
+            time=d_binned_updated.set_index(["year", "month", "lat", "lon"])[
+                "time"
+            ].to_xarray(),
+            time_fractional=d_binned_updated.set_index(["year", "month", "lat", "lon"])[
+                "time_fractional"
+            ].to_xarray(),
+        ),
+        attrs=dict(
+            description="Dataset binned on a 5° by 5° grid.",
+            quantile=quantile,
+            gas=d_binned_updated.gas.iloc[0],
+            unit=d_binned_updated.unit.iloc[0],
+        ),
+    )
+
+    ds_binned.to_netcdf(path_to_csv + f"/{gas}/{gas}_binned.nc", mode="w")
     d_binned_updated.to_csv(path_to_csv + f"/{gas}/{gas}_binned.csv", index=False)
 
 
 if __name__ == "__main__":
-    bin_dataset_flow("data/downloads", "co2", 0.5)
+    bin_dataset_flow("data/downloads", "ch4", 0.5)

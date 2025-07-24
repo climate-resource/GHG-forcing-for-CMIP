@@ -159,3 +159,6 @@ dmypy.json
 
 # Mac stuff
 *.DS_Store
+
+# internal files
+/report
