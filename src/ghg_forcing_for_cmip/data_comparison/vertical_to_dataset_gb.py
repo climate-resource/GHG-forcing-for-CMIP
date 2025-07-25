@@ -5,10 +5,11 @@ model vertical distribution of ground-based data
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import xarray as xr
 from prefect import flow, task
 
-from . import CONFIG
-from .utils import (
+from ghg_forcing_for_cmip.data_comparison import CONFIG
+from ghg_forcing_for_cmip.data_comparison.utils import (
     compute_weighted_avg,
     save_data,
 )
@@ -234,8 +235,8 @@ def add_vertical_flow(path_to_csv: str, gas: str) -> None:
     gas : str
         target greenhouse gas variable
     """
-    d_interpol = pd.read_csv(path_to_csv + f"/{gas}/{gas}_interpolated.csv")
-
+    # d_interpol = pd.read_csv(path_to_csv + f"/{gas}/{gas}_interpolated.csv")
+    d_interpol = xr.open_dataset(path_to_csv + f"/{gas}/{gas}_interpolated.nc")
     # compute global-annual surface concentration
     global_annual_mean = compute_weighted_avg(d_interpol, ["year"])
     d_interpol["global_annual"] = d_interpol["year"].map(

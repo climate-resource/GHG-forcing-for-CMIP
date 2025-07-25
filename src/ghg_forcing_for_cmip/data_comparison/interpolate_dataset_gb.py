@@ -14,7 +14,7 @@ import xarray as xr
 from prefect import flow, task
 from scipy.interpolate import griddata  # type: ignore
 
-from . import CONFIG
+from ghg_forcing_for_cmip.data_comparison import CONFIG
 
 
 @task(
@@ -79,12 +79,14 @@ def interpolate(
     # Have to be hard-coded to ensure ordering is correct
     spatial_bin_columns = list(("lon", "lat"))
 
-    missing_spatial_cols = [c for c in spatial_bin_columns if c not in ymdf.columns]
+    missing_spatial_cols = [c for c in spatial_bin_columns if c not in ymdf.coords]
     if missing_spatial_cols:
         msg = f"{missing_spatial_cols=}"
         raise AssertionError(msg)
 
-    ymdf_spatial_points = ymdf[spatial_bin_columns].to_numpy()
+    ymdf_spatial_points = (
+        ymdf.to_dataframe().reset_index(drop=True)[spatial_bin_columns].to_numpy()
+    )
 
     lon_grid, lat_grid = np.meshgrid(CONFIG.LON_BIN_CENTRES, CONFIG.LAT_BIN_CENTRES)
     # Malte's trick, duplicate the grids so we can go
@@ -124,7 +126,7 @@ def interpolate(
     cache_policy=CONFIG.CACHE_POLICIES,
 )
 def to_xarray_dataarray(
-    bin_averages_df: pd.DataFrame,
+    bin_averages_df: xr.Dataset,
     data: list[npt.NDArray[np.float64]],
     times: list[cftime.datetime],
     name: str,
@@ -135,7 +137,7 @@ def to_xarray_dataarray(
     Parameters
     ----------
     bin_averages_df
-        Initial bin averages :obj:`pd.DataFrame`.
+        Initial bin averages :obj:`xr.Dataset`.
         This is just used to extract metadata, e.g. units.
 
     data
@@ -153,14 +155,7 @@ def to_xarray_dataarray(
     -------
         Created :obj:`xr.DataArray`
     """
-    # lat and lon come from the module scope (not best pattern, not the worst)
-    units = bin_averages_df["unit"].unique()
-    if len(units) > 1:
-        msg = f"Need unit conversion, {units=}"
-        raise AssertionError(msg)
-
-    unit = units[0]
-
+    # lat and lon come from the module scope (not best pattern, not the worst
     da = xr.DataArray(
         name=name,
         data=np.array(data),
@@ -172,7 +167,7 @@ def to_xarray_dataarray(
         ),
         attrs=dict(
             description="Interpolated spatial data",
-            units=unit,
+            units=bin_averages_df.attrs["unit"],
         ),
     )
 
@@ -198,21 +193,19 @@ def interpolation_flow(
     times_l = []
     interpolated_dat_l = []
 
-    d_binned_avg = pd.read_csv(path_to_csv + f"/{gas}/{gas}_binned.csv")
-
-    # required for merging later (otherwise time has type object)
-    d_binned_avg["time"] = pd.to_datetime(d_binned_avg.time.astype(str), utc=True)
+    d_binned_avg = xr.open_dataset(path_to_csv + f"/{gas}/{gas}_binned.nc")
 
     for (time, year, month), ymdf in d_binned_avg.groupby(["time", "year", "month"]):
-        if ymdf.shape[0] < CONFIG.MIN_POINTS_FOR_SPATIAL_INTERPOLATION:
+        if ymdf.value.values.shape[0] < CONFIG.MIN_POINTS_FOR_SPATIAL_INTERPOLATION:
             msg = (
-                f"Not enough data ({ymdf.shape[0]} data points) for {time=}, "
+                f"Not enough data ({ymdf.value.values.shape[0]} "
+                f"data points) for {time=}, "
                 f"not performing spatial interpolation"
             )
             print(msg)
             continue
 
-        ymdf.dropna(inplace=True)
+        ymdf.value.dropna(dim="stacked_year_month_lat_lon")
         interpolated_ym = interpolate(ymdf)
 
         if np.isnan(interpolated_ym).any():
@@ -233,27 +226,19 @@ def interpolation_flow(
         times=times_l,
     )
 
-    df_out = out.to_dataframe().reset_index()
-    df_out = df_out.merge(
-        d_binned_avg.drop(columns="value"), on=["time", "lon", "lat"], how="outer"
-    )
+    # transform dataarray with dims: time, lat, lon to
+    # obj with dims: year, month, lat, lon
+    out = out.assign_coords(year=("time", pd.to_datetime(out.time).year))
+    out = out.assign_coords(month=("time", pd.to_datetime(out.time).month))
 
-    time_frac = d_binned_avg[["time", "time_fractional"]].drop_duplicates()
-    df_out["time_fractional"] = df_out["time"].map(
-        time_frac.set_index("time")["time_fractional"]
-    )
+    # group by year and month
+    out_ym = out.groupby(["year", "month"]).mean(dim="time")
 
-    df_out["month"] = df_out.time.dt.month
-    df_out["year"] = df_out.time.dt.year
-    df_out["gas"] = gas
-    df_out["unit"] = np.where(gas == "ch4", "ppb", "ppm")
+    # add interpolated values to initial dataframe
+    d_binned_avg["value_interpolated"] = out_ym
 
-    # remove NAN from dataframe and drop duplicates
-    df_out.dropna(subset="value", inplace=True)
-    df_out.drop_duplicates(inplace=True)
-
-    df_out.to_csv(path_to_csv + f"/{gas}/{gas}_interpolated.csv")
+    d_binned_avg.to_netcdf(path_to_csv + f"/{gas}/{gas}_interpolated.nc")
 
 
 if __name__ == "__main__":
-    interpolation_flow(path_to_csv="data/downloads", gas="ch4")
+    interpolation_flow(path_to_csv="data/downloads", gas="co2")
