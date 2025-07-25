@@ -41,7 +41,9 @@ def custom_cache_key_fn() -> Optional[Any]:
         return task_input_hash
 
 
-def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
+def compute_weighted_avg(
+    d: pd.DataFrame, grouping_vars: list[str], value_name: str = "value"
+) -> pd.DataFrame:
     """
     Compute the weighted average of ghg concentrations
 
@@ -56,6 +58,9 @@ def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFr
     grouping_vars:
         list of variables to group by or that should be
         maintained
+
+    value_name:
+        name of the value variable
 
     Returns
     -------
@@ -80,7 +85,8 @@ def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFr
     d1["weight"] = delta_lon * delta_lat
 
     # Compute weighted value
-    d1["value_weighted"] = d1.value * d1.weight
+    d1["value_weighted"] = d1[value_name] * d1.weight
+    d1.dropna(subset="value_weighted", inplace=True)
 
     d2 = (
         d1.groupby(grouping_vars)
@@ -88,7 +94,7 @@ def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFr
         .reset_index()
     )
 
-    d2["value"] = d2.value_weighted / d2.weight
+    d2[value_name] = d2.value_weighted / d2.weight
     d2.drop(columns=["value_weighted", "weight"], inplace=True)
     return d2
 
