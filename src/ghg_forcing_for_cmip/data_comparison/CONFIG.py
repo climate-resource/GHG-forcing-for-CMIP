@@ -22,7 +22,5 @@ LON_BIN_CENTRES = (LON_BIN_BOUNDS[:-1] + LON_BIN_BOUNDS[1:]) / 2
 MIN_POINTS_FOR_SPATIAL_INTERPOLATION = 4
 """minimum number of observations required for grid cell to interpolate"""
 
-PRESSURE_LIST = np.linspace(
-    50, 950, 10
-)  # np.linspace(100,1000,10) #np.linspace(50,950,10)
+PRESSURE_LIST = np.linspace(50, 950, 10)  # np.linspace(0,1000, 101)#
 """pressure values used to model the vertical dimension for ground-based data"""

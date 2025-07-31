@@ -4,10 +4,14 @@ Main workflow
 
 from prefect import flow
 
-from .bin_dataset_gb import bin_dataset_flow
-from .get_datasets import get_data_flow
-from .interpolate_dataset_gb import interpolation_flow
-from .vertical_to_dataset_gb import add_vertical_flow
+from ghg_forcing_for_cmip.data_comparison.bin_dataset_gb import bin_dataset_flow
+from ghg_forcing_for_cmip.data_comparison.combine_datasets import join_datasets_flow
+from ghg_forcing_for_cmip.data_comparison.interpolate_dataset_gb import (
+    interpolation_flow,
+)
+from ghg_forcing_for_cmip.data_comparison.vertical_to_dataset_gb import (
+    add_vertical_flow,
+)
 
 
 @flow(
@@ -20,14 +24,16 @@ def run_pipeline_comparison(
     """
     Run main workflow for ghg-forcing-for-cmip
     """
-    get_data_flow(save_to_path=save_to_path)
+    # get_data_flow(save_to_path=save_to_path)
 
     bin_dataset_flow(path_to_csv=save_to_path, gas=gas, quantile=quantile)
 
-    interpolation_flow(path_to_csv=save_to_path, gas=gas)
+    interpolation_flow(path_to_csv=save_to_path, gas=gas, quantile=quantile)
 
-    add_vertical_flow(path_to_csv=save_to_path, gas=gas)
+    add_vertical_flow(path_to_csv=save_to_path, gas=gas, quantile=quantile)
+
+    join_datasets_flow(path_to_csv=save_to_path, gas=gas, quantile=quantile)
 
 
 if __name__ == "__main__":
-    run_pipeline_comparison()  # type: ignore
+    run_pipeline_comparison(gas="ch4", quantile=0.75)  # type: ignore

@@ -79,14 +79,12 @@ def interpolate(
     # Have to be hard-coded to ensure ordering is correct
     spatial_bin_columns = list(("lon", "lat"))
 
-    missing_spatial_cols = [c for c in spatial_bin_columns if c not in ymdf.coords]
+    missing_spatial_cols = [c for c in spatial_bin_columns if c not in ymdf.columns]
     if missing_spatial_cols:
         msg = f"{missing_spatial_cols=}"
         raise AssertionError(msg)
 
-    ymdf_spatial_points = (
-        ymdf.to_dataframe().reset_index(drop=True)[spatial_bin_columns].to_numpy()
-    )
+    ymdf_spatial_points = ymdf[spatial_bin_columns].to_numpy()
 
     lon_grid, lat_grid = np.meshgrid(CONFIG.LON_BIN_CENTRES, CONFIG.LAT_BIN_CENTRES)
     # Malte's trick, duplicate the grids so we can go
@@ -178,6 +176,7 @@ def to_xarray_dataarray(
 def interpolation_flow(
     path_to_csv: str,
     gas: str,
+    quantile: float,
 ) -> None:
     """
     Run interpolation flow on binned data
@@ -189,13 +188,25 @@ def interpolation_flow(
 
     gas :
         target greenhouse gas variable
+
+    quantile :
+        interpolation quantile
     """
     times_l = []
     interpolated_dat_l = []
 
-    d_binned_avg = xr.open_dataset(path_to_csv + f"/{gas}/{gas}_binned.nc")
+    d_binned_avg = xr.open_dataset(path_to_csv + f"/{gas}/{gas}_binned_q{quantile}.nc")
 
-    for (time, year, month), ymdf in d_binned_avg.groupby(["time", "year", "month"]):
+    df_binned = d_binned_avg.to_dataframe().reset_index()
+
+    df_binned["time"] = pd.to_datetime(
+        pd.DataFrame(
+            {"year": df_binned.year, "month": df_binned.month, "day": 16, "hour": 12}
+        ),
+    )
+    df_binned.dropna(subset="value", inplace=True)
+
+    for (time, year, month), ymdf in df_binned.groupby(["time", "year", "month"]):
         if ymdf.value.values.shape[0] < CONFIG.MIN_POINTS_FOR_SPATIAL_INTERPOLATION:
             msg = (
                 f"Not enough data ({ymdf.value.values.shape[0]} "
@@ -205,7 +216,6 @@ def interpolation_flow(
             print(msg)
             continue
 
-        ymdf.value.dropna(dim="stacked_year_month_lat_lon")
         interpolated_ym = interpolate(ymdf)
 
         if np.isnan(interpolated_ym).any():
@@ -234,11 +244,12 @@ def interpolation_flow(
     # group by year and month
     out_ym = out.groupby(["year", "month"]).mean(dim="time")
 
-    # add interpolated values to initial dataframe
-    d_binned_avg["value_interpolated"] = out_ym
+    out_ym.name = "value_interpolated"
 
-    d_binned_avg.to_netcdf(path_to_csv + f"/{gas}/{gas}_interpolated.nc")
+    out_ym.to_dataset().to_netcdf(
+        path_to_csv + f"/{gas}/{gas}_interpolated_q{quantile}.nc", mode="w"
+    )
 
 
 if __name__ == "__main__":
-    interpolation_flow(path_to_csv="data/downloads", gas="co2")
+    interpolation_flow(path_to_csv="data/downloads", gas="co2", quantile=0.5)
