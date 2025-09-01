@@ -8,8 +8,10 @@ authors = [
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9, <3.14"
 dependencies = [
+    "arviz[all]>=0.17.1",
     "cdsapi>=0.7.6",
     "cftime>=1.6.4.post1",
+    "dill>=0.4.0",
     "geodatasets>=2024.8.0",
     "geopandas>=1.0.1",
     "mkdocs-material>=9.5.49",
