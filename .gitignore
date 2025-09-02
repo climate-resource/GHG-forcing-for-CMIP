@@ -14,6 +14,7 @@ docs/api/*
 # Databases
 *.db
 data/
+tests/test-data
 
 # Jupyter cache
 .jupyter_cache

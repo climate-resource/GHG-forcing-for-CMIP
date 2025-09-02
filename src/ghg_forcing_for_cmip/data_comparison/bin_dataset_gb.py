@@ -17,29 +17,25 @@ CACHE_POLICIES = TASK_SOURCE + INPUTS
     description="Compute average ghg-value and std. per grid cell",
     cache_policy=CACHE_POLICIES,
 )
-def compute_average_per_grid_cell(path_to_csv: str, gas: str) -> pd.DataFrame:
+def compute_average_per_grid_cell(d_raw: pd.DataFrame) -> pd.DataFrame:
     """
     Compute average ghg-concentration and its std. per grid cell
 
     Parameters
     ----------
-    path_to_csv:
-        path to saved dataset
-
-    gas :
-        greenhouse gas target variable
+    d_raw:
+        raw dataset
 
     Returns
     -------
     :
         binned pandas dataframe
     """
-    d = pd.read_csv(path_to_csv + f"/{gas}/{gas}_raw.csv")
-    d["var"] = d.std_dev**2
-    d["pooled_var"] = np.multiply(d["var"], (d.numb - 1.0))
+    d_raw["var"] = d_raw.std_dev**2
+    d_raw["pooled_var"] = np.multiply(d_raw["var"], (d_raw.numb - 1.0))
 
     d_avg = (
-        d.groupby(
+        d_raw.groupby(
             ["time", "time_fractional", "year", "month", "lat", "lon", "gas", "unit"]
         )
         .agg({"value": ["mean", "count"], "pooled_var": "sum", "numb": "sum"})
@@ -127,13 +123,12 @@ def bin_dataset_flow(path_to_csv: str, gas: str, quantile: float = 0.5) -> None:
         corresponding ghg-concentration value (used for uncertainty
         quantification)
     """
-    d_binned = compute_average_per_grid_cell(path_to_csv=path_to_csv, gas=gas)
+    d_raw = pd.read_csv(path_to_csv + f"/{gas}/{gas}_raw.csv")
+
+    d_binned = compute_average_per_grid_cell(d_raw=d_raw)
 
     d_binned_updated = select_and_replace_percentile(
         d_binned=d_binned, quantile=quantile
-    )
-    d_binned_updated["time"] = pd.to_datetime(d_binned_updated["time"]).dt.tz_localize(
-        None
     )
 
     ds_binned = xr.Dataset(
@@ -156,8 +151,7 @@ def bin_dataset_flow(path_to_csv: str, gas: str, quantile: float = 0.5) -> None:
         ),
     )
 
-    ds_binned.to_netcdf(path_to_csv + f"/{gas}/{gas}_binned.nc", mode="w")
-    d_binned_updated.to_csv(path_to_csv + f"/{gas}/{gas}_binned.csv", index=False)
+    ds_binned.to_netcdf(path_to_csv + f"/{gas}/{gas}_binned_q{quantile}.nc", mode="w")
 
 
 if __name__ == "__main__":

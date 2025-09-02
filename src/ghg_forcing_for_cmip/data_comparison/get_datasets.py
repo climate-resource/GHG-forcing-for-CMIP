@@ -4,10 +4,9 @@ Download obs4mips and cmip data sets
 
 import glob
 import os
-import re
+import shutil
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 import cdsapi  # type: ignore
 import numpy as np
@@ -74,74 +73,83 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
 @task(
     name="unzip_download",
     description="Unzip downloaded data",
-    cache_policy=CONFIG.CACHE_POLICIES,
+    refresh_cache=True,
+    persist_result=False,
 )
-def unzip_download(pattern: str, path_to_zip: str, path_to_file: str) -> None:
+def unzip_download(path_to_zip: str, zip_folder: str, save_to: str) -> None:
     """
-    Unzip downloaded data folder
+    Unzip downloaded data folder and delete zip file
+
+    If files already exist, they will be deleted and re-downloaded
 
     Parameters
     ----------
-    pattern :
-        unique identifier that discriminates
-        datasets from each other
-
     path_to_zip :
-        path to downloaded data
+        path to downloaded data incl. zip file name
 
-    path_to_file :
-        path to unzipped data file
+    zip_folder :
+        path and name of downloaded zip folder
+
+    save_to :
+        path where to save unzipped data files
 
     """
-    files = os.listdir(path_to_zip)
-    match_string = re.compile(f"{pattern}")
+    if os.path.exists(zip_folder):
+        shutil.rmtree(zip_folder)
 
-    # Find the first matching file or raise an error if none found
-    target_file = next((f for f in files if match_string.match(f)), None)
-    if target_file is None:
-        raise FileNotFoundError(  # noqa: TRY003
-            f"No file matching pattern {pattern} found in {path_to_zip}"
-        )
+    with zipfile.ZipFile(path_to_zip, "r") as zip_ref:
+        zip_ref.extractall(save_to)
 
-    zip_path = os.path.join(path_to_zip, target_file)
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(path_to_file)
-
-    return print(f"unzipped data {pattern} to {path_to_file}")
+    os.remove(path_to_zip)
+    return print(f"unzip {path_to_zip} to {save_to}")
 
 
 @task(
     name="download_zip_from_noaa_archive",
     description="Download zip from NOAA archive link",
-    cache_policy=CONFIG.CACHE_POLICIES,
+    refresh_cache=True,
+    persist_result=False,
 )
-def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
+def download_noaa(
+    gas: str,
+    sampling_strategy: str,
+    save_to_path: str = "data/downloads",
+) -> None:
     """
-    Download NOAA data
+    Download NOAA data as NETCDF zip-file
 
     Parameters
     ----------
     gas :
         target greenhouse gas variable; either 'co2' or 'ch4'
 
+    sampling_strategy :
+        either in-situ or flask
+
     save_to_path :
         path to save downloaded data
     """
-    for dir, sampling_strategy in zip(["in-situ", "flask"], ["insitu", "flask"]):
-        url = f"https://gml.noaa.gov/aftp/data/greenhouse_gases/{gas}/{dir}/surface/{gas}_surface-{sampling_strategy}_ccgg_text.zip"
-        # create directory if it doesn't exist
-        os.makedirs(save_to_path, exist_ok=True)
+    save_to_path = utils.ensure_trailing_slash(save_to_path)
 
-        response = requests.get(url)  # noqa: S113
+    if sampling_strategy == "in-situ":
+        dir, sampling_strategy = "in-situ", "insitu"
+    if sampling_strategy == "flask":
+        dir, sampling_strategy = "flask", "flask"
 
-        if response.status_code == 200:  # noqa: PLR2004
-            with open(
-                save_to_path + f"/noaa_{gas}_surface_{sampling_strategy}.zip", "wb"
-            ) as f:
-                f.write(response.content)
-            print(f"downloaded NOAA {gas} {sampling_strategy} data to {save_to_path}")
-        else:
-            print(f"Failed to download. Status code: {response.status_code}")
+    url = f"https://gml.noaa.gov/aftp/data/greenhouse_gases/{gas}/{dir}/surface/{gas}_surface-{sampling_strategy}_ccgg_netCDF.zip"
+    # create directory if it doesn't exist
+    os.makedirs(save_to_path, exist_ok=True)
+
+    response = requests.get(url)  # noqa: S113
+
+    if response.status_code == 200:  # noqa: PLR2004
+        with open(
+            save_to_path + f"/noaa_{gas}_surface_{sampling_strategy}.zip", "wb"
+        ) as f:
+            f.write(response.content)
+        print(f"downloaded NOAA {gas} {sampling_strategy} data to {save_to_path}")
+    else:
+        print(f"Failed to download. Status code: {response.status_code}")
 
 
 @task(
@@ -150,229 +158,68 @@ def download_noaa(gas: str, save_to_path: str = "data/downloads") -> None:
     cache_policy=CONFIG.CACHE_POLICIES,
 )
 def download_agage(
-    save_to_path: str = "data/downloads", save_file_suffix: str = ""
-) -> None:
+    path_to_source: str = "data/downloads/ch4/agage/agage_data",
+) -> pd.DataFrame:
     """
-    Download agage and gage text files from online data archive
+    Download agage and gage data
+
+    URL: https://www-air.larc.nasa.gov/missions/agage/data/
+    data is based on the following selection criteria:
+        - monthly baseline
+        - methane
+        - Version: 20250721
+        - instruments: all
+        - product type: mole fraction
 
     Parameters
     ----------
-    save_to_path :
-        path to save downloaded data
+    path_to_source :
+        path to source data folder (as downloaded from AGAGE archive)
 
-    save_file_suffix :
-        suffix to add to file name
+    Returns
+    -------
+    :
+        pandas DataFrame with Agage data
     """
-    AGAGE_URLS = [
-        "https://agage2.eas.gatech.edu/data_archive/agage/gc-md/monthly_mean/barbados/ascii/AGAGE-GCMD_RPB_ch4_mon.txt",
-        "https://agage2.eas.gatech.edu/data_archive/agage/gc-md/monthly_mean/capegrim/ascii/AGAGE-GCMD_CGO_ch4_mon.txt",
-        "https://agage2.eas.gatech.edu/data_archive/agage/gc-md/monthly_mean/macehead/ascii/AGAGE-GCMD_MHD_ch4_mon.txt",
-        "https://agage2.eas.gatech.edu/data_archive/agage/gc-md/monthly_mean/samoa/ascii/AGAGE-GCMD_SMO_ch4_mon.txt",
-        "https://agage2.eas.gatech.edu/data_archive/agage/gc-md/monthly_mean/trinidad/ascii/AGAGE-GCMD_THD_ch4_mon.txt",
-    ]
+    path_to_source = utils.ensure_trailing_slash(path_to_source)
 
-    GAGE_URLS = [
-        "https://agage2.eas.gatech.edu/data_archive/gage/monthly/CGO-gage.mon",
-        "https://agage2.eas.gatech.edu/data_archive/gage/monthly/MHD-gage.mon",
-        "https://agage2.eas.gatech.edu/data_archive/gage/monthly/ORG-gage.mon",
-        "https://agage2.eas.gatech.edu/data_archive/gage/monthly/RPB-gage.mon",
-        "https://agage2.eas.gatech.edu/data_archive/gage/monthly/SMO-gage.mon",
-    ]
+    files = os.listdir(path_to_source)
+    df_list = []
+    for file in files:
+        ds = xr.open_dataset(path_to_source + file)
+        df = ds.to_dataframe().reset_index()
+        df["year"] = df.time.dt.year
+        df["month"] = df.time.dt.month
+        df["latitude"] = float(ds.attrs["inlet_latitude"])
+        df["longitude"] = float(ds.attrs["inlet_longitude"])
+        df["site_code"] = str(ds.attrs["site_code"])
+        df["network"] = str(ds.attrs["network"])
+        df["altitude"] = float(ds.attrs["inlet_base_elevation_masl"])
+        df["instrument"] = str(ds.attrs["instrument_type"])
+        df["version"] = str(ds.attrs["version"])
+        df["gas"] = str(ds.attrs["species"])
+        df["sampling_strategy"] = None
+        df["insitu_vs_flask"] = None
+        df["unit"] = "ppb"
 
-    for network in ["agage", "gage"]:
-        if network == "agage":
-            URLS = AGAGE_URLS
-        if network == "gage":
-            URLS = GAGE_URLS
-
-        save_to_path2 = f"{save_to_path}/ch4/{network}"
-        # create directory if it doesn't exist
-        os.makedirs(save_to_path2, exist_ok=True)
-
-        for url in URLS:
-            file_name = url.split("/")[-1].removesuffix(".txt")
-            response = requests.get(url)  # noqa: S113
-
-            if response.status_code == 200:  # noqa: PLR2004
-                with open(
-                    save_to_path2 + "/" + file_name + save_file_suffix, "wb"
-                ) as f:
-                    f.write(response.content)
-                print(f"downloaded {network.upper()} {file_name} to {save_to_path2}")
-            else:
-                print(f"Failed to download. Status code: {response.status_code}")
-
-
-@task(
-    name="save_txt_as_df_csv",
-    description="Save txt file as pandas dataframe csv",
-    cache_policy=CONFIG.CACHE_POLICIES,
-)
-def txt_to_csv_file(
-    file_path: str,
-    save_to_path: str = "data/downloads",
-    columns_in_comment: bool = False,
-    hardcode_skip_rows: Optional[int] = None,
-) -> None:
-    """
-    Read text file and convert to pandas dataframes
-
-    Parameters
-    ----------
-    file_path :
-        path to text file
-
-    save_to_path :
-        path to save downloaded data
-
-    columns_in_comment :
-        whether column names are included in comments starting with '#'
-
-    hardcode_skip_rows :
-        hardcode number of rows to skip in text file
-    """
-    file_name = file_path.split("/")[-1].removesuffix(".txt")
-
-    # create directory if it doesn't exist
-    create_sub_path = save_to_path + "/csv/"
-    os.makedirs(create_sub_path, exist_ok=True)
-
-    # Find the first non-comment line (column headers)
-    with open(file_path) as file:
-        for i, line in enumerate(file):
-            if not line.startswith("#"):
-                header_line = i
-                break
-
-    if columns_in_comment:
-        header_line = header_line - 1
-
-    if hardcode_skip_rows is not None:
-        header_line = hardcode_skip_rows
-
-    df = pd.read_csv(file_path, sep=r"\s+", skiprows=header_line, engine="python")
-
-    # If the comment symbol '#' is mistakenly read as a column name, clean it
-    if columns_in_comment:
-        df.columns = pd.Index(
-            [col for col in df.columns if col not in ["#", "dev"]] + [""]
+        df.rename(
+            columns={"mf": "value", "mf_variability": "std_dev", "mf_count": "numb"},
+            inplace=True,
         )
-        df = df.iloc[:, :-2]  # remove two last (empty) columns
-        df.rename(columns={"dev.": "numb", "std.": "std_dev"}, inplace=True)
-        df["site_code"] = file_name.split("_")[1]
-        df["network"] = "agage"
-        df["sampling_strategy"] = pd.NA
 
-    if hardcode_skip_rows is not None:
-        df["site_code"] = file_name.split("-")[0]
-        df["network"] = "gage"
-        df["sampling_strategy"] = pd.NA
+        df.drop(
+            columns=[
+                "mf_repeatability",
+                "inlet_height",
+                "sampling_period",
+                "instrument_type",
+            ],
+            inplace=True,
+        )
 
-    if (not columns_in_comment) and (hardcode_skip_rows is None):
-        df["network"] = "noaa"
-        df["sampling_strategy"] = file_name.split("_")[2]
+        df_list.append(df)
 
-    df.to_csv(create_sub_path + file_name)
-
-
-@task(
-    name="loop_over_txt_files",
-    description="Loop over txt files in stored folder",
-    task_run_name="loop_over_txt_files_in_folder-{folder_pattern}",
-    cache_policy=CONFIG.CACHE_POLICIES,
-)
-def txt_to_csv_folder(
-    folder_pattern: str,
-    file_endings: tuple[str, ...],
-    path_to_dir: str = "data/downloads",
-    columns_in_comment: bool = False,
-    hardcode_skip_rows: Optional[int] = None,
-) -> None:
-    """
-    Extract relevant text files and convert to pandas dataframes
-
-    Parameters
-    ----------
-    folder_pattern :
-        unique identifier that discriminates relevant folders
-
-    file_endings :
-        unique identifier that discriminates relevant files
-
-    path_to_dir :
-        path to downloaded data
-
-    columns_in_comment :
-        whether column names are included in comments starting with '#'
-
-    hardcode_skip_rows :
-        hardcode number of rows to skip in text file
-    """
-    files = os.listdir(path_to_dir)
-
-    match_string = re.compile(f"{folder_pattern}")
-
-    target_folder = next((f for f in files if match_string.match(f)), None)
-    if target_folder is None:
-        raise ValueError("target folder not found")  # noqa: TRY003
-
-    save_subdir = path_to_dir + "/" + target_folder
-    os.makedirs(save_subdir, exist_ok=True)
-
-    for file in os.listdir(path_to_dir + "/" + target_folder):
-        if file.endswith(file_endings):
-            txt_to_csv_file.with_options(task_run_name=f"save_txt_as_df_csv-{file}")(
-                file_path=path_to_dir + "/" + target_folder + "/" + file,
-                save_to_path=save_subdir,
-                columns_in_comment=columns_in_comment,
-                hardcode_skip_rows=hardcode_skip_rows,
-            )
-
-
-@task(
-    name="combine_csv_files_to_clean",
-    description="Combine csv files to final csv",
-    task_run_name="combine_csv_files_to_final-{gas}",
-    cache_policy=CONFIG.CACHE_POLICIES,
-)
-def combine_csv_files(
-    gas: str,
-    save_file_suffix: str,
-    path_to_csv: str = "data/downloads/csv",
-    path_to_save: str = "data/downloads",
-) -> None:
-    """
-    Combine CSV files
-
-    Parameters
-    ----------
-    gas :
-        target greenhouse gas variable
-
-    save_file_suffix :
-        suffix provided to downloaded data file
-
-    path_to_csv :
-        path where single csv files are saved
-
-    path_to_save :
-        path to save combined csv file
-    """
-    csv_folder = os.listdir(path_to_csv)
-
-    os.makedirs(path_to_save, exist_ok=True)
-
-    all_dfs = []
-    for file in csv_folder:
-        if gas in file:
-            df = pd.read_csv(path_to_csv + "/" + file)
-            if "insitu" in file:
-                df.rename(columns={"value_std_dev": "value_unc"}, inplace=True)
-            all_dfs.append(df)
-
-    d_combined = pd.concat(all_dfs)
-
-    utils.save_data(d_combined, path_to_save, gas, save_file_suffix)
+    return pd.concat(df_list)
 
 
 @task(
@@ -537,112 +384,13 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame) -> pd.DataFrame:
 
     d_bnd.drop(columns="coord_bnd", inplace=True)
 
-    return d_bnd.pivot(
+    d_reshaped = d_bnd.pivot(
         index=[col for col in d_bnd.columns if col not in ["bnd_value", "coord"]],
         columns="coord",
         values="bnd_value",
     ).reset_index()
 
-
-@task(
-    name="combine_final_csv",
-    description="Combine final csv files",
-    cache_policy=CONFIG.CACHE_POLICIES,
-)
-def combine_final_csv(
-    gas: str, path_to_save: str = "data/downloads", grid_cell_size: int = 5
-) -> pd.DataFrame:
-    """
-    Combine final csv files from NOAA, AGAGE, and GAGE networks
-
-    Parameters
-    ----------
-    gas :
-        target greenhouse gas variable
-
-    path_to_save :
-        path to save combined csv files
-
-    grid_cell_size :
-        size of single grid cell in degrees
-
-    Returns
-    -------
-    :
-        final pd.Dataframe
-    """
-    lat = {
-        "CGO": -40.6833,
-        "MHD": 53.3266,
-        "RPB": 13.1651,
-        "SMO": -14.2474,
-        "THD": 41.0541,
-        "ORG": 45.0000,
-    }
-    lon = {
-        "CGO": 144.6894,
-        "MHD": -9.9045,
-        "RPB": -59.4320,
-        "SMO": -170.5644,
-        "THD": -124.1510,
-        "ORG": -124.0000,
-    }
-
-    if gas == "ch4":
-        df1 = pd.read_csv(path_to_save + f"/{gas}/agage/clean/{gas}_agage.csv")
-        df1.dropna(subset="mean", inplace=True)
-        df1 = df1[[col for col in df1.columns if not col.startswith("Unnamed")]]
-        df1.rename(columns={"mean": "value", "std": "std_dev"}, inplace=True)
-        df1["latitude"] = df1["site_code"].map(lat)
-        df1["longitude"] = df1["site_code"].map(lon)
-
-        df2 = pd.read_csv(path_to_save + f"/{gas}/gage/clean/{gas}_gage.csv")
-        df2 = df2[
-            ["time", "MM", "YYYY", "numb.7", "CH4", "std..7", "site_code", "network"]
-        ]
-        df2.rename(
-            columns={
-                "numb.7": "numb",
-                "std..7": "std_dev",
-                "MM": "month",
-                "YYYY": "year",
-                "CH4": "value",
-            },
-            inplace=True,
-        )
-        df2 = df2[(df2.value != 0.0)]
-
-        df2["latitude"] = df2["site_code"].map(lat)
-        df2["longitude"] = df2["site_code"].map(lon)
-        df_combined = pd.concat([df1, df2])
-
-    dfs_noaa = []
-    for sampling_type in ["flask", "insitu"]:
-        df3 = pd.read_csv(
-            path_to_save
-            + f"/{gas}/noaa/{gas}_surface-{sampling_type}_ccgg_text/"
-            + f"clean/{gas}_noaa_processed.csv"
-        )
-        df3["insitu_vs_flask"] = sampling_type
-        dfs_noaa.append(df3)
-
-    df_noaa_combined = pd.concat(dfs_noaa)
-    df_noaa_combined.drop(columns=["Unnamed: 0"], inplace=True)
-    df_noaa_combined["time"] = np.round(
-        df_noaa_combined["year"] + (df_noaa_combined["month"] - 0.5) / 12, decimals=3
-    )
-    if gas == "ch4":
-        d_combined = pd.concat([df_combined, df_noaa_combined])
-    else:
-        d_combined = df_noaa_combined
-
-    # this condition is applied due to the raw data from MLO
-    # surface-insitu dataset in 2022/2023 are a few measures
-    # that have a non-zero value, but a std and nvalue of zero.
-    # as this makes no sense I delete these measurements entirely (row)
-    d_combined = d_combined[d_combined.numb != 0.0]  # type: ignore
-
-    return add_lat_lon_bnds(d_combined=d_combined)  # type: ignore
+    return d_reshaped
 
 
 @task(
@@ -700,11 +448,11 @@ def postprocess_obs4mips_data(
 
 
 @task(
-    name="postprocess_cmip_data",
-    description="postprocess cmip data and prepare for analysis",
+    name="validate_cmip_data",
+    description="validate cmip data",
     cache_policy=CONFIG.CACHE_POLICIES,
 )
-def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None:
+def validate_cmip_data(df: pd.DataFrame) -> None:
     """
     Validate column types of dataframe using type schema
 
@@ -719,7 +467,7 @@ def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None
     gas :
         target greenhouse gas variable
     """
-    df["time_fractional"] = df.time.astype(np.float64)
+    df["time_fractional"] = df.year + df.month / 12
     df["time"] = pd.to_datetime(
         pd.DataFrame({"year": df.year, "month": df.month, "day": 16, "hour": 12}),
         utc=True,
@@ -738,89 +486,143 @@ def postprocess_cmip_data(df: pd.DataFrame, path_to_save: str, gas: str) -> None
     df["site_code"] = df.site_code.astype(str)
     df["network"] = df.network.astype(str)
     df["altitude"] = df.altitude.astype(np.float64)
-    df["gas"] = gas
-    df["unit"] = np.where(gas == "ch4", "ppb", "ppm")
+    df["gas"] = df.gas.astype(str)
+    df["unit"] = df.unit.astype(str)
+    df["version"] = df.version.astype(str)
+    df["instrument"] = df.instrument.astype(str)
 
     utils.GroundDataSchema.validate(df)
-    utils.save_data(df, path_to_save, gas, "raw")
+
+
+@task(name="combine_netCDFs", description="postprocess noaa data", refresh_cache=True)
+def combine_netCDFs(
+    path_to_files: str,
+) -> pd.DataFrame:
+    """
+    Combine netCDF files into a single dataframe
+
+    Parameters
+    ----------
+    path_to_files :
+        path to extracted netCDF files from zip folder
+
+    Returns
+    -------
+    :
+        pandas dataframe
+    """
+    files = os.listdir(path_to_files)
+    nc_files = [file for file in files if file.endswith(".nc")]
+
+    df_list = []
+    for file in nc_files:
+        ds = xr.open_dataset(utils.ensure_trailing_slash(path_to_files) + file)
+        df_full = ds.to_dataframe().reset_index()
+        df = pd.DataFrame({})
+        df["time"] = df_full.time
+        df["year"] = df_full.time.dt.year
+        df["month"] = df_full.time.dt.month
+        df["latitude"] = df_full.latitude
+        df["longitude"] = df_full.longitude
+        df["value"] = df_full.value
+        df["site_code"] = ds.attrs["site_code"]
+        df["network"] = "noaa"
+        df["altitude"] = df_full.altitude
+        df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
+        df["sampling_strategy"] = ds.attrs["dataset_project"]
+        df["gas"] = ds.attrs["dataset_parameter"]
+        df["unit"] = np.where(df.gas == "ch4", "ppb", "ppm")
+        df["version"] = ds.attrs["dataset_creation_date"]
+        df["instrument"] = "noaa"
+
+        if file.endswith("MonthlyData.nc"):
+            df["std_dev"] = df_full.value_std_dev
+            df["numb"] = df_full.nvalue
+
+        elif file.endswith("event.nc"):
+            cols = list(df.columns)
+            [cols.remove(item) for item in ["time", "value"]]
+            df = df.groupby(cols).agg({"value": ("mean", "std", "count")}).reset_index()
+
+            df.columns = [
+                "_".join(map(str, col)).strip("_") for col in df.columns.values
+            ]
+            df.rename(
+                columns={
+                    "value_mean": "value",
+                    "value_std": "std_dev",
+                    "value_count": "numb",
+                },
+                inplace=True,
+            )
+            df["time"] = pd.to_datetime(df[["year", "month"]].assign(day=1))
+
+        else:
+            continue
+
+    # fill values to NAN
+    df["value"] = df["value"].where(df.value >= 0, np.nan)
+
+    df_list.append(df)
+    df_combined = pd.concat(df_list)
+
+    return df_combined.drop_duplicates()
 
 
 @flow(name="get_cmip_data", description="Download and extract CMIP data")
-def download_cmip_flow(save_to_path: str = "data/downloads") -> None:
+def download_cmip_flow(gas: str, save_to_path: str = "data/downloads") -> None:
     """
     Download and extract CMIP data
 
     Parameters
     ----------
+    gas :
+        either ch4 or co2
+
     save_to_path :
         path to save downloaded data
     """
-    # download data of GAGE and AGAGE network
-    download_agage(
-        save_to_path=save_to_path,
-        save_file_suffix="_ch4",
-    )
+    save_to_path = utils.ensure_trailing_slash(save_to_path)
 
-    for network in ["gage", "agage"]:
-        if network == "gage":
-            columns_in_comment = False
-            hardcode_skip_rows = 5
-        else:
-            columns_in_comment = True
-            hardcode_skip_rows = None
-
-        txt_to_csv_folder(
-            folder_pattern=network,
-            file_endings=("mon_ch4",),
-            path_to_dir=save_to_path + "/ch4",
-            columns_in_comment=columns_in_comment,
-            hardcode_skip_rows=hardcode_skip_rows,
+    if gas == "ch4":
+        # download data of GAGE and AGAGE network
+        df_agage = download_agage(
+            path_to_source=save_to_path + "ch4/agage/agage_data",
         )
-
-        combine_csv_files(
-            gas="ch4",
-            save_file_suffix=network,
-            path_to_csv=save_to_path + f"/ch4/{network}/csv",
-            path_to_save=save_to_path + f"/ch4/{network}/clean",
-        )
+    else:
+        df_agage = None
 
     # download data of NOAA network
-    for gas in ["co2", "ch4"]:
-        download_noaa(gas=gas, save_to_path=save_to_path)
+    for sampling in ["insitu", "flask"]:
+        download_noaa(
+            gas=gas,
+            sampling_strategy=str(np.where(sampling == "insitu", "in-situ", sampling)),
+            save_to_path=save_to_path + gas + "/noaa",
+        )
+        unzip_download(
+            path_to_zip=save_to_path + f"{gas}/noaa/noaa_{gas}_surface_{sampling}.zip",
+            zip_folder=save_to_path
+            + f"{gas}/noaa/{gas}_surface-{sampling}_ccgg_netCDF",
+            save_to=save_to_path + gas + "/noaa",
+        )
 
-        for sampling_strategy in ["surface_insitu", "surface_flask"]:
-            unzip_download(
-                pattern=f"noaa_{gas}_{sampling_strategy}",
-                path_to_zip=save_to_path,
-                path_to_file=save_to_path + f"/{gas}/noaa/",
-            )
+    # combine datasets
+    df_insitu = combine_netCDFs(
+        save_to_path + f"{gas}/noaa/{gas}_surface-insitu_ccgg_netCDF"
+    )
+    df_flask = combine_netCDFs(
+        save_to_path + f"{gas}/noaa/{gas}_surface-flask_ccgg_netCDF"
+    )
 
-            txt_to_csv_folder(
-                folder_pattern=f"{gas}_{sampling_strategy.replace('_', '-')}",
-                file_endings=("MonthlyData.txt", "event.txt"),
-                path_to_dir=save_to_path + f"/{gas}/noaa/",
-            )
+    df_combined = pd.concat([df_insitu, df_flask, df_agage])
 
-            combine_csv_files(
-                gas=gas,
-                save_file_suffix="noaa",
-                path_to_csv=save_to_path
-                + f"/{gas}/noaa/{gas}_{sampling_strategy.replace('_', '-')}"
-                + "_ccgg_text/csv",
-                path_to_save=save_to_path
-                + f"/{gas}/noaa/{gas}_{sampling_strategy.replace('_', '-')}"
-                + "_ccgg_text/clean",
-            )
+    df_final = add_lat_lon_bnds(d_combined=df_combined)
 
-            compute_total_monthly_std(
-                path_to_csv=f"data/downloads/{gas}/noaa/{gas}_"
-                + f"{sampling_strategy.replace('_', '-')}_ccgg_text"
-                + f"/clean/{gas}_noaa.csv",
-            )
+    # validate columns and their types for the final dataframe
+    validate_cmip_data(df_final)
 
-        df = combine_final_csv(gas=gas, path_to_save=save_to_path)
-
-        postprocess_cmip_data(df=df, path_to_save=save_to_path, gas=gas)
+    # save final dataset
+    df_final.to_csv(save_to_path + gas + f"/{gas}_raw.csv")
 
 
 @flow(name="get_obs4mips_data", description="Download and extract OBS4MIPs data")
@@ -888,4 +690,5 @@ def get_data_flow(
 
 
 if __name__ == "__main__":
-    get_data_flow()
+    download_cmip_flow(gas="ch4", save_to_path="data/downloads")
+    # get_data_flow()
