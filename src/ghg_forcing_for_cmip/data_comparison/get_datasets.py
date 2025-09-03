@@ -6,7 +6,6 @@ import glob
 import os
 import shutil
 import zipfile
-from pathlib import Path
 
 import cdsapi  # type: ignore
 import numpy as np
@@ -541,11 +540,14 @@ def combine_netCDFs(
 
         elif file.endswith("event.nc"):
             cols = list(df.columns)
-            [cols.remove(item) for item in ["time", "value"]]
-            df = df.groupby(cols).agg({"value": ("mean", "std", "count")}).reset_index()
+
+            for item in ["time", "value"]:
+                cols.remove(item)
+            df = df.groupby(cols).agg({"value": ["mean", "std", "count"]}).reset_index()
 
             df.columns = [
-                "_".join(map(str, col)).strip("_") for col in df.columns.values
+                "_".join(map(str, col)).strip("_")
+                for col in list(df.columns.values)  # type: ignore
             ]
             df.rename(
                 columns={
@@ -622,31 +624,33 @@ def download_cmip_flow(gas: str, save_to_path: str = "data/downloads") -> None:
     validate_cmip_data(df_final)
 
     # save final dataset
-    df_final.to_csv(save_to_path + gas + f"/{gas}_raw.csv")
+    df_final.to_csv(save_to_path + gas + f"/{gas}_raw.csv", index=False)
 
 
 @flow(name="get_obs4mips_data", description="Download and extract OBS4MIPs data")
-def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
+def download_obs4mips_flow(gas: str, save_to_path: str = "data/downloads") -> None:
     """
     Download and extract OBS4MIPs data
 
     Parameters
     ----------
+    gas :
+        either co2 or ch4
+
     save_to_path :
         path to save downloaded data
     """
-    for gas in ("co2", "ch4"):
-        make_api_request(gas=gas, save_to_path=save_to_path)
+    make_api_request(gas=gas, save_to_path=save_to_path)
 
-        unzip_download(
-            pattern=f"obs4mips_x{gas}",
-            path_to_zip=save_to_path,
-            path_to_file=save_to_path + f"/{gas}",
-        )
+    unzip_download(
+        pattern=f"obs4mips_x{gas}",
+        path_to_zip=save_to_path,
+        path_to_file=save_to_path + f"/{gas}",
+    )
 
-        postprocess_obs4mips_data(
-            path_to=save_to_path, gas=gas, factor=np.where(gas == "ch4", 1e9, 1e6)
-        )
+    postprocess_obs4mips_data(
+        path_to=save_to_path, gas=gas, factor=np.where(gas == "ch4", 1e9, 1e6)
+    )
 
 
 @flow(
@@ -654,6 +658,7 @@ def download_obs4mips_flow(save_to_path: str = "data/downloads") -> None:
     description="Download and extract OBS4MIPs and ground-based datasets",
 )
 def get_data_flow(
+    gas: str,
     save_to_path: str = "data/downloads",
     remove_zip_files: bool = True,
     remove_txt_files: bool = True,
@@ -666,6 +671,9 @@ def get_data_flow(
 
     Parameters
     ----------
+    gas :
+        either ch4 or co2
+
     save_to_path :
         path to save downloaded data
 
@@ -675,20 +683,11 @@ def get_data_flow(
     remove_txt_files :
         remove all text files created during downloading and preprocessing
     """
-    download_cmip_flow(save_to_path=save_to_path)
+    download_cmip_flow(gas=gas, save_to_path=save_to_path)
 
-    download_obs4mips_flow(save_to_path=save_to_path)
+    download_obs4mips_flow(gas=gas, save_to_path=save_to_path)
 
     # clean-up downloading directory
     if remove_zip_files:
         for zip_file in glob.glob(os.path.join(save_to_path, "*.zip")):
             os.remove(zip_file)
-
-    if remove_txt_files:
-        for txt_file in Path(save_to_path).rglob("*.txt"):
-            txt_file.unlink()
-
-
-if __name__ == "__main__":
-    download_cmip_flow(gas="ch4", save_to_path="data/downloads")
-    # get_data_flow()
