@@ -2,11 +2,12 @@
 combine earth observations and ground-based data in one dataset
 """
 
+import numpy as np
 import pandas as pd
+import xarray as xr
 from prefect import flow, task
 
-from . import CONFIG
-from .utils import save_data
+from ghg_forcing_for_cmip.data_comparison import CONFIG
 
 
 @task(
@@ -15,7 +16,7 @@ from .utils import save_data
     cache_policy=CONFIG.CACHE_POLICIES,
     refresh_cache=True,
 )
-def apply_averaging_kernel(d_joint_wide: pd.DataFrame) -> pd.DataFrame:
+def apply_averaging_kernel(d_joint_wide: pd.DataFrame, gas: str) -> pd.DataFrame:
     """
     Apply averaging kernel to ground-based data
 
@@ -26,6 +27,9 @@ def apply_averaging_kernel(d_joint_wide: pd.DataFrame) -> pd.DataFrame:
     d_joint_wide:
         joint dataset in wide format
 
+    gas:
+        target greenhouse gas variable
+
     Returns
     -------
     :
@@ -34,8 +38,8 @@ def apply_averaging_kernel(d_joint_wide: pd.DataFrame) -> pd.DataFrame:
     # apply averaging kernel to modelled ground-based data
     # (see PUGS, Buchwitz et al. 2024)
     d_joint_wide["ground_based_AK"] = (
-        d_joint_wide["vmr_profile_apriori"]
-        + (d_joint_wide["ground_based"] - d_joint_wide["vmr_profile_apriori"])
+        d_joint_wide[f"vmr_profile_{gas}_apriori"]
+        + (d_joint_wide["value_vertical"] - d_joint_wide[f"vmr_profile_{gas}_apriori"])
         * d_joint_wide.column_averaging_kernel
     )
 
@@ -83,52 +87,73 @@ def joint_dataset_long(d_joint_AK: pd.DataFrame) -> pd.DataFrame:
     cache_policy=CONFIG.CACHE_POLICIES,
     refresh_cache=True,
 )
-def join_datasets_wide(path_to_csv: str, gas: str) -> pd.DataFrame:
+def join_datasets_wide(
+    d_vertical: xr.Dataset, path_to_csv: str, gas: str, fillvalue: float = 1e20
+) -> pd.DataFrame:
     """
     Joint satellite and ground-based data in wide format
 
     Parameters
     ----------
+    d_vertical:
+        dataset with vertical dimension
+
     path_to_csv:
         path to saved data sets
 
     gas:
         target greenhouse gas variable
 
+    fillvalue:
+        fill values used in OBS4MIPs to indicate NAN
+
     Returns
     -------
     :
         joint dataset as pandas dataframe
     """
-    d_gb = pd.read_csv(path_to_csv + f"/{gas}/{gas}_vertical.csv")
-    d_eo = pd.read_csv(path_to_csv + f"/{gas}/{gas}_eo_raw.csv")
-
-    d_gb.drop(columns=["Unnamed: 0"], inplace=True)
-    d_gb.rename(
-        columns={
-            "value": "ground_based",
-            "value_without_vertical": "ground_based_no_vertical",
-        },
-        inplace=True,
+    d_gb = d_vertical
+    d_eo = xr.open_dataset(
+        path_to_csv
+        + f"/{gas}/200301_202212-C3S-L3_X{gas.upper()}-"
+        + "GHG_PRODUCTS-MERGED-MERGED-OBS4MIPS-MERGED-v4.5.nc"
     )
 
-    d_eo.drop(
-        columns=["Unnamed: 0", "lat_bnd", "lon_bnd", "bnd", "std_dev", "numb"],
-        inplace=True,
+    d_eo = d_eo.assign_coords(
+        year=d_eo.time.dt.year,
+        month=d_eo.time.dt.month,
     )
-    d_eo.rename(columns={"value": "satellite"}, inplace=True)
 
-    joint_columns = list(set(d_gb.columns).intersection(set(d_eo.columns)))
+    d_eo = d_eo.groupby(["year", "month"]).mean()
+    d_eo = d_eo.rename({"pressure": "pre"}).assign_coords(pre=d_gb.pre.values[::-1])
+    # use NaN instead of fillvalue
+    d_eo = d_eo.where(d_eo != fillvalue)
+    # convert x-ghg (unitless) to ppb or ppm
+    factor = np.where(gas == "co2", 1e6, 1e9)
+    for var in [f"x{gas}", f"x{gas}_stddev", f"vmr_profile_{gas}_apriori"]:
+        d_eo[var] = d_eo[var] * factor
+    ds_merge = xr.combine_by_coords(
+        [
+            d_eo[
+                [
+                    f"x{gas}",
+                    f"x{gas}_nobs",
+                    f"x{gas}_stddev",
+                    "column_averaging_kernel",
+                    f"vmr_profile_{gas}_apriori",
+                ]
+            ],
+            d_gb,
+        ]
+    )
 
-    d_joint = d_gb.merge(d_eo, on=joint_columns, how="outer")
-
-    return d_joint
+    return ds_merge
 
 
 @flow(
     name="combine_datasets",
 )
-def join_datasets_flow(path_to_csv: str, gas: str) -> None:
+def join_datasets_flow(path_to_csv: str, gas: str, quantile: float) -> None:
     """
     Run flow to combine satellite and ground-based data
 
@@ -139,31 +164,17 @@ def join_datasets_flow(path_to_csv: str, gas: str) -> None:
 
     gas:
         target greenhouse gas variable
+
+    quantile:
+        quantile used during binning
     """
-    d_joint_wide = join_datasets_wide(path_to_csv=path_to_csv, gas=gas)
-    d_joint_AK = apply_averaging_kernel(d_joint_wide)
+    d_vertical = xr.open_dataset(path_to_csv + f"/{gas}/{gas}_vertical_q{quantile}.nc")
 
-    d_compare = d_joint_AK.dropna(subset="satellite").drop_duplicates()
-    d_compare = (
-        d_compare.groupby(
-            ["time", "time_fractional", "year", "month", "lon", "lat", "gas", "unit"]
-        )
-        .agg(
-            {
-                "satellite": "mean",
-                "ground_based": "mean",
-                "ground_based_no_vertical": "mean",
-                "ground_based_AK": "mean",
-            }
-        )
-        .reset_index()
-    )
+    d_joint_wide = join_datasets_wide(d_vertical, path_to_csv=path_to_csv, gas=gas)
+    d_joint_AK = apply_averaging_kernel(d_joint_wide, gas=gas)
 
-    d_joint_long = joint_dataset_long(d_joint_AK)
-
-    save_data(d_joint_AK, path_to_csv, gas, "joint_wide")
-    save_data(d_compare, path_to_csv, gas, "joint_comparison")
-    save_data(d_joint_long, path_to_csv, gas, "joint_long")
+    d_joint_AK.to_netcdf(path_to_csv + f"/{gas}/{gas}_joint_AK_q{quantile}.nc")
+    d_joint_wide.to_netcdf(path_to_csv + f"/{gas}/{gas}_combined_q{quantile}.nc")
 
 
 if __name__ == "__main__":

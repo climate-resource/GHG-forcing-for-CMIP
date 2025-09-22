@@ -5,12 +5,12 @@ model vertical distribution of ground-based data
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import xarray as xr
 from prefect import flow, task
 
-from . import CONFIG
-from .utils import (
+from ghg_forcing_for_cmip.data_comparison import CONFIG
+from ghg_forcing_for_cmip.data_comparison.utils import (
     compute_weighted_avg,
-    save_data,
 )
 
 
@@ -47,22 +47,23 @@ def add_value_per_pressure(
     for pressure in pressure_list:
         if gas == "ch4":
             d2[f"{pressure}"] = np.where(
-                pressure > d2.p_tropo,
-                d2.value,
-                d2.global_1yrs * (pressure / d2.p_tropo) ** d2.scaling_factor,
+                pressure > d2.temp_p_tropo,
+                d2.value_interpolated,
+                d2.temp_global_1yrs
+                * (pressure / d2.temp_p_tropo) ** d2.temp_scaling_factor,
             )
         if gas == "co2":
             if pressure > 100:  # noqa: PLR2004
-                d2[f"{pressure}"] = d2.global_annual + (d2.value - d2.global_annual) * (
-                    (pressure - 100) / (1000 - 100)
-                )
+                d2[f"{pressure}"] = d2.temp_global_annual_mean + (
+                    d2.value_interpolated - d2.temp_global_annual_mean
+                ) * ((pressure - 100) / (1000 - 100))
             elif pressure < 100:  # noqa: PLR2004
-                d2[f"{pressure}"] = d2.global_5yrs + (
-                    d2["100hPa_value"] - d2.global_5yrs
+                d2[f"{pressure}"] = d2.temp_global_5yrs + (
+                    d2["temp_100hPa_value"] - d2.temp_global_5yrs
                 ) * ((pressure - 1) / (100 - 1))
             elif pressure == 100:  # noqa: PLR2004
-                d2[f"{pressure}"] = d2.global_annual + (
-                    d2.global_5yrs - d2.global_annual
+                d2[f"{pressure}"] = d2.temp_global_annual_mean + (
+                    d2.temp_global_5yrs - d2.temp_global_annual_mean
                 ) * (np.sin(d2.lat) ** 2 / 2)
     return d2
 
@@ -152,25 +153,29 @@ def add_required_variables(
         # global-annual concentration 5 yrs ago
         d_global_5yrs = global_annual_mean.copy()
         d_global_5yrs["year"] = d_global_5yrs.year + 5
-        d_interpol["global_5yrs"] = d_interpol["year"].map(
-            d_global_5yrs.set_index("year")["value"]
+        d_global_5yrs.rename(
+            columns={"temp_global_annual_mean": "temp_global_5yrs"}, inplace=True
         )
+        d_interpol = d_interpol.merge(d_global_5yrs, on="year", how="outer")
+
         # compute co2 concentration at 100 hPa
-        d_interpol["100hPa_value"] = d_interpol.global_annual + (
-            d_interpol.global_5yrs - d_interpol.global_annual
+        d_interpol["temp_100hPa_value"] = d_interpol.temp_global_annual_mean + (
+            d_interpol.temp_global_5yrs - d_interpol.temp_global_annual_mean
         ) * (np.sin(d_interpol.lat) ** 2 / 2)
 
     if gas == "ch4":
         # global-annual concentration 5 yrs ago
         d_global_1yrs = global_annual_mean.copy()
         d_global_1yrs["year"] = d_global_1yrs.year + 1
-        d_interpol["global_1yrs"] = d_interpol["year"].map(
-            d_global_1yrs.set_index("year")["value"]
+        d_global_1yrs.rename(
+            columns={"temp_global_annual_mean": "temp_global_1yrs"}, inplace=True
         )
+        d_interpol = d_interpol.merge(d_global_1yrs, on="year", how="outer")
+
         # compute pressure at tropopause
-        d_interpol["p_tropo"] = 250 - 150 * np.cos(d_interpol.lat) ** 2
+        d_interpol["temp_p_tropo"] = 250 - 150 * np.cos(d_interpol.lat) ** 2
         # add gas-dependent scaling factor
-        d_interpol["scaling_factor"] = np.where(
+        d_interpol["temp_scaling_factor"] = np.where(
             abs(d_interpol.lat) >= 45.0,  # noqa: PLR2004
             0.2353 + 0.0225489 * (abs(d_interpol.lat) - 45.0),
             0.2353,
@@ -222,49 +227,63 @@ def postprocess_vertical_dataset(d_vertical: pd.DataFrame, gas: str) -> pd.DataF
 
 
 @flow(name="add_vertical")
-def add_vertical_flow(path_to_csv: str, gas: str) -> None:
+def add_vertical_flow(path_to_csv: str, gas: str, quantile: float) -> None:
     """
     Add vertical distribution to ghg concentration data
 
     Parameters
     ----------
-    path_to_csv : str
+    path_to_csv :
         path to interpolated dataset
 
-    gas : str
+    gas :
         target greenhouse gas variable
+
+    quantile :
+        quantile used during binning
     """
-    d_interpol = pd.read_csv(path_to_csv + f"/{gas}/{gas}_interpolated.csv")
+    d_interpol = xr.open_dataset(
+        path_to_csv + f"/{gas}/{gas}_interpolated_q{quantile}.nc"
+    )
+
+    ds_temp = d_interpol.copy()
+    df_temp = ds_temp.to_dataframe().reset_index()
 
     # compute global-annual surface concentration
-    global_annual_mean = compute_weighted_avg(d_interpol, ["year"])
-    d_interpol["global_annual"] = d_interpol["year"].map(
-        global_annual_mean.set_index("year")["value"]
+    global_annual_mean = compute_weighted_avg(df_temp, ["year"], "value_interpolated")
+    global_annual_mean.rename(
+        columns={"value_interpolated": "temp_global_annual_mean"}, inplace=True
     )
+    df_temp = df_temp.merge(global_annual_mean, on="year", how="outer")
     # compute further required variables for computing
     # vertical dimension
-    add_required_variables(d_interpol, global_annual_mean, gas)
+    df_temp = add_required_variables(df_temp, global_annual_mean, gas)
 
     # compute concentration per pressure level
-    d_pressure = add_value_per_pressure(d_interpol, gas, CONFIG.PRESSURE_LIST)
-
-    # dataset from wide to long format
-    d_vertical = from_wide_to_long(
-        d_pressure, id_vars=list(d_interpol.columns), var_name="pressure"
+    d_pressure = add_value_per_pressure(df_temp, gas, CONFIG.PRESSURE_LIST)
+    d_pressure.drop(
+        columns=[col for col in d_pressure.columns if col.startswith("temp_")],
+        inplace=True,
     )
+    d_vertical = d_pressure.melt(
+        id_vars=ds_temp.to_dataframe().reset_index().columns,
+        var_name="pre",
+        value_name="value_vertical",
+    )
+    d_vertical["pre"] = d_vertical.pre.astype(np.float32) / 1000.0
 
-    # clean dataset
-    d_vertical_clean = postprocess_vertical_dataset(d_vertical, gas=gas)
+    da_vertical = d_vertical.set_index(["lat", "lon", "year", "month", "pre"])[
+        "value_vertical"
+    ].to_xarray()
 
-    # remove NAN from dataframe
-    d_vertical_clean.dropna(subset="value", inplace=True)
-    # drop duplicated columns
-    d_vertical_clean = d_vertical_clean.loc[
-        :, ~d_vertical_clean.columns.duplicated()
-    ].copy()
+    da_binned = da_vertical
 
-    save_data(d_vertical_clean, path_to_csv, gas, "vertical")
+    d_interpol["value_vertical"] = da_binned
+
+    d_interpol.to_netcdf(
+        path_to_csv + f"/{gas}/{gas}_vertical_q{quantile}.nc", mode="w"
+    )
 
 
 if __name__ == "__main__":
-    add_vertical_flow("data/downloads", "ch4")
+    add_vertical_flow("data/downloads", "co2", 0.25)

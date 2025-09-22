@@ -19,6 +19,23 @@ from prefect.tasks import task_input_hash
 from . import CONFIG
 
 
+def ensure_trailing_slash(path: str) -> str:
+    """
+    Ensure trailing slash at the end of a path
+
+    Parameters
+    ----------
+    path
+        the path / directory
+
+    Returns
+    -------
+    :
+        path with trailing slash
+    """
+    return path if path.endswith("/") else path + "/"
+
+
 def is_pytest_running() -> bool:
     """
     Check whether Pytest is running
@@ -41,7 +58,9 @@ def custom_cache_key_fn() -> Optional[Any]:
         return task_input_hash
 
 
-def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
+def compute_weighted_avg(
+    d: pd.DataFrame, grouping_vars: list[str], value_name: str = "value"
+) -> pd.DataFrame:
     """
     Compute the weighted average of ghg concentrations
 
@@ -56,6 +75,9 @@ def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFr
     grouping_vars:
         list of variables to group by or that should be
         maintained
+
+    value_name:
+        name of the value variable
 
     Returns
     -------
@@ -80,7 +102,8 @@ def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFr
     d1["weight"] = delta_lon * delta_lat
 
     # Compute weighted value
-    d1["value_weighted"] = d1.value * d1.weight
+    d1["value_weighted"] = d1[value_name] * d1.weight
+    d1.dropna(subset="value_weighted", inplace=True)
 
     d2 = (
         d1.groupby(grouping_vars)
@@ -88,7 +111,7 @@ def compute_weighted_avg(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFr
         .reset_index()
     )
 
-    d2["value"] = d2.value_weighted / d2.weight
+    d2[value_name] = d2.value_weighted / d2.weight
     d2.drop(columns=["value_weighted", "weight"], inplace=True)
     return d2
 
@@ -103,7 +126,7 @@ class GroundDataSchema(pa.DataFrameModel):
     time: Series[pd.DatetimeTZDtype] = pa.Field(
         dtype_kwargs={"unit": "ns", "tz": "UTC"}
     )
-    year: Series[int] = pa.Field(ge=1968, le=datetime.now().year)
+    year: Series[int] = pa.Field(ge=1960, le=datetime.now().year)
     month: Series[int] = pa.Field(ge=1, le=12)
     latitude: Series[float] = pa.Field(ge=-90, le=90)
     longitude: Series[float] = pa.Field(ge=-180, le=180)
@@ -111,18 +134,18 @@ class GroundDataSchema(pa.DataFrameModel):
     lon_bnd: Series[int] = pa.Field(ge=-180, le=180)
     lat: Series[float] = pa.Field(gt=-90, lt=90)
     lon: Series[float] = pa.Field(gt=-180, lt=180)
-    value: Series[float] = pa.Field(gt=0.0, lt=9999.0)
-    std_dev: Series[float] = pa.Field(ge=0)
-    numb: Series[int] = pa.Field(gt=0)
+    value: Series[float] = pa.Field(gt=0.0, lt=9999.0, nullable=True)
+    std_dev: Series[float] = pa.Field(ge=0, nullable=True)
+    numb: Series[int] = pa.Field(ge=0, nullable=True)
     site_code: Series[str]
     network: Series[str] = pa.Field(isin=["agage", "gage", "noaa"])
     altitude: Series[float] = pa.Field(ge=0.0, nullable=True)
     insitu_vs_flask: Series[str] = pa.Field(isin=["flask", "insitu"], nullable=True)
-    sampling_strategy: Series[str] = pa.Field(
-        isin=["surface-flask", "shipboard-flask", "surface-insitu"], nullable=True
-    )
+    sampling_strategy: Series[str] = pa.Field(nullable=True)
     gas: Series[str] = pa.Field(isin=["ch4", "co2"])
     unit: Series[str] = pa.Field(isin=["ppb", "ppm"])
+    version: Series[str] = pa.Field(nullable=True)
+    instrument: Series[str] = pa.Field(nullable=True)
 
 
 class EODataSchema(pa.DataFrameModel):
@@ -134,7 +157,7 @@ class EODataSchema(pa.DataFrameModel):
     time: Series[pd.DatetimeTZDtype] = pa.Field(
         dtype_kwargs={"unit": "ns", "tz": "UTC"}
     )
-    year: Series[int] = pa.Field(ge=1968, le=datetime.now().year)
+    year: Series[int] = pa.Field(ge=1960, le=datetime.now().year)
     month: Series[int] = pa.Field(ge=1, le=12)
     lat_bnd: Series[int] = pa.Field(ge=-90, le=90)
     lon_bnd: Series[int] = pa.Field(ge=-180, le=180)

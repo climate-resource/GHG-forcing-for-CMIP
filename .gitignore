@@ -1,6 +1,10 @@
 # Large files
 uv.lock
 
+# scratch files
+scratch/*
+!scratch/Untitled3.ipynb
+
 # Notebooks
 *.ipynb
 
@@ -14,6 +18,21 @@ docs/api/*
 # Databases
 *.db
 data/
+tests/test-data
+
+# Re-allow the downloads subdir
+!data/downloads/
+!data/downloads/co2/
+!data/downloads/ch4/
+
+# Ignore everything inside co2/ and ch4/ by default
+data/downloads/co2/*
+data/downloads/ch4/*
+
+!data/downloads/co2/co2_binned_q0.5.nc
+!data/downloads/co2/co2_eo_raw.csv
+!data/downloads/ch4/ch4_binned_q0.5.nc
+!data/downloads/ch4/ch4_eo_raw.csv
 
 # Jupyter cache
 .jupyter_cache
@@ -159,3 +178,6 @@ dmypy.json
 
 # Mac stuff
 *.DS_Store
+
+# internal files
+/report

@@ -6,17 +6,24 @@ authors = [
     { name = "Florence Bockting", email = "florence.bockting@climate-resource.com" },
 ]
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9, <3.14"
+requires-python = ">=3.10, <3.14"
 dependencies = [
+    "arviz[all]>=0.17.1",
+    "bambi>=0.15.0",
     "cdsapi>=0.7.6",
     "cftime>=1.6.4.post1",
+    "dill>=0.4.0",
     "geodatasets>=2024.8.0",
     "geopandas>=1.0.1",
+    "ipywidgets>=8.1.7",
     "mkdocs-material>=9.5.49",
     "pandas>=2.3.0",
     "pandera[mypy]>=0.24.0",
     "pip>=24.3.1",
     "prefect>=3.3.1",
+    "pykrige>=1.7.2",
+    "pymc>=5.22.0",
+    "scikit-learn>=1.7.2",
     "scipy>=1.13.1",
     "seaborn>=0.13.2",
     "xarray>=2024.7.0",
