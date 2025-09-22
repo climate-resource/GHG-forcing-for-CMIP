@@ -3,6 +3,7 @@ uv.lock
 
 # scratch files
 scratch/
+!scratch/Untitled3.ipynb
 
 # Notebooks
 *.ipynb
