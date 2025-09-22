@@ -18,6 +18,10 @@ docs/api/*
 *.db
 data/
 tests/test-data
+!data/downloads/co2/co2_binned_q0.5.nc
+!data/downloads/co2/co2_eo_raw.csv
+!data/downloads/ch4/ch4_binned_q0.5.nc
+!data/downloads/ch4/ch4_eo_raw.csv
 
 # Jupyter cache
 .jupyter_cache
