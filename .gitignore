@@ -1,6 +1,9 @@
 # Large files
 uv.lock
 
+# scratch files
+scratch/
+
 # Notebooks
 *.ipynb
 

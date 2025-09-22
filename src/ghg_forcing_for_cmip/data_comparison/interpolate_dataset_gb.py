@@ -252,4 +252,4 @@ def interpolation_flow(
 
 
 if __name__ == "__main__":
-    interpolation_flow(path_to_csv="data/downloads", gas="co2", quantile=0.5)
+    interpolation_flow(path_to_csv="data/downloads", gas="ch4", quantile=0.5)

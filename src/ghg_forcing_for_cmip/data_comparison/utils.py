@@ -126,7 +126,7 @@ class GroundDataSchema(pa.DataFrameModel):
     time: Series[pd.DatetimeTZDtype] = pa.Field(
         dtype_kwargs={"unit": "ns", "tz": "UTC"}
     )
-    year: Series[int] = pa.Field(ge=1968, le=datetime.now().year)
+    year: Series[int] = pa.Field(ge=1960, le=datetime.now().year)
     month: Series[int] = pa.Field(ge=1, le=12)
     latitude: Series[float] = pa.Field(ge=-90, le=90)
     longitude: Series[float] = pa.Field(ge=-180, le=180)
@@ -157,7 +157,7 @@ class EODataSchema(pa.DataFrameModel):
     time: Series[pd.DatetimeTZDtype] = pa.Field(
         dtype_kwargs={"unit": "ns", "tz": "UTC"}
     )
-    year: Series[int] = pa.Field(ge=1968, le=datetime.now().year)
+    year: Series[int] = pa.Field(ge=1960, le=datetime.now().year)
     month: Series[int] = pa.Field(ge=1, le=12)
     lat_bnd: Series[int] = pa.Field(ge=-90, le=90)
     lon_bnd: Series[int] = pa.Field(ge=-180, le=180)

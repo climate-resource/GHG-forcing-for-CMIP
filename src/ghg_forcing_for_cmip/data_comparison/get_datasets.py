@@ -562,10 +562,10 @@ def combine_netCDFs(
         else:
             continue
 
-    # fill values to NAN
-    df["value"] = df["value"].where(df.value >= 0, np.nan)
+        # fill values to NAN
+        df["value"] = df["value"].where(df.value >= 0, np.nan)
+        df_list.append(df)
 
-    df_list.append(df)
     df_combined = pd.concat(df_list)
 
     return df_combined.drop_duplicates()
@@ -691,3 +691,7 @@ def get_data_flow(
     if remove_zip_files:
         for zip_file in glob.glob(os.path.join(save_to_path, "*.zip")):
             os.remove(zip_file)
+
+
+if __name__ == "__main__":
+    download_cmip_flow(gas="ch4", save_to_path="data/downloads")
