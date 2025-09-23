@@ -25,7 +25,7 @@ jobs:
         # Test against all security and bugfix versions: https://devguide.python.org/versions/
         python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
         # Check both 'library' install and the 'application' (i.e. locked) install
-        install-target: ["ghg-forcing-for-cmip-comparison", "ghg-forcing-for-cmip-comparison[locked]"]
+        install-target: ["ghg-forcing-for-cmip", "ghg-forcing-for-cmip[locked]"]
     runs-on: "${{ matrix.os }}"
     steps:
     - name: Set up Python "${{ matrix.python-version }}"
@@ -44,14 +44,14 @@ jobs:
     - name: Get version non-windows
       if: matrix.os != 'windows-latest'
       run: |
-        INSTALLED_VERSION=`python -c 'import ghg_forcing_for_cmip_comparison; print(f"v{ghg_forcing_for_cmip_comparison.__version__}")'`
+        INSTALLED_VERSION=`python -c 'import ghg_forcing_for_cmip; print(f"v{ghg_forcing_for_cmip.__version__}")'`
         echo $INSTALLED_VERSION
         echo "INSTALLED_VERSION=$INSTALLED_VERSION" >> $GITHUB_ENV
     - name: Get version windows
       if: matrix.os == 'windows-latest'
       run: |
         chcp 65001  # use utf-8
-        python -c 'import ghg_forcing_for_cmip_comparison; f = open("version.txt", "w"); f.write(f"INSTALLED_VERSION=v{ghg_forcing_for_cmip_comparison.__version__}"); f.close()'
+        python -c 'import ghg_forcing_for_cmip; f = open("version.txt", "w"); f.write(f"INSTALLED_VERSION=v{ghg_forcing_for_cmip.__version__}"); f.close()'
         echo "Showing version.txt"
         type version.txt
         type version.txt >> $env:GITHUB_ENV

@@ -1,10 +1,10 @@
-site_name: GHG-forcing-for-CMIP-comparison
-site_description: Intercomparison of CMIP7 data with earth observations as part of GHG forcing for CMIP project.
-site_url: https://ghg-forcing-for-cmip-comparison.readthedocs.io
+site_name: GHG-forcing-for-CMIP
+site_description: Produce CMIP7 GHG forcing data incl. earth observations.
+site_url: https://ghg-forcing-for-cmip.readthedocs.io
 edit_uri: blob/master/docs/
 
-repo_name: climate-resource/GHG-forcing-for-CMIP-comparison
-repo_url: https://github.com/climate-resource/GHG-forcing-for-CMIP-comparison
+repo_name: climate-resource/GHG-forcing-for-CMIP
+repo_url: https://github.com/climate-resource/GHG-forcing-for-CMIP
 
 theme:
   name: "material"
@@ -39,6 +39,27 @@ plugins:
   # https://oprypin.github.io/mkdocs-literate-nav/
   - literate-nav:
       nav_file: NAVIGATION.md
+  # Notebook support.
+  # Working out how to make this play with nb-exec would be nice,
+  # then it wouldn't run every time.
+  # See also: https://github.com/danielfrg/mkdocs-jupyter/issues/161
+  # We could also get the nb-exec-table mentioned here:
+  # https://myst-nb.readthedocs.io/en/v0.12.2/use/execute.html
+  # One for another day.
+  - mkdocs-jupyter:
+      # Use filenames for titles
+      ignore_h1_titles: True
+      include: ["*.py"]
+      execute: true
+      # Toggle off for faster builds
+      # execute: false
+      allow_errors: false
+      # theme: dark
+      include_source: True
+      ignore: ["*.ipynb", "*.md", "docs/gen_doc_stubs.py"]
+      remove_tag_config:
+        remove_input_tags:
+          - remove_input
   # Docstring generation
   - mkdocstrings:
       # See https://analog-garage.github.io/mkdocstrings-python-xref/1.6.0/
@@ -47,7 +68,7 @@ plugins:
       handlers:
         python_xref:
           paths: [src]
-          import:
+          inventories:
             # Cross-ref helpers (lots included here, remove what you don't want)
             - https://www.attrs.org/en/stable/objects.inv
             - https://unidata.github.io/cftime/objects.inv
@@ -70,8 +91,19 @@ plugins:
             - https://validators.readthedocs.io/en/stable/objects.inv
             - http://xarray.pydata.org/en/stable/objects.inv
           options:
+            # It turns out that xref does this check without considering config.
+            # As a result, every docstring is parsed as a google-style docstring.
+            # As docstrings are only parsed once, this results in rendering failures.
+            # Hence, turn off the checks here.
+            # mkdocs_autorefs catches anything which doesn't end up being a correct reference.
+            # The fix might be as simple as changing
+            # `self.collect(ref, PythonOptions())`
+            # to `self.collect(ref, self.get_options({}))`
+            # in the python-xref source, but it's hard to predict the side effects
+            # so we haven't bothered with that route.
+            check_crossrefs: false
             docstring_style: numpy
-            relative_crossrefs: yes
+            relative_crossrefs: true
             separate_signature: true
             show_root_heading: false
             show_signature_annotations: true

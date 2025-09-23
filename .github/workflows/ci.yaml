@@ -65,7 +65,7 @@ jobs:
         with:
           # Exclude local links
           # and the template link in pyproject.toml
-          args: "--exclude 'file://' --exclude '^https://github\\.com/climate-resource/GHG-forcing-for-CMIP-comparison/pull/\\{issue\\}$' ."
+          args: "--exclude 'file://' --exclude '^https://github\\.com/climate-resource/GHG-forcing-for-CMIP/pull/\\{issue\\}$' ."
 
   tests:
     strategy:
@@ -97,7 +97,7 @@ jobs:
           uv-dependency-install-flags: "--all-extras --group tests"
       - name: Run tests
         run: |
-          uv run pytest -r a -v src tests --doctest-modules --cov=src --cov-report=term-missing --cov-report=xml
+          uv run pytest -r a -v src tests --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
           uv run coverage report
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v4.2.0
@@ -137,7 +137,7 @@ jobs:
         id: setup-uv
         uses: astral-sh/setup-uv@v4
         with:
-          version: "0.5.21"
+          version: "0.8.8"
           python-version: ${{ matrix.python-version }}
       - name: Create venv
         run: |
@@ -181,7 +181,8 @@ jobs:
       - name: Install
         run: |
           pip install --upgrade pip wheel
-          pip install .
+          pip install --no-deps .
+          pip install -r requirements-locked.txt
           pip install -r requirements-only-tests-min-locked.txt
       - name: Run tests
         run: |
@@ -223,24 +224,19 @@ jobs:
         id: setup-uv
         uses: astral-sh/setup-uv@v4
         with:
-          version: "0.5.21"
+          version: "0.8.8"
           python-version: ${{ matrix.python-version }}
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4.1
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Generate pdm.lock
-        # Required for building the locked version of the package
-        # with pdm-build-locked (see pyproject.toml)
-        run: |
-          pdm lock --group :all --strategy inherit_metadata
       - name: Build package
         run: |
+          uv run python scripts/add-locked-targets-to-pyproject-toml.py
+          cat pyproject.toml
           uv build
+          # Just in case, undo the changes to `pyproject.toml`
+          git restore --staged . && git restore .
       - name: Check build
         run: |
-          tar -tvf dist/ghg_forcing_for_cmip_comparison-*.tar.gz --wildcards '*ghg_forcing_for_cmip_comparison/py.typed'
-          tar -tvf dist/ghg_forcing_for_cmip_comparison-*.tar.gz --wildcards 'ghg_forcing_for_cmip_comparison-*/LICENCE'
+          tar -tvf dist/ghg_forcing_for_cmip-*.tar.gz --wildcards '*ghg_forcing_for_cmip/py.typed'
+          tar -tvf dist/ghg_forcing_for_cmip-*.tar.gz --wildcards 'ghg_forcing_for_cmip-*/LICENCE'
 
   check-dependency-licences:
     strategy:

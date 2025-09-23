@@ -22,7 +22,7 @@ import mkdocs_gen_files
 from attrs import define
 
 ROOT_DIR = Path("api")
-PACKAGE_NAME_ROOT = "ghg_forcing_for_cmip_comparison"
+PACKAGE_NAME_ROOT = "ghg_forcing_for_cmip"
 nav = mkdocs_gen_files.Nav()
 
 

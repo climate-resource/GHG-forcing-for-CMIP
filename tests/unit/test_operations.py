@@ -5,7 +5,7 @@ This file is just there to help demonstrate the initial setup.
 You will probably delete it early in the project.
 """
 
-from ghg_forcing_for_cmip_comparison.operations import add_two
+from ghg_forcing_for_cmip.operations import add_two
 
 
 def test_add_two():

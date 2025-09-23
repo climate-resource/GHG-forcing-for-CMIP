@@ -33,14 +33,14 @@ def main() -> None:
             continue
 
         if not grab_notes:
-            if line.startswith("## GHG-forcing-for-CMIP-comparison"):
+            if line.startswith("## GHG-forcing-for-CMIP"):
                 grab_notes = True
 
             continue
 
         # We are grabbing notes now
         # If we've reached the next version's notes, break
-        if line.startswith("## GHG-forcing-for-CMIP-comparison"):
+        if line.startswith("## GHG-forcing-for-CMIP"):
             break
 
         latest_version_notes.append(line)
