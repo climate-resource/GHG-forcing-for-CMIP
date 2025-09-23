@@ -15,13 +15,8 @@ import pytest
 from ghg_forcing_for_cmip.download_data import download_zip_from_noaa, unzip_download
 
 
-@pytest.mark.parametrize(
-    "gas,sampling_strategy",
-    [
-        ("co2", "in-situ"),
-        ("ch4", "flask"),
-    ],
-)
+@pytest.mark.parametrize("gas", ["co2", "ch4"])
+@pytest.mark.parametrize("sampling_strategy", ["flask", "insitu"])
 def test_download_zip_from_noaa_real(gas, sampling_strategy, tmp_path):
     # Use temporary directory so no pollution
     save_dir = tmp_path
@@ -30,8 +25,7 @@ def test_download_zip_from_noaa_real(gas, sampling_strategy, tmp_path):
     download_zip_from_noaa(gas, sampling_strategy, save_to_path=str(save_dir))
 
     # Expected file name
-    strat_name = "insitu" if sampling_strategy == "in-situ" else "flask"
-    expected_file = save_dir / f"noaa_{gas}_surface_{strat_name}.zip"
+    expected_file = save_dir / f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
     # Assertions
     np.testing.assert_(

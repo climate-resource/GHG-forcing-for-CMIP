@@ -22,6 +22,7 @@ bleach==6.2.0
 cachetools==5.5.2
 certifi==2024.12.14
 cffi==1.17.1
+cftime==1.6.4.post1
 charset-normalizer==3.4.1
 click==8.1.8
 cloudpickle==3.1.1
@@ -52,6 +53,8 @@ greenlet==3.2.4
 griffe==1.11.0
 h11==0.14.0
 h2==4.3.0
+h5netcdf==1.6.4
+h5py==3.14.0
 hpack==4.1.0
 httpcore==1.0.7
 httpx==0.28.1
@@ -113,6 +116,7 @@ nbclient==0.10.2
 nbconvert==7.16.4
 nbformat==5.10.4
 nest-asyncio==1.6.0
+netcdf4==1.7.2
 notebook-shim==0.2.4
 numpy==2.0.2 ; python_full_version < '3.10'
 numpy==2.2.6 ; python_full_version == '3.10.*'
@@ -202,4 +206,7 @@ webencodings==0.5.1
 websocket-client==1.8.0
 websockets==15.0.1
 whenever==0.7.3 ; python_full_version >= '3.13'
+xarray==2024.7.0 ; python_full_version < '3.10'
+xarray==2025.6.1 ; python_full_version == '3.10.*'
+xarray==2025.9.0 ; python_full_version >= '3.11'
 zipp==3.23.0
