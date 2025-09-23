@@ -420,3 +420,6 @@ unauthorized_licenses = [
     "gpl v1",
     "gplv1",
 ]
+
+[tool.liccheck.authorized_packages]
+ujson = "5.11.0"
