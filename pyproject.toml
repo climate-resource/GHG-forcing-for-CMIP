@@ -8,6 +8,7 @@ authors = [
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 dependencies = [
+    "pandas>=2.3.2",
     "prefect>=3.3.1",
 ]
 readme = "README.md"
