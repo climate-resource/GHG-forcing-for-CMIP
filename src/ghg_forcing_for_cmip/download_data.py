@@ -6,6 +6,7 @@ concentration data from e.g. (A)GAGE, NOAA
 """
 
 import os
+import zipfile
 
 import requests
 from prefect import task
@@ -14,8 +15,8 @@ from ghg_forcing_for_cmip import utils
 
 
 @task(
-    name="download_zip_from_noaa_archive",
-    description="Download zip from NOAA archive link",
+    name="download_noaa_zip",
+    description="Download zip-folder from NOAA",
     refresh_cache=True,
     persist_result=False,
 )
@@ -57,3 +58,38 @@ def download_zip_from_noaa(
         f.write(response.content)
 
     print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path}")
+
+
+@task(
+    name="unzip_download",
+    description="Unzip downloaded data",
+    refresh_cache=True,
+    persist_result=False,
+)
+def unzip_download(zip_path: str, extract_dir: str) -> None:
+    """
+    Unzips a given ZIP file into the target directory (default: data/downloads/ch4).
+
+    Parameters
+    ----------
+    zip_path :
+        Path to the zip file (e.g., "data/downloads/noaa_ch4_surface_flask.zip")
+
+    extract_dir :
+        Path where the files should be extracted.
+    """
+    # make sure target directory exists
+    os.makedirs(extract_dir, exist_ok=True)
+
+    # unzip
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_dir)
+
+    os.remove(zip_path)
+
+    print(f"Extracted {zip_path} to {extract_dir}")
+
+
+if __name__ == "__main__":
+    # download_zip_from_noaa("ch4", "flask")
+    unzip_download("data/downloads/noaa_ch4_surface_flask.zip", "data/downloads/ch4")
