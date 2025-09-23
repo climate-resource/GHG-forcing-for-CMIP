@@ -1,29 +1,24 @@
 <!--- --8<-- [start:description] -->
-# ghg-forcing-for-cmip
+# GHG-forcing-for-CMIP
 
-Intercomparison of CMIP7 data with earth observations as part of GHG forcing for CMIP project.
+Produce CMIP7 GHG forcing data incl. earth observations.
 
 **Key info :**
 [![Docs](https://readthedocs.org/projects/ghg-forcing-for-cmip/badge/?version=latest)](https://ghg-forcing-for-cmip.readthedocs.io)
-[![Main branch: supported Python versions](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fclimate-resource%2Fghg-forcing-for-cmip%2Fmain%2Fpyproject.toml)](https://github.com/climate-resource/ghg-forcing-for-cmip/blob/main/pyproject.toml)
-[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-<!--
-[![Licence](https://img.shields.io/pypi/l/ghg-forcing-for-cmip?label=licence)](https://github.com/climate-resource/ghg-forcing-for-cmip/blob/main/LICENCE)
--->
+[![Main branch: supported Python versions](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fclimate-resource%2FGHG-forcing-for-CMIP%2Fmain%2Fpyproject.toml)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/pyproject.toml)
+[![Licence](https://img.shields.io/pypi/l/ghg-forcing-for-cmip?label=licence)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/LICENCE)
+
 **PyPI :**
-TODO
-<!--
 [![PyPI](https://img.shields.io/pypi/v/ghg-forcing-for-cmip.svg)](https://pypi.org/project/ghg-forcing-for-cmip/)
-[![PyPI install](https://github.com/climate-resource/ghg-forcing-for-cmip/actions/workflows/install-pypi.yaml/badge.svg?branch=main)](https://github.com/climate-resource/ghg-forcing-for-cmip/actions/workflows/install-pypi.yaml)
--->
+[![PyPI install](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/install-pypi.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/install-pypi.yaml)
 
 **Tests :**
-[![CI](https://github.com/climate-resource/ghg-forcing-for-cmip/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/climate-resource/ghg-forcing-for-cmip/actions/workflows/ci.yaml)
-[![Coverage](https://codecov.io/gh/climate-resource/ghg-forcing-for-cmip/branch/main/graph/badge.svg)](https://codecov.io/gh/climate-resource/ghg-forcing-for-cmip)
+[![CI](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/ci.yaml)
+[![Coverage](https://codecov.io/gh/climate-resource/GHG-forcing-for-CMIP/branch/main/graph/badge.svg)](https://codecov.io/gh/climate-resource/GHG-forcing-for-CMIP)
 
 **Other info :**
-[![Last Commit](https://img.shields.io/github/last-commit/climate-resource/ghg-forcing-for-cmip.svg)](https://github.com/climate-resource/ghg-forcing-for-cmip/commits/main)
-[![Contributors](https://img.shields.io/github/contributors/climate-resource/ghg-forcing-for-cmip.svg)](https://github.com/climate-resource/ghg-forcing-for-cmip/graphs/contributors)
+[![Last Commit](https://img.shields.io/github/last-commit/climate-resource/GHG-forcing-for-CMIP.svg)](https://github.com/climate-resource/GHG-forcing-for-CMIP/commits/main)
+[![Contributors](https://img.shields.io/github/contributors/climate-resource/GHG-forcing-for-CMIP.svg)](https://github.com/climate-resource/GHG-forcing-for-CMIP/graphs/contributors)
 ## Status
 
 <!---
@@ -57,13 +52,13 @@ don't render correctly on GitHub's viewer.
 <!--- --8<-- [start:installation] -->
 ### As an application
 
-If you want to use ghg-forcing-for-cmip as an application,
+If you want to use GHG-forcing-for-CMIP as an application,
 then we recommend using the 'locked' version of the package.
 This version pins the version of all dependencies too,
 which reduces the chance of installation issues
 because of breaking updates to dependencies.
 
-The locked version of ghg-forcing-for-cmip can be installed with
+The locked version of GHG-forcing-for-CMIP can be installed with
 
 === "pip"
     ```sh
@@ -72,7 +67,7 @@ The locked version of ghg-forcing-for-cmip can be installed with
 
 ### As a library
 
-If you want to use ghg-forcing-for-cmip as a library,
+If you want to use GHG-forcing-for-CMIP as a library,
 for example you want to use it
 as a dependency in another package/application that you're building,
 then we recommend installing the package with the commands below.
@@ -80,14 +75,14 @@ This method provides the loosest pins possible of all dependencies.
 This gives you, the package/application developer,
 as much freedom as possible to set the versions of different packages.
 However, the tradeoff with this freedom is that you may install
-incompatible versions of ghg-forcing-for-cmip's dependencies
+incompatible versions of GHG-forcing-for-CMIP's dependencies
 (we cannot test all combinations of dependencies,
 particularly ones which haven't been released yet!).
 Hence, you may run into installation issues.
-If you believe these are because of a problem in ghg-forcing-for-cmip,
-please [raise an issue](https://github.com/climate-resource/ghg-forcing-for-cmip/issues).
+If you believe these are because of a problem in GHG-forcing-for-CMIP,
+please [raise an issue](https://github.com/climate-resource/GHG-forcing-for-CMIP/issues).
 
-The (non-locked) version of ghg-forcing-for-cmip can be installed with
+The (non-locked) version of GHG-forcing-for-CMIP can be installed with
 
 === "pip"
     ```sh
@@ -121,7 +116,7 @@ In order to create your environment, run `make virtual-environment`.
 
 If there are any issues, the messages from the `Makefile` should guide you through.
 If not, please raise an issue in the
-[issue tracker](https://github.com/climate-resource/ghg-forcing-for-cmip/issues).
+[issue tracker](https://github.com/climate-resource/GHG-forcing-for-CMIP/issues).
 
 For the rest of our developer docs, please see [development][development].
 

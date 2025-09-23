@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v0.12.3
+_commit: v0.14.4
 _src_path: gl:openscm/copier-core-python-repository
 conda_release: false
 email: florence.bockting@climate-resource.com
@@ -7,12 +7,11 @@ include_cli: false
 name: Florence Bockting
 notebook_based_docs: true
 package_manager: uv
-pandas_doctests: false
+pandas_doctests: true
 plot_dependencies: true
-project_description_short: Intercomparison of CMIP7 data with earth observations as
-    part of GHG forcing for CMIP project.
-project_name_human: ghg-forcing-for-cmip
+project_description_short: Produce CMIP7 GHG forcing data incl. earth observations.
+project_name_human: GHG-forcing-for-CMIP
 project_name_pip: ghg-forcing-for-cmip
 project_name_python: ghg_forcing_for_cmip
-project_url: https://github.com/climate-resource/ghg-forcing-for-cmip
+project_url: https://github.com/climate-resource/GHG-forcing-for-CMIP
 track_lock_file: true
