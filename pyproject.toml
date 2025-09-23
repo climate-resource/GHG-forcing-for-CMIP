@@ -5,7 +5,7 @@ description = "Produce CMIP7 GHG forcing data incl. earth observations."
 authors = [
     { name = "Florence Bockting", email = "florence.bockting@climate-resource.com" },
 ]
-license = { text = "placeholder" }
+license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 dependencies = [
     "prefect>=3.3.1",
