@@ -11,6 +11,7 @@ dependencies = [
     "h5netcdf>=1.6.4",
     "netcdf4>=1.7.2",
     "pandas>=2.3.2",
+    "pandera>=0.26.1",
     "prefect>=3.3.1",
     "xarray>=2024.7.0",
 ]
