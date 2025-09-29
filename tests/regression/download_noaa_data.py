@@ -13,9 +13,6 @@ import pytest
 from ghg_forcing_for_cmip.download_data import download_zip_from_noaa, unzip_download
 
 
-# @pytest.mark.skip(
-#        reason="downloads noaa data from source; should not be run every push"
-#        )
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
 @pytest.mark.parametrize("sampling_strategy", ["flask", "insitu"])
 def test_download_extract_noaa(gas, sampling_strategy):
