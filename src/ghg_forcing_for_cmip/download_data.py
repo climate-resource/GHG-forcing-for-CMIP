@@ -190,7 +190,7 @@ def compute_bounds(
     values_idx: np.ndarray[int],
     bounds: np.ndarray[Union[int, float]],
     boundary_val: Union[int, float],
-) -> tuple[np.ndarrayUnion[int, float], np.ndarrayUnion[int, float]]:
+) -> tuple[np.ndarray[Union[int, float]], np.ndarray[Union[int, float]]]:
     """
     Compute lower and upper boundary of grid cell
 
