@@ -185,6 +185,81 @@ def merge_netCDFs(
     return df_combined
 
 
+def compute_bounds_vectorized(
+    values_idx: np.ndarray,
+    bounds: np.ndarray,
+    neg_side: np.ndarray,
+    boundary_val: int | float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute lower and upper boundary of grid cell
+
+    helper function for add_lat_lon_bnds()
+
+    Parameters
+    ----------
+    values_idx :
+        np.array of indices into bounds
+
+    bounds     :
+        np.array of bin edges
+
+    neg_side   :
+        boolean array same shape as values_idx
+
+    boundary_val :
+        boundary values for min/max
+
+    Returns
+    -------
+    :
+        lower boundary, upper boundary
+    """
+    # lower bound
+    if values_idx == np.where(bounds == -boundary_val)[0]:
+        lower = bounds[values_idx + 1]
+    else:
+        lower = np.where(
+            bounds[values_idx] < 0, bounds[values_idx], bounds[values_idx - 1]
+        )
+
+    # upper bound
+    if np.abs(bounds[values_idx]) == boundary_val:
+        upper = bounds[values_idx]
+    else:
+        np.where(bounds[values_idx] < 0, bounds[values_idx - 1], bounds[values_idx])
+
+    return lower, upper
+
+
+def get_indices(values: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+    """
+    Compute indices based on CONFIG.LAT/LON_BINS
+
+    helper function for add_lat_lon_bnds()
+
+    Parameters
+    ----------
+    values :
+        latitude/longitude series from data frame
+
+    bounds :
+        latitude/longitude bins as set in CONFIG file
+
+    Returns
+    -------
+    :
+        array with indices
+    """
+    indices = []
+    for val in values:
+        if val in bounds:
+            indices.append(np.where(bounds == val)[0][0])
+        else:
+            indices.append(np.searchsorted(bounds, val, side="right"))
+    return np.array(indices)
+
+
 @task(
     name="add_lat_lon_bnds",
     description="Add latitude and longitude bands",
@@ -204,34 +279,22 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame) -> pd.DataFrame:
     :
         combined dataframe with latitude and longitude boundaries
     """
-    get_lat_idx = np.searchsorted(
-        CONFIG.LAT_BIN_BOUNDS, d_combined.latitude, side="right"
-    )
-    get_lon_idx = np.searchsorted(
-        CONFIG.LON_BIN_BOUNDS, d_combined.longitude, side="right"
-    )
+    get_lat_idx = get_indices(d_combined.latitude, CONFIG.LAT_BIN_BOUNDS)
+    get_lon_idx = get_indices(d_combined.longitude, CONFIG.LON_BIN_BOUNDS)
 
     lat_neg = d_combined.latitude < 0
     lon_neg = d_combined.longitude < 0
 
-    d_combined["lat_bnd/lower"] = CONFIG.LAT_BIN_BOUNDS[
-        np.where(lat_neg, get_lat_idx, get_lat_idx - 1)
-    ]
-    d_combined["lat_bnd/upper"] = CONFIG.LAT_BIN_BOUNDS[
-        np.where(lat_neg, get_lat_idx - 1, get_lat_idx)
-    ]
+    # compute lon bounds
+    d_combined["lon_bnd/lower"], d_combined["lon_bnd/upper"] = (
+        compute_bounds_vectorized(get_lon_idx, CONFIG.LON_BIN_BOUNDS, lon_neg, 180)
+    )
 
-    d_combined["lon_bnd/lower"] = CONFIG.LON_BIN_BOUNDS[
-        np.where(lon_neg, get_lon_idx, get_lon_idx - 1)
-    ]
-    d_combined["lon_bnd/upper"] = CONFIG.LON_BIN_BOUNDS[
-        np.where(lon_neg, get_lon_idx - 1, get_lon_idx)
-    ]
+    # compute lat bounds
+    d_combined["lat_bnd/lower"], d_combined["lat_bnd/upper"] = (
+        compute_bounds_vectorized(get_lat_idx, CONFIG.LAT_BIN_BOUNDS, lat_neg, 90)
+    )
 
-    # this additional processing is done because of shipboard-flask measures
-    # from noaa-POC which has exactly lon=-180.0 (max/min boundary) as coordinate
-    d_combined.loc[d_combined.longitude == -180, "lon_bnd/upper"] = -180.0  # noqa: PLR2004
-    d_combined.loc[d_combined.longitude == -180, "lon_bnd/lower"] = -175.0  # noqa: PLR2004
     d_combined["lat"] = (d_combined["lat_bnd/lower"] + d_combined["lat_bnd/upper"]) / 2
     d_combined["lon"] = (d_combined["lon_bnd/lower"] + d_combined["lon_bnd/upper"]) / 2
 

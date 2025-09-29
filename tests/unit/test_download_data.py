@@ -12,7 +12,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ghg_forcing_for_cmip.download_data import clean_and_save, stats_from_events
+from ghg_forcing_for_cmip.download_data import (
+    add_lat_lon_bnds,
+    clean_and_save,
+    stats_from_events,
+)
 
 
 def test_stats_from_events():
@@ -54,3 +58,49 @@ def test_clean_and_save(gas):
 
     # remove test-folder after testing
     shutil.rmtree(f"tests/test-data/{gas}")
+
+
+@pytest.mark.parametrize(
+    "lat, expected_lower_lat, expected_upper_lat, "
+    "lon, expected_lower_lon, expected_upper_lon",
+    [
+        (2.5, 0, 5, -6.5, -5, -10.0),
+        (12.4, 10, 15, -180, -175, -180),
+        (-90, -85, -90, 45.5, 45, 50),
+        (-27.3, -25, -30, 179, 175, 180),
+        (90, 85, 90, 2.5, 0, 5),
+        (0, -5, 0, 0, -5, 0),
+    ],
+)
+def test_add_lat_lon_bnds(  # noqa: PLR0913
+    lat,
+    expected_lower_lat,
+    expected_upper_lat,
+    lon,
+    expected_lower_lon,
+    expected_upper_lon,
+):
+    df_test = pd.DataFrame()
+    df_test["latitude"] = [lat]
+    df_test["longitude"] = [lon]
+
+    df_lat_lon = add_lat_lon_bnds.with_options(cache_expiration=0.0)(df_test)
+
+    for band, band_val in zip(["lower", "upper"], [0, 1]):
+        observed_lat_bnd = df_lat_lon[df_lat_lon.bnd == band_val]["lat_bnd"].values[0]
+        assert observed_lat_bnd == np.where(
+            band == "lower", expected_lower_lat, expected_upper_lat
+        ), (
+            f"For lat={lat} observed {band} bound ({observed_lat_bnd})"
+            + f" is not equal to expected {band} bound "
+            + f"({np.where(band == 'lower', expected_lower_lat, expected_upper_lat)})"
+        )
+
+        observed_lon_bnd = df_lat_lon[df_lat_lon.bnd == band_val]["lon_bnd"].values[0]
+        assert observed_lon_bnd == np.where(
+            band == "lower", expected_lower_lon, expected_upper_lon
+        ), (
+            f"For lon={lon} observed {band} bound ({observed_lon_bnd})"
+            + f" is not equal to expected {band} bound"
+            + f"({np.where(band == 'lower', expected_lower_lon, expected_upper_lon)})"
+        )
