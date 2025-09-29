@@ -15,6 +15,7 @@ import pytest
 from ghg_forcing_for_cmip.download_data import (
     add_lat_lon_bnds,
     clean_and_save,
+    get_indices,
     stats_from_events,
 )
 
@@ -104,3 +105,10 @@ def test_add_lat_lon_bnds(  # noqa: PLR0913
             + f" is not equal to expected {band} bound"
             + f"({np.where(band == 'lower', expected_lower_lon, expected_upper_lon)})"
         )
+
+
+def test_get_indices():
+    input_and_expected = [0, 4.0, 5.0, 6.0, 9, 17]
+    observed = get_indices(input_and_expected, np.arange(18))
+
+    np.testing.assert_array_equal(observed, input_and_expected)
