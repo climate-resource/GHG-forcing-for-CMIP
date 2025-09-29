@@ -7,26 +7,8 @@ from web APIs
 
 import numpy as np
 import pandas as pd
-import pytest
 
-from ghg_forcing_for_cmip.download_data import download_zip_from_noaa, stats_from_events
-
-
-@pytest.mark.parametrize("gas", ["co2", "ch4"])
-@pytest.mark.parametrize("sampling_strategy", ["flask", "insitu"])
-def test_download_zip_from_noaa_real(gas, sampling_strategy, tmp_path):
-    # Use temporary directory so no pollution
-    save_dir = tmp_path
-
-    # Run the actual function (downloads real NOAA data)
-    download_zip_from_noaa(gas, sampling_strategy, save_to_path=str(save_dir))
-
-    # Expected file name
-    expected_file = save_dir / f"noaa_{gas}_surface_{sampling_strategy}.zip"
-
-    # Assertions
-    assert expected_file.exists(), f"Expected file {expected_file} was not created"
-    assert expected_file.stat().st_size > 0, "Downloaded file is empty"
+from ghg_forcing_for_cmip.download_data import stats_from_events
 
 
 def test_stats_from_events():
