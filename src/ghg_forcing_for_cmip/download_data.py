@@ -279,17 +279,14 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame) -> pd.DataFrame:
     get_lat_idx = get_indices(d_combined.latitude, CONFIG.LAT_BIN_BOUNDS)
     get_lon_idx = get_indices(d_combined.longitude, CONFIG.LON_BIN_BOUNDS)
 
-    lat_neg = d_combined.latitude < 0
-    lon_neg = d_combined.longitude < 0
-
     # compute lon bounds
     d_combined["lon_bnd/lower"], d_combined["lon_bnd/upper"] = (
-        compute_bounds_vectorized(get_lon_idx, CONFIG.LON_BIN_BOUNDS, lon_neg, 180)
+        compute_bounds_vectorized(get_lon_idx, CONFIG.LON_BIN_BOUNDS, 180)
     )
 
     # compute lat bounds
     d_combined["lat_bnd/lower"], d_combined["lat_bnd/upper"] = (
-        compute_bounds_vectorized(get_lat_idx, CONFIG.LAT_BIN_BOUNDS, lat_neg, 90)
+        compute_bounds_vectorized(get_lat_idx, CONFIG.LAT_BIN_BOUNDS, 90)
     )
 
     d_combined["lat"] = (d_combined["lat_bnd/lower"] + d_combined["lat_bnd/upper"]) / 2
