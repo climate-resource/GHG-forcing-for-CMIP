@@ -186,7 +186,7 @@ def merge_netCDFs(
     return df_combined
 
 
-def compute_bounds_vectorized(
+def compute_bounds(
     values_idx: np.ndarray,
     bounds: np.ndarray,
     boundary_val: Union[int, float],
@@ -282,13 +282,13 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame) -> pd.DataFrame:
     get_lon_idx = get_indices(d_combined.longitude, CONFIG.LON_BIN_BOUNDS)
 
     # compute lon bounds
-    d_combined["lon_bnd/lower"], d_combined["lon_bnd/upper"] = (
-        compute_bounds_vectorized(get_lon_idx, CONFIG.LON_BIN_BOUNDS, 180)
+    d_combined["lon_bnd/lower"], d_combined["lon_bnd/upper"] = compute_bounds(
+        get_lon_idx, CONFIG.LON_BIN_BOUNDS, 180
     )
 
     # compute lat bounds
-    d_combined["lat_bnd/lower"], d_combined["lat_bnd/upper"] = (
-        compute_bounds_vectorized(get_lat_idx, CONFIG.LAT_BIN_BOUNDS, 90)
+    d_combined["lat_bnd/lower"], d_combined["lat_bnd/upper"] = compute_bounds(
+        get_lat_idx, CONFIG.LAT_BIN_BOUNDS, 90
     )
 
     d_combined["lat"] = (d_combined["lat_bnd/lower"] + d_combined["lat_bnd/upper"]) / 2
