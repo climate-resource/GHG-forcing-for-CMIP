@@ -5,14 +5,11 @@ Unit tests for downloading GHG concentrations
 from web APIs
 """
 
-import os
-import tempfile
-import zipfile
-
 import numpy as np
+import pandas as pd
 import pytest
 
-from ghg_forcing_for_cmip.download_data import download_zip_from_noaa, unzip_download
+from ghg_forcing_for_cmip.download_data import download_zip_from_noaa, stats_from_events
 
 
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
@@ -34,38 +31,18 @@ def test_download_zip_from_noaa_real(gas, sampling_strategy, tmp_path):
     np.testing.assert_(expected_file.stat().st_size > 0, "Downloaded file is empty")
 
 
-# TODO: check problem with this test
-@pytest.mark.skip(reason="Fails currently when running CI in GitHub")
-def test_unzip_download():
-    # Create a temporary directory for the test
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Paths
-        zip_path = os.path.join(temp_dir, "test.zip")
-        extract_dir = os.path.join(temp_dir, "extracted")
+def test_stats_from_events():
+    rng = np.random.default_rng(seed=123)
+    expected_mean, expected_std, expected_count = (1.0, 0.8, 100_000)
 
-        # Create a sample file to zip
-        file_name = "hello.txt"
-        file_content = b"Hello, World!"
-        sample_file_path = os.path.join(temp_dir, file_name)
-        with open(sample_file_path, "wb") as f:
-            f.write(file_content)
+    test_df = pd.DataFrame()
+    test_df["value"] = rng.normal(expected_mean, expected_std, expected_count)
+    test_df["time"] = pd.to_datetime("2018-01-01")
+    for col in ["latitude", "longitude", "altitude"]:
+        test_df[col] = 0
 
-        # Create a zip archive containing the sample file
-        with zipfile.ZipFile(zip_path, "w") as zipf:
-            zipf.write(sample_file_path, arcname=file_name)
+    observed_df = stats_from_events(test_df)
 
-        # Run the function under test
-        unzip_download(zip_path, extract_dir)
-
-        # Check that the file was extracted correctly
-        extracted_file_path = os.path.join(extract_dir, file_name)
-
-        np.testing.assert_(
-            os.path.exists(extracted_file_path), "File was not extracted"
-        )
-
-        # Check that the original zip file was removed
-        np.testing.assert_(not os.path.exists(zip_path), "Zip file was not deleted")
-
-
-# TODO: add further tests for noaa pipeline
+    np.testing.assert_almost_equal(observed_df.value.mean(), expected_mean, decimal=3)
+    np.testing.assert_almost_equal(observed_df.std_dev.mean(), expected_std, decimal=3)
+    np.testing.assert_equal(np.unique(observed_df.numb), expected_count)
