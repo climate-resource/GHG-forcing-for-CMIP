@@ -8,6 +8,7 @@ concentration data from e.g. (A)GAGE, NOAA
 import os
 import shutil
 import zipfile
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -189,7 +190,7 @@ def compute_bounds_vectorized(
     values_idx: np.ndarray,
     bounds: np.ndarray,
     neg_side: np.ndarray,
-    boundary_val: int | float,
+    boundary_val: Union(int, float),
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute lower and upper boundary of grid cell
