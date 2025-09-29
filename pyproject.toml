@@ -73,6 +73,8 @@ dev = [
     "tomli-w==1.2.0",
     # Implied by the key dependencies above
     # -------------------------------------
+    "pandas-stubs>=2.2.2.240807",
+    "types-requests>=2.32.4.20250913",
     "cfgv==3.4.0",
     "click==8.1.8",
     "colorama==0.4.6 ; sys_platform == 'win32'",

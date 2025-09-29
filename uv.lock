@@ -1344,6 +1344,8 @@ all-dev = [
     { name = "overrides" },
     { name = "packaging" },
     { name = "paginate" },
+    { name = "pandas-stubs", version = "2.2.2.240807", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pandas-stubs", version = "2.3.2.250926", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pandocfilters" },
     { name = "parso" },
     { name = "pathspec" },
@@ -1388,6 +1390,7 @@ all-dev = [
     { name = "towncrier" },
     { name = "traitlets" },
     { name = "types-python-dateutil" },
+    { name = "types-requests" },
     { name = "typing-extensions" },
     { name = "uri-template" },
     { name = "urllib3" },
@@ -1411,6 +1414,8 @@ dev = [
     { name = "mypy" },
     { name = "mypy-extensions" },
     { name = "nodeenv" },
+    { name = "pandas-stubs", version = "2.2.2.240807", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pandas-stubs", version = "2.3.2.250926", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pip" },
     { name = "platformdirs" },
     { name = "pre-commit" },
@@ -1420,6 +1425,7 @@ dev = [
     { name = "toml" },
     { name = "tomli-w" },
     { name = "towncrier" },
+    { name = "types-requests" },
     { name = "typing-extensions" },
     { name = "virtualenv" },
 ]
@@ -1671,6 +1677,7 @@ all-dev = [
     { name = "overrides", specifier = "==7.7.0" },
     { name = "packaging", specifier = "==24.2" },
     { name = "paginate", specifier = "==0.5.7" },
+    { name = "pandas-stubs", specifier = ">=2.2.2.240807" },
     { name = "pandocfilters", specifier = "==1.5.1" },
     { name = "parso", specifier = "==0.8.4" },
     { name = "pathspec", specifier = "==0.12.1" },
@@ -1715,6 +1722,7 @@ all-dev = [
     { name = "towncrier", specifier = "==24.8.0" },
     { name = "traitlets", specifier = "==5.14.3" },
     { name = "types-python-dateutil", specifier = "==2.9.0.20241206" },
+    { name = "types-requests", specifier = ">=2.32.4.20250913" },
     { name = "typing-extensions", specifier = "==4.12.2" },
     { name = "uri-template", specifier = "==1.3.0" },
     { name = "urllib3", specifier = "==2.3.0" },
@@ -1738,6 +1746,7 @@ dev = [
     { name = "mypy", specifier = "==1.14.0" },
     { name = "mypy-extensions", specifier = "==1.0.0" },
     { name = "nodeenv", specifier = "==1.9.1" },
+    { name = "pandas-stubs", specifier = ">=2.2.2.240807" },
     { name = "pip", specifier = "==24.3.1" },
     { name = "platformdirs", specifier = "==4.3.6" },
     { name = "pre-commit", specifier = "==4.0.1" },
@@ -1747,6 +1756,7 @@ dev = [
     { name = "toml", specifier = "==0.10.2" },
     { name = "tomli-w", specifier = "==1.2.0" },
     { name = "towncrier", specifier = "==24.8.0" },
+    { name = "types-requests", specifier = ">=2.32.4.20250913" },
     { name = "typing-extensions", specifier = "==4.12.2" },
     { name = "virtualenv", specifier = "==20.28.1" },
 ]
@@ -3910,6 +3920,51 @@ wheels = [
 ]
 
 [[package]]
+name = "pandas-stubs"
+version = "2.2.2.240807"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.10' and sys_platform == 'win32'",
+    "python_full_version < '3.10' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "types-pytz", marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1f/df/0da95bc75c76f1e012e0bc0b76da31faaf4254e94b9870f25e6311145e98/pandas_stubs-2.2.2.240807.tar.gz", hash = "sha256:64a559725a57a449f46225fbafc422520b7410bff9252b661a225b5559192a93", size = 103095, upload-time = "2024-08-07T12:30:54.538Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0a/f9/22c91632ea1b4c6165952f677bf9ad95f9ac36ffd7ef3e6450144e6d8b1a/pandas_stubs-2.2.2.240807-py3-none-any.whl", hash = "sha256:893919ad82be4275f0d07bb47a95d08bae580d3fdea308a7acfcb3f02e76186e", size = 157069, upload-time = "2024-08-07T12:30:51.868Z" },
+]
+
+[[package]]
+name = "pandas-stubs"
+version = "2.3.2.250926"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and platform_python_implementation != 'PyPy' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and platform_python_implementation != 'PyPy' and sys_platform == 'win32'",
+    "python_full_version >= '3.13' and platform_python_implementation == 'PyPy' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'win32'",
+    "python_full_version == '3.10.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and platform_python_implementation != 'PyPy' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_python_implementation != 'PyPy' and sys_platform != 'win32'",
+    "python_full_version >= '3.13' and platform_python_implementation == 'PyPy' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'win32'",
+    "python_full_version == '3.11.*' and sys_platform != 'win32'",
+    "python_full_version == '3.10.*' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "types-pytz", marker = "python_full_version >= '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/3b/32be58a125db39d0b5f62cc93795f32b5bb2915bd5c4a46f0e35171985e2/pandas_stubs-2.3.2.250926.tar.gz", hash = "sha256:c64b9932760ceefb96a3222b953e6a251321a9832a28548be6506df473a66406", size = 102147, upload-time = "2025-09-26T19:50:39.522Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/96/1e4a035eaf4dce9610aac6e43026d0c6baa05773daf6d21e635a4fe19e21/pandas_stubs-2.3.2.250926-py3-none-any.whl", hash = "sha256:81121818453dcfe00f45c852f4dceee043640b813830f6e7bd084a4ef7ff7270", size = 159995, upload-time = "2025-09-26T19:50:38.241Z" },
+]
+
+[[package]]
 name = "pandera"
 version = "0.26.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5527,6 +5582,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a9/60/47d92293d9bc521cd2301e423a358abfac0ad409b3a1606d8fbae1321961/types_python_dateutil-2.9.0.20241206.tar.gz", hash = "sha256:18f493414c26ffba692a72369fea7a154c502646301ebfe3d56a04b3767284cb", size = 13802, upload-time = "2024-12-06T02:56:41.019Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0f/b3/ca41df24db5eb99b00d97f89d7674a90cb6b3134c52fb8121b6d8d30f15c/types_python_dateutil-2.9.0.20241206-py3-none-any.whl", hash = "sha256:e248a4bc70a486d3e3ec84d0dc30eec3a5f979d6e7ee4123ae043eedbb987f53", size = 14384, upload-time = "2024-12-06T02:56:39.412Z" },
+]
+
+[[package]]
+name = "types-pytz"
+version = "2025.2.0.20250809"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/e2/c774f754de26848f53f05defff5bb21dd9375a059d1ba5b5ea943cf8206e/types_pytz-2025.2.0.20250809.tar.gz", hash = "sha256:222e32e6a29bb28871f8834e8785e3801f2dc4441c715cd2082b271eecbe21e5", size = 10876, upload-time = "2025-08-09T03:14:17.453Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/d0/91c24fe54e565f2344d7a6821e6c6bb099841ef09007ea6321a0bac0f808/types_pytz-2025.2.0.20250809-py3-none-any.whl", hash = "sha256:4f55ed1b43e925cf851a756fe1707e0f5deeb1976e15bf844bcaa025e8fbd0db", size = 10095, upload-time = "2025-08-09T03:14:16.674Z" },
+]
+
+[[package]]
+name = "types-requests"
+version = "2.32.4.20250913"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/36/27/489922f4505975b11de2b5ad07b4fe1dca0bca9be81a703f26c5f3acfce5/types_requests-2.32.4.20250913.tar.gz", hash = "sha256:abd6d4f9ce3a9383f269775a9835a4c24e5cd6b9f647d64f88aa4613c33def5d", size = 23113, upload-time = "2025-09-13T02:40:02.309Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/20/9a227ea57c1285986c4cf78400d0a91615d25b24e257fd9e2969606bdfae/types_requests-2.32.4.20250913-py3-none-any.whl", hash = "sha256:78c9c1fffebbe0fa487a418e0fa5252017e9c60d1a2da394077f1780f655d7e1", size = 20658, upload-time = "2025-09-13T02:40:01.115Z" },
 ]
 
 [[package]]
