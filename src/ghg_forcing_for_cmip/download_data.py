@@ -189,8 +189,7 @@ def merge_netCDFs(
 def compute_bounds_vectorized(
     values_idx: np.ndarray,
     bounds: np.ndarray,
-    neg_side: np.ndarray,
-    boundary_val: Union(int, float),
+    boundary_val: Union[int, float],
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute lower and upper boundary of grid cell
@@ -204,9 +203,6 @@ def compute_bounds_vectorized(
 
     bounds     :
         np.array of bin edges
-
-    neg_side   :
-        boolean array same shape as values_idx
 
     boundary_val :
         boundary values for min/max
