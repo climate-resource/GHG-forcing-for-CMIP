@@ -25,10 +25,8 @@ def test_download_zip_from_noaa_real(gas, sampling_strategy, tmp_path):
     expected_file = save_dir / f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
     # Assertions
-    np.testing.assert_(
-        expected_file.exists(), f"Expected file {expected_file} was not created"
-    )
-    np.testing.assert_(expected_file.stat().st_size > 0, "Downloaded file is empty")
+    assert expected_file.exists(), f"Expected file {expected_file} was not created"
+    assert expected_file.stat().st_size > 0, "Downloaded file is empty"
 
 
 def test_stats_from_events():
