@@ -22,8 +22,12 @@ from ghg_forcing_for_cmip.download_data import (
 @pytest.mark.parametrize("sampling_strategy", ["flask", "insitu"])
 def test_download_extract_noaa(gas, sampling_strategy):
     # expected results
+    if sampling_strategy == "insitu":
+        sampling_path = "in-situ"
+    else:
+        sampling_path = sampling_strategy
     with open(
-        f"tests/expected_noaa/expected_sites_{gas}_{sampling_strategy}.txt",
+        f"tests/expected_noaa/expected_sites_{gas}_{sampling_path}.txt",
         encoding="utf-8",
     ) as f:
         lines = f.read()
