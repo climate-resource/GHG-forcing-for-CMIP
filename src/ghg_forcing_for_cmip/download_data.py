@@ -224,7 +224,9 @@ def compute_bounds_vectorized(
     if np.abs(bounds[values_idx]) == boundary_val:
         upper = bounds[values_idx]
     else:
-        np.where(bounds[values_idx] < 0, bounds[values_idx - 1], bounds[values_idx])
+        upper = np.where(
+            bounds[values_idx] < 0, bounds[values_idx - 1], bounds[values_idx]
+        )
 
     return lower, upper
 
