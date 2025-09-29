@@ -90,7 +90,7 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
 
     Parameters
     ----------
-    ds :
+    df :
         insitu data
 
     Returns
@@ -231,7 +231,7 @@ def compute_bounds(
     return lower, upper
 
 
-def get_indices(values: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+def get_indices(values: pd.Series, bounds: np.ndarray) -> np.ndarray:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
 
@@ -409,7 +409,6 @@ def clean_and_save(
     # clean-up directory
     if remove_original_files and os.path.exists(save_to_path + gas + "/original"):
         shutil.rmtree(save_to_path + gas + "/original")
-    return ds
 
 
 @flow(name="download_surface_data", description="Download and preprocess surface data")
