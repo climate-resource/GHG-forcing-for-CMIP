@@ -220,7 +220,7 @@ def compute_bounds(
             bounds[values_idx] < 0, bounds[values_idx], bounds[values_idx - 1]
         )
 
-    # upper bound
+    # upper
     if np.abs(bounds[values_idx]) == boundary_val:
         upper = bounds[values_idx]
     else:
@@ -284,13 +284,14 @@ def add_lat_lon_bnds(d_combined: pd.DataFrame) -> pd.DataFrame:
     get_lon_idx = get_indices(d_combined.longitude, CONFIG.LON_BIN_BOUNDS)
 
     # compute lon bounds
-    d_combined["lon_bnd/lower"], d_combined["lon_bnd/upper"] = compute_bounds(
-        get_lon_idx, CONFIG.LON_BIN_BOUNDS, 180
+    # TODO: vectorization in for-loop not optimal; don't have a better solution yet
+    d_combined["lon_bnd/lower"], d_combined["lon_bnd/upper"] = np.stack(
+        [compute_bounds(idx, CONFIG.LON_BIN_BOUNDS, 180) for idx in get_lon_idx], -1
     )
 
     # compute lat bounds
-    d_combined["lat_bnd/lower"], d_combined["lat_bnd/upper"] = compute_bounds(
-        get_lat_idx, CONFIG.LAT_BIN_BOUNDS, 90
+    d_combined["lat_bnd/lower"], d_combined["lat_bnd/upper"] = np.stack(
+        [compute_bounds(idx, CONFIG.LAT_BIN_BOUNDS, 90) for idx in get_lat_idx], -1
     )
 
     d_combined["lat"] = (d_combined["lat_bnd/lower"] + d_combined["lat_bnd/upper"]) / 2
@@ -471,4 +472,4 @@ def download_surface_data(
 
 
 if __name__ == "__main__":
-    download_surface_data(gas="co2", remove_original_files=True)
+    download_surface_data(gas="ch4", remove_original_files=True)

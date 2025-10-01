@@ -61,50 +61,31 @@ def test_clean_and_save(gas):
     shutil.rmtree(f"tests/test-data/{gas}")
 
 
-@pytest.mark.parametrize(
-    "lat, expected_lower_lat, expected_upper_lat, "
-    "lon, expected_lower_lon, expected_upper_lon",
-    [
-        (2.5, 0, 5, -6.5, -5, -10.0),
-        (12.4, 10, 15, -180, -175, -180),
-        (-90, -85, -90, 45.5, 45, 50),
-        (-27.3, -25, -30, 179, 175, 180),
-        (90, 85, 90, 2.5, 0, 5),
-        (0, -5, 0, 0, -5, 0),
-    ],
-)
-def test_add_lat_lon_bnds(  # noqa: PLR0913
-    lat,
-    expected_lower_lat,
-    expected_upper_lat,
-    lon,
-    expected_lower_lon,
-    expected_upper_lon,
-):
+def test_add_lat_lon_bnds():
     df_test = pd.DataFrame()
-    df_test["latitude"] = [lat]
-    df_test["longitude"] = [lon]
+    df_test["idx"] = [0, 1, 2, 3, 4, 5]
+    df_test["latitude"] = [2.5, 12.4, -90, -27.3, 90, 0]
+    df_test["longitude"] = [-6.5, -180, 45.5, 180, 2.5, 0]
 
-    df_lat_lon = add_lat_lon_bnds.with_options(cache_expiration=0.0)(df_test)
+    df_lat_lon = add_lat_lon_bnds(df_test)
 
-    for band, band_val in zip(["lower", "upper"], [0, 1]):
-        observed_lat_bnd = df_lat_lon[df_lat_lon.bnd == band_val]["lat_bnd"].values[0]
-        assert observed_lat_bnd == np.where(
-            band == "lower", expected_lower_lat, expected_upper_lat
-        ), (
-            f"For lat={lat} observed {band} bound ({observed_lat_bnd})"
-            + f" is not equal to expected {band} bound "
-            + f"({np.where(band == 'lower', expected_lower_lat, expected_upper_lat)})"
-        )
+    expected_lower_lon = [-5, -175, 45, 175, 0, -5]
+    expected_upper_lon = [-10, -180, 50, 180, 5, 0]
+    expected_lower_lat = [0, 10, -85, -25, 85, -5]
+    expected_upper_lat = [5, 15, -90, -30, 90, 0]
 
-        observed_lon_bnd = df_lat_lon[df_lat_lon.bnd == band_val]["lon_bnd"].values[0]
-        assert observed_lon_bnd == np.where(
-            band == "lower", expected_lower_lon, expected_upper_lon
-        ), (
-            f"For lon={lon} observed {band} bound ({observed_lon_bnd})"
-            + f" is not equal to expected {band} bound"
-            + f"({np.where(band == 'lower', expected_lower_lon, expected_upper_lon)})"
-        )
+    np.testing.assert_array_equal(
+        df_lat_lon[df_lat_lon.bnd == 0]["lat_bnd"].values, expected_lower_lat
+    )
+    np.testing.assert_array_equal(
+        df_lat_lon[df_lat_lon.bnd == 0]["lon_bnd"].values, expected_lower_lon
+    )
+    np.testing.assert_array_equal(
+        df_lat_lon[df_lat_lon.bnd == 1]["lat_bnd"].values, expected_upper_lat
+    )
+    np.testing.assert_array_equal(
+        df_lat_lon[df_lat_lon.bnd == 1]["lon_bnd"].values, expected_upper_lon
+    )
 
 
 def test_get_indices():
