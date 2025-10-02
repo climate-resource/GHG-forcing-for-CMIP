@@ -11,11 +11,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ghg_forcing_for_cmip.download_data import (
+from ghg_forcing_for_cmip.download_ground_based import (
     download_zip_from_noaa,
-    merge_netCDFs,
-    unzip_download,
+    merge_netCDFs
 )
+from ghg_forcing_for_cmip.utils import unzip_download
 
 
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
