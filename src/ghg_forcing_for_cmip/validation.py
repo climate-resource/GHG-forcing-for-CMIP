@@ -42,3 +42,29 @@ class GroundDataSchema(pa.DataFrameModel):
     unit: Series[str] = pa.Field(isin=["ppb", "ppm"])
     version: Series[str] = pa.Field(nullable=True)
     instrument: Series[str] = pa.Field(nullable=True)
+
+
+class EODataSchema(pa.DataFrameModel):
+    """
+    validate columns of satellite dataset
+
+    """
+
+    time: Series[pd.DatetimeTZDtype] = pa.Field(
+        dtype_kwargs={"unit": "ns", "tz": "UTC"}
+    )
+    year: Series[int] = pa.Field(ge=1968, le=datetime.now().year)
+    month: Series[int] = pa.Field(ge=1, le=12)
+    lat_bnd: Series[int] = pa.Field(ge=-90, le=90)
+    lon_bnd: Series[int] = pa.Field(ge=-180, le=180)
+    bnd: Series[int] = pa.Field(isin=[0, 1])
+    lat: Series[float] = pa.Field(gt=-90, lt=90)
+    lon: Series[float] = pa.Field(gt=-180, lt=180)
+    value: Series[float] = pa.Field(gt=0.0, lt=9999.0)
+    std_dev: Series[float] = pa.Field(ge=0)
+    numb: Series[int] = pa.Field(gt=0)
+    gas: Series[str] = pa.Field(isin=["ch4", "co2"])
+    unit: Series[str] = pa.Field(isin=["ppb", "ppm"])
+    pre: Series[float] = pa.Field(gt=0, lt=1)
+    column_averaging_kernel: Series[float]
+    vmr_profile_apriori: Series[float]
