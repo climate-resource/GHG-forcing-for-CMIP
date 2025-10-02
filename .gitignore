@@ -12,6 +12,9 @@ docs/api/*
 *.db
 tests/test-data/
 
+# scratch
+scratch/
+
 # Jupyter cache
 .jupyter_cache
 
