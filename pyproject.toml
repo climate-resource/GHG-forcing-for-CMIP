@@ -8,6 +8,7 @@ authors = [
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 dependencies = [
+    "cdsapi>=0.7.4",
     "h5netcdf>=1.6.4",
     "netcdf4>=1.7.2",
     "pandas>=2.3.2",
@@ -45,7 +46,11 @@ Issues = "https://github.com/climate-resource/GHG-forcing-for-CMIP/issues"
 
 [project.optional-dependencies]
 plots = [
-    "matplotlib>=3.7.1",
+    "matplotlib>=3.9.4",
+    "geodatasets>=2024.8.0",
+    "geopandas>=1.0.1",
+    "matplotlib>=3.9.4",
+    "seaborn>=0.13.2",
 ]
 full = [
     "ghg-forcing-for-cmip[plots]",
