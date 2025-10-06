@@ -188,10 +188,10 @@ def merge_netCDFs(
 
 
 def compute_bounds(
-    values_idx: npt.NDArray,
-    bounds: npt.NDArray,
+    values_idx: npt.NDArray[np.int_ | np.float32],
+    bounds: npt.NDArray[np.int_ | np.float32],
     boundary_val: Union[int, float],
-) -> tuple[npt.NDArray, npt.NDArray]:
+) -> tuple[npt.NDArray[np.int_ | np.float32], npt.NDArray[np.int_ | np.float32]]:
     """
     Compute lower and upper boundary of grid cell
 
@@ -232,7 +232,9 @@ def compute_bounds(
     return lower, upper
 
 
-def get_indices(values: pd.Series, bounds: npt.NDArray) -> npt.NDArray:
+def get_indices(
+    values: pd.Series, bounds: npt.NDArray[np.int_ | np.float32]
+) -> npt.NDArray[np.int_ | np.float32]:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
 
