@@ -2,11 +2,15 @@ name: Test download data
 
 on:
   workflow_dispatch:
-  push:
-  #  branches: [main]
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # This means At 03:00 on Wednesday.
+    # see https://crontab.guru/#0_0_*_*_3
+    - cron:  '0 3 * * 3'
 
 jobs:
   tests:
+      if: contains(github.event.head_commit.message, 'test download data')
       strategy:
         fail-fast: false
         matrix:
@@ -35,7 +39,6 @@ jobs:
             # We don't have that right now, because we're not sure this pain point exists.
             uv-dependency-install-flags: "--all-extras --group tests"
         - name: Run download tests
-          if: "! contains(github.event.head_commit.message, 'test download data')"
           run: |
             uv run pytest -r a -v src tests/regression --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
             uv run coverage report
