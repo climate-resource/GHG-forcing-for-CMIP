@@ -1,3 +1,7 @@
+# This test runs only when triggered manually or
+# when the commit message on push is 'test download data'.
+# As this test triggers the database in real, we don't
+# want to run the test with every push.
 name: Test download data
 
 on:
