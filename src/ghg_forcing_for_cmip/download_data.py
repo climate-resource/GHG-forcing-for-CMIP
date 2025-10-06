@@ -11,6 +11,7 @@ import zipfile
 from typing import Union
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import requests
 import xarray as xr
@@ -187,10 +188,10 @@ def merge_netCDFs(
 
 
 def compute_bounds(
-    values_idx: np.ndarray[int],
-    bounds: np.ndarray[Union[int, float]],
+    values_idx: npt.NDArray,
+    bounds: npt.NDArray,
     boundary_val: Union[int, float],
-) -> tuple[np.ndarray[Union[int, float]], np.ndarray[Union[int, float]]]:
+) -> tuple[npt.NDArray, npt.NDArray]:
     """
     Compute lower and upper boundary of grid cell
 
@@ -231,9 +232,7 @@ def compute_bounds(
     return lower, upper
 
 
-def get_indices(
-    values: pd.Series, bounds: np.ndarray[Union[int, float]]
-) -> np.ndarray[Union[int, float]]:
+def get_indices(values: pd.Series, bounds: npt.NDArray) -> npt.NDArray:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
 
