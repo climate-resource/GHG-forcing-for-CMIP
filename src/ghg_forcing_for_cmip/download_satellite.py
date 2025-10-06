@@ -6,16 +6,22 @@ used for satellite measurements of CO2 and CH4
 
 """
 
-import cdsapi  # type: ignore
 import os
-import numpy as np
-import xarray as xr
-import pandas as pd
 
-from prefect import task, flow
+import cdsapi  # type: ignore
+import numpy as np
+import pandas as pd
+import xarray as xr
+from prefect import flow, task
+
 from ghg_forcing_for_cmip import CONFIG
+from ghg_forcing_for_cmip.utils import (
+    clean_and_save,
+    ensure_trailing_slash,
+    unzip_download,
+)
 from ghg_forcing_for_cmip.validation import EODataSchema
-from ghg_forcing_for_cmip.utils import ensure_trailing_slash, clean_and_save, unzip_download
+
 
 @task(
     name="download_zip_from_cds",
@@ -38,14 +44,14 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
 
     References
     ----------
-    Copernicus Climate Change Service, Climate Data Store, (2018): 
-    Methane data from 2002 to present derived from satellite observations. 
-    Copernicus Climate Change Service (C3S) Climate Data Store (CDS). 
+    Copernicus Climate Change Service, Climate Data Store, (2018):
+    Methane data from 2002 to present derived from satellite observations.
+    Copernicus Climate Change Service (C3S) Climate Data Store (CDS).
     DOI: 10.24381/cds.b25419f8
 
-    Copernicus Climate Change Service, Climate Data Store, (2018): 
-    "Carbon dioxide data from 2002 to present derived from satellite observations". 
-    Copernicus Climate Change Service (C3S) Climate Data Store (CDS). 
+    Copernicus Climate Change Service, Climate Data Store, (2018):
+    "Carbon dioxide data from 2002 to present derived from satellite observations".
+    Copernicus Climate Change Service (C3S) Climate Data Store (CDS).
     DOI: 10.24381/cds.f74805c8
 
     Notes
@@ -90,7 +96,7 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
 )
 def validate_obs4mips_data(
     path_to_nc: str, gas: str = "co2", factor: float = 1e6
-) -> None:
+) -> pd.DataFrame:
     """
     Preprocess OBS4MIPS data from nc to csv format
 
@@ -134,15 +140,13 @@ def validate_obs4mips_data(
     )
 
     EODataSchema.validate(df)
-    
+
     return df
 
 
 @flow(name="download_satellite_data")
 def download_satellite_data(
-    gas: str, 
-    remove_original_files: bool,
-    save_to_path: str = "data/downloads"
+    gas: str, remove_original_files: bool, save_to_path: str = "data/downloads"
 ) -> None:
     """
     Download and preprocess satellite GHG concentration
@@ -164,15 +168,17 @@ def download_satellite_data(
     save_to_path = ensure_trailing_slash(save_to_path)
 
     make_api_request(gas=gas, save_to_path=save_to_path)
-    
+
     unzip_download.with_options(name="unzip_download")(
-            zip_path=save_to_path + f"obs4mips_x{gas}.zip",
-            extract_dir=save_to_path + f"{gas}/original",
-        )
-    
+        zip_path=save_to_path + f"obs4mips_x{gas}.zip",
+        extract_dir=save_to_path + f"{gas}/original",
+    )
+
     df_final = validate_obs4mips_data(
         path_to_nc=save_to_path + f"{gas}/original",
-        gas=gas, factor=np.where(gas=="ch4", 1e9, 1e6))
+        gas=gas,
+        factor=np.where(gas == "ch4", 1e9, 1e6),
+    )
 
     # clean up repo and save file
     clean_and_save(
