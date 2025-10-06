@@ -28,6 +28,7 @@ theme:
         name: Switch to light mode
 
 plugins:
+  - mermaid2
   # https://mkdocstrings.github.io/autorefs/
   - autorefs
   # Required for auto-generating our documentation stubs
@@ -143,7 +144,11 @@ markdown_extensions:
   - pymdownx.snippets
   # Support more complicated indents etc.
   # https://facelessuser.github.io/pymdown-extensions/extensions/superfences/
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid
   # Tabbed sections (e.g. for our installation options)
   # https://facelessuser.github.io/pymdown-extensions/extensions/tabbed/
   - pymdownx.tabbed:

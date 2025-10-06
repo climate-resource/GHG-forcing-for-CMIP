@@ -81,3 +81,11 @@ licence-check:  ## Check that licences of the dependencies are suitable
 virtual-environment:  ## update virtual environment, create a new one if it doesn't already exist
 	uv sync --all-extras --group all-dev
 	uv run pre-commit install
+
+
+.PHONY: setup-prefect
+setup-prefect:  ## caching requires result persistence, which is off by default
+	uv run prefect config set PREFECT_RESULTS_PERSIST_BY_DEFAULT=true
+
+login-prefect:
+	uvx prefect cloud login
