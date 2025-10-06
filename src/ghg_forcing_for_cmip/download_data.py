@@ -235,7 +235,7 @@ def compute_bounds(
 
 
 def get_indices(
-    values: pd.Series, bounds: npt.NDArray[Union[np.int_, np.float32]]
+    values: pd.Series[float], bounds: npt.NDArray[Union[np.int_, np.float32]]
 ) -> npt.NDArray[Union[np.int_, np.float32]]:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
