@@ -1,5 +1,5 @@
 """
-Test download data
+Test download of ground-based data
 
 Unit tests for downloading GHG concentrations
 from web APIs
