@@ -10,6 +10,7 @@ async-timeout==5.0.1 ; python_full_version < '3.11'
 asyncpg==0.30.0
 attrs==25.3.0
 cachetools==5.5.2
+cdsapi==0.7.7
 certifi==2024.12.14
 cffi==1.17.1 ; platform_python_implementation != 'PyPy'
 cftime==1.6.4.post1
@@ -22,6 +23,7 @@ cryptography==45.0.7 ; python_full_version < '3.11' or (python_full_version >= '
 cryptography==46.0.0 ; (python_full_version >= '3.11' and python_full_version < '3.14') or (python_full_version >= '3.11' and platform_python_implementation == 'PyPy')
 dateparser==1.2.2
 docker==7.1.0
+ecmwf-datastores-client==0.4.0
 exceptiongroup==1.3.0
 fastapi==0.117.1
 fsspec==2025.9.0
@@ -50,6 +52,7 @@ markdown==3.7
 markdown-it-py==3.0.0
 markupsafe==3.0.2
 mdurl==0.1.2
+multiurl==0.3.7
 mypy-extensions==1.0.0
 netcdf4==1.7.2
 numpy==2.0.2 ; python_full_version < '3.10'
@@ -96,6 +99,7 @@ starlette==0.48.0
 text-unidecode==1.3
 toml==0.10.2
 tomli==2.2.1 ; python_full_version < '3.11'
+tqdm==4.67.1
 typeguard==4.4.2
 typer==0.15.4
 typing-extensions==4.12.2
