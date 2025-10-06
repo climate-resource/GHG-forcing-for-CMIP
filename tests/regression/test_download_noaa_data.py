@@ -13,9 +13,10 @@ import pytest
 
 from ghg_forcing_for_cmip.download_ground_based import (
     download_zip_from_noaa,
-    merge_netCDFs
+    merge_netCDFs,
 )
 from ghg_forcing_for_cmip.utils import unzip_download
+
 
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
 @pytest.mark.parametrize("sampling_strategy", ["flask", "insitu"])
