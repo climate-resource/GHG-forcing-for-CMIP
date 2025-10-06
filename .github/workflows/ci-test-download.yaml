@@ -1,12 +1,13 @@
 name: Test download data
 
 on:
-  workflow_dispatch:
-  schedule:
+  push:
+  #workflow_dispatch:
+  #schedule:
     # * is a special character in YAML so you have to quote this string
     # This means At 03:00 on Wednesday.
     # see https://crontab.guru/#0_0_*_*_3
-    - cron:  '0 3 * * 3'
+  #  - cron:  '0 3 * * 3'
 
 jobs:
   tests:
