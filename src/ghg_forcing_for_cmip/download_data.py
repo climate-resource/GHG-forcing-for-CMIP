@@ -8,7 +8,7 @@ concentration data from e.g. (A)GAGE, NOAA
 import os
 import shutil
 import zipfile
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -235,7 +235,7 @@ def compute_bounds(
 
 
 def get_indices(
-    values: pd.Series[float], bounds: npt.NDArray[Union[np.int_, np.float32]]
+    values: pd.Series[Any], bounds: npt.NDArray[Union[np.int_, np.float32]]
 ) -> npt.NDArray[Union[np.int_, np.float32]]:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
