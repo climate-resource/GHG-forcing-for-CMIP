@@ -3,8 +3,8 @@ name: CI Test downloads from databases
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    tags: ['test_downloads']
+  #  branches: [main]
+  #  tags: ['test_downloads']
 
 jobs:
   tests:
