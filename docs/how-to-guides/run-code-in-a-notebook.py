@@ -18,7 +18,4 @@
 # Here we show how you can make your docs via notebooks.
 
 # %% editable=true slideshow={"slide_type": ""}
-from ghg_forcing_for_cmip.operations import add_two
-
-# %% editable=true slideshow={"slide_type": ""}
-add_two(3.2, 4.3)
+# ToDo
