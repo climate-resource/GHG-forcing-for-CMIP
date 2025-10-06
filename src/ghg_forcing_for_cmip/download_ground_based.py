@@ -6,9 +6,10 @@ concentration data from (A)GAGE and NOAA networks
 """
 
 import os
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import requests
 import xarray as xr
@@ -160,10 +161,12 @@ def merge_netCDFs(
 
 
 def compute_bounds(
-    values_idx: np.ndarray[int],
-    bounds: np.ndarray[Union[int, float]],
+    values_idx: npt.NDArray[Union[np.int_, np.float32]],
+    bounds: npt.NDArray[Union[np.int_, np.float32]],
     boundary_val: Union[int, float],
-) -> tuple[np.ndarray[Union[int, float]], np.ndarray[Union[int, float]]]:
+) -> tuple[
+    npt.NDArray[Union[np.int_, np.float32]], npt.NDArray[Union[np.int_, np.float32]]
+]:
     """
     Compute lower and upper boundary of grid cell
 
@@ -205,8 +208,8 @@ def compute_bounds(
 
 
 def get_indices(
-    values: pd.Series, bounds: np.ndarray[Union[int, float]]
-) -> np.ndarray[Union[int, float]]:
+    values: "pd.Series[Any]", bounds: npt.NDArray[Union[np.int_, np.float32]]
+) -> npt.NDArray[Union[np.int_, np.float32]]:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
 
