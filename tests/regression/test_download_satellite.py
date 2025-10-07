@@ -5,6 +5,8 @@ Regression tests for downloading GHG concentrations
 from climate data store
 """
 
+import os
+
 import numpy as np
 import pytest
 
@@ -17,6 +19,8 @@ from ghg_forcing_for_cmip.utils import (
 
 @pytest.mark.parametrize("gas", ["ch4", "co2"])
 def test_download_satellite_data(gas, save_to_path="tests/test-data/satellite"):
+    os.makedirs(save_to_path, exist_ok=True)
+
     save_to_path = ensure_trailing_slash(save_to_path)
 
     df_final = validate_obs4mips_data(
