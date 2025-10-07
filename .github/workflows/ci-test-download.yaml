@@ -44,8 +44,12 @@ jobs:
             # We don't have that right now, because we're not sure this pain point exists.
             uv-dependency-install-flags: "--all-extras --group tests"
         - name: Run download tests
+          env:
+            ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
+            ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
           run: |
-            uv run pytest -r a -v src tests/regression --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
+            echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
+            uv run pytest -r a -v src test_download_data --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
             uv run coverage report
         - name: Upload coverage reports to Codecov with GitHub Action
           uses: codecov/codecov-action@v4.2.0

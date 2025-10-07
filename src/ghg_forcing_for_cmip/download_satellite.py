@@ -118,7 +118,9 @@ def validate_obs4mips_data(
         ppm (co2; factor = 1e6)
     """
     all_files = os.listdir(path_to_nc)
-    ds = next(file for file in all_files if "OBS4MIPS" in file)
+    ds = next(
+        file for file in all_files if "OBS4MIPS" in file and f"X{gas.upper()}" in file
+    )
 
     df_raw = xr.open_dataset(path_to_nc + f"/{ds}").to_dataframe().reset_index()
     df_raw = df_raw[df_raw[f"x{gas}"] != np.float32(1e20)].reset_index()
@@ -195,4 +197,4 @@ def download_satellite_data(
 
 
 if __name__ == "__main__":
-    download_satellite_data(gas="ch4", remove_original_files=True)
+    download_satellite_data(gas="co2", remove_original_files=False)
