@@ -6,16 +6,11 @@ name: Test download data
 
 on:
   workflow_dispatch:
-  schedule:
-    # * is a special character in YAML so you have to quote this string
-    # This means At 03:00 on Wednesday.
-    # see https://crontab.guru/#0_0_*_*_3
-    - cron:  '0 3 * * 3'
   push:
 
 jobs:
   tests:
-      if: contains(github.event.head_commit.message, 'test download data')
+      if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'test download data') }}
       strategy:
         fail-fast: false
         matrix:
