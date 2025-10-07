@@ -300,20 +300,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cdsapi"
-version = "0.7.7"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "ecmwf-datastores-client" },
-    { name = "requests" },
-    { name = "tqdm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/55/f3/6cb5b4bf077c441978c5d5be3a568d37e1f07f3e7177a17fa66aec2594b6/cdsapi-0.7.7.tar.gz", hash = "sha256:bc0cf807c1b78aceba6a11c3a5180f885f47f71a4e58205e324cfedcee16f10b", size = 13322, upload-time = "2025-09-30T19:11:22.404Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/f4/4a65460d5cb6784128019fd707a87993f378db25e796eba01400a0903f62/cdsapi-0.7.7-py2.py3-none-any.whl", hash = "sha256:384c1658572d6dc53f4111f6dd46fcdfe6fea54a688af9756d71f6fe9118b66d", size = 12293, upload-time = "2025-09-30T19:11:21.184Z" },
-]
-
-[[package]]
 name = "certifi"
 version = "2024.12.14"
 source = { registry = "https://pypi.org/simple" }
@@ -1331,7 +1317,7 @@ name = "ghg-forcing-for-cmip"
 version = "0.1.0a1"
 source = { editable = "." }
 dependencies = [
-    { name = "cdsapi" },
+    { name = "ecmwf-datastores-client" },
     { name = "h5netcdf" },
     { name = "netcdf4" },
     { name = "pandas" },
@@ -1374,7 +1360,6 @@ all-dev = [
     { name = "backrefs" },
     { name = "beautifulsoup4" },
     { name = "bleach" },
-    { name = "cdsapi" },
     { name = "certifi" },
     { name = "cffi" },
     { name = "cfgv" },
@@ -1387,6 +1372,7 @@ all-dev = [
     { name = "decorator" },
     { name = "defusedxml" },
     { name = "distlib" },
+    { name = "ecmwf-datastores-client" },
     { name = "executing" },
     { name = "fastjsonschema" },
     { name = "filelock" },
@@ -1655,9 +1641,9 @@ docs = [
     { name = "websocket-client" },
 ]
 tests = [
-    { name = "cdsapi" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "coverage" },
+    { name = "ecmwf-datastores-client" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
@@ -1665,9 +1651,9 @@ tests = [
     { name = "pytest-cov" },
 ]
 tests-full = [
-    { name = "cdsapi" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "coverage" },
+    { name = "ecmwf-datastores-client" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
@@ -1675,8 +1661,8 @@ tests-full = [
     { name = "pytest-cov" },
 ]
 tests-min = [
-    { name = "cdsapi" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "ecmwf-datastores-client" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
@@ -1685,7 +1671,7 @@ tests-min = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cdsapi", specifier = ">=0.7.4" },
+    { name = "ecmwf-datastores-client", specifier = ">=0.4.0" },
     { name = "geodatasets", marker = "extra == 'plots'", specifier = ">=2024.8.0" },
     { name = "geopandas", marker = "extra == 'plots'", specifier = ">=1.0.1" },
     { name = "ghg-forcing-for-cmip", extras = ["plots"], marker = "extra == 'full'" },
@@ -1714,7 +1700,6 @@ all-dev = [
     { name = "backrefs", specifier = "==5.9" },
     { name = "beautifulsoup4", specifier = "==4.12.3" },
     { name = "bleach", specifier = "==6.2.0" },
-    { name = "cdsapi", specifier = ">=0.7.4" },
     { name = "certifi", specifier = "==2024.12.14" },
     { name = "cffi", specifier = "==1.17.1" },
     { name = "cfgv", specifier = "==3.4.0" },
@@ -1728,6 +1713,7 @@ all-dev = [
     { name = "decorator", specifier = "==5.1.1" },
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "distlib", specifier = "==0.3.9" },
+    { name = "ecmwf-datastores-client", specifier = ">=0.4.0" },
     { name = "executing", specifier = "==2.1.0" },
     { name = "fastjsonschema", specifier = "==2.21.1" },
     { name = "filelock", specifier = "==3.16.1" },
@@ -1994,9 +1980,9 @@ docs = [
     { name = "websocket-client", specifier = "==1.8.0" },
 ]
 tests = [
-    { name = "cdsapi", specifier = ">=0.7.4" },
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
     { name = "coverage", specifier = "==7.6.10" },
+    { name = "ecmwf-datastores-client", specifier = ">=0.4.0" },
     { name = "iniconfig", specifier = "==2.0.0" },
     { name = "packaging", specifier = "==24.2" },
     { name = "pluggy", specifier = "==1.5.0" },
@@ -2004,9 +1990,9 @@ tests = [
     { name = "pytest-cov", specifier = "==6.0.0" },
 ]
 tests-full = [
-    { name = "cdsapi", specifier = ">=0.7.4" },
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
     { name = "coverage", specifier = "==7.6.10" },
+    { name = "ecmwf-datastores-client", specifier = ">=0.4.0" },
     { name = "iniconfig", specifier = "==2.0.0" },
     { name = "packaging", specifier = "==24.2" },
     { name = "pluggy", specifier = "==1.5.0" },
@@ -2014,8 +2000,8 @@ tests-full = [
     { name = "pytest-cov", specifier = "==6.0.0" },
 ]
 tests-min = [
-    { name = "cdsapi", specifier = ">=0.7.4" },
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
+    { name = "ecmwf-datastores-client", specifier = ">=0.4.0" },
     { name = "iniconfig", specifier = "==2.0.0" },
     { name = "packaging", specifier = "==24.2" },
     { name = "pluggy", specifier = "==1.5.0" },

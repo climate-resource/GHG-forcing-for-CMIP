@@ -8,10 +8,10 @@ used for satellite measurements of CO2 and CH4
 
 import os
 
-import cdsapi  # type: ignore
 import numpy as np
 import pandas as pd
 import xarray as xr
+from ecmwf.datastores import Client  # type: ignore
 from prefect import flow, task
 
 from ghg_forcing_for_cmip import CONFIG
@@ -83,7 +83,11 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     # setup saving location
     target = save_to_path + f"/obs4mips_x{gas}.zip"
 
-    client = cdsapi.Client()
+    client = Client()
+
+    if not client.check_authentication():
+        raise ValueError("authentification of CDS client failed")  # noqa: TRY003
+
     client.retrieve(dataset, request).download(target=target)
 
     return print(f"downloaded OBS4MIPs data to {target}")

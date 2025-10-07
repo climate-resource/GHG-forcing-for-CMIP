@@ -20,7 +20,6 @@ backrefs==5.9
 beautifulsoup4==4.12.3
 bleach==6.2.0
 cachetools==5.5.2
-cdsapi==0.7.7
 certifi==2024.12.14
 cffi==1.17.1
 cftime==1.6.4.post1
