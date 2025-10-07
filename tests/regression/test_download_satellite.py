@@ -1,8 +1,7 @@
 """
 Test download of satellite data
 
-Regression tests for downloading GHG concentrations
-from climate data store
+Regression tests for processing satellite data
 """
 
 import os
