@@ -11,7 +11,7 @@ import os
 import numpy as np
 import pandas as pd
 import xarray as xr
-from ecmwf.datastores import Client  # type: ignore
+from ecmwf.datastores import Client
 from prefect import flow, task
 
 from ghg_forcing_for_cmip import CONFIG
@@ -88,7 +88,7 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     if not client.check_authentication():
         raise ValueError("authentification of CDS client failed")  # noqa: TRY003
 
-    client.retrieve(dataset, request).download(target=target)
+    client.retrieve(dataset, request, target=target)
 
     return print(f"downloaded OBS4MIPs data to {target}")
 
