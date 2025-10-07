@@ -21,7 +21,6 @@ from ghg_forcing_for_cmip.utils import (
 )
 
 
-@pytest.mark.xfail(reason="Fails at the moment as API request can't be done in CI")
 @pytest.mark.parametrize("gas", ["ch4", "co2"])
 def test_download_satellite_data(gas, save_to_path="tests/test-data/satellite"):
     save_to_path = ensure_trailing_slash(save_to_path)
