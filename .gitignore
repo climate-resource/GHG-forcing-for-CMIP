@@ -11,6 +11,7 @@ docs/api/*
 # Databases
 *.db
 tests/test-data/
+test_download_data/test-data/
 
 # scratch
 scratch/
