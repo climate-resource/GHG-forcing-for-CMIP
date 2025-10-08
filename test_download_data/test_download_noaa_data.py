@@ -5,6 +5,8 @@ Regression tests for downloading GHG concentrations
 from web APIs
 """
 
+import os
+
 import pytest
 
 from ghg_forcing_for_cmip.download_ground_based import download_zip_from_noaa
@@ -29,16 +31,17 @@ def test_download_extract_noaa(gas, sampling_strategy):
     # %% test downloading
     # download NOAA data in test directory
     download_zip_from_noaa(gas, sampling_strategy, save_to_path=save_dir)
-    return exp_numb_files
-    # # Expected file name
-    # expected_file = save_dir + f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
-    # # Assertions for downloading zip
-    # assert os.path.isfile(
-    #     expected_file
-    # ), f"Expected file {expected_file} was not created"
-    # assert os.stat(expected_file).st_size > 0, "Downloaded file is empty"
+    # Expected file name
+    expected_file = save_dir + f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
+    # Assertions for downloading zip
+    assert os.path.isfile(
+        expected_file
+    ), f"Expected file {expected_file} was not created"
+    assert os.stat(expected_file).st_size > 0, "Downloaded file is empty"
+
+    assert exp_numb_files != 0
     # # %% test unzipping of files
     # # unzip folder
     # unzip_download(zip_path=expected_file, extract_dir=save_dir + "extracted")
