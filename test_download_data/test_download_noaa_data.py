@@ -31,13 +31,13 @@ def test_download_extract_noaa(gas, sampling_strategy):
 
     # Note: number of file plus Readme
     exp_numb_files = len(expected_sites) + 1
-
+    print(exp_numb_files)
     save_dir = "test_download_data/test-data/"
 
     # %% test downloading
     # download NOAA data in test directory
     download_zip_from_noaa(gas, sampling_strategy, save_to_path=save_dir)
-
+    print("download zip")
     # Expected file name
     expected_file = save_dir + f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
