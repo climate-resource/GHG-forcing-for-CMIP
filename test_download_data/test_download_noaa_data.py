@@ -74,30 +74,30 @@ def test_download_extract_noaa(gas, sampling_strategy):
     )
 
     df_combined = pd.concat(df_all)
-    assert len(df_combined) != 0
-    # expected_cols = [
-    #     "std_dev",
-    #     "numb",
-    #     "value",
-    #     "year",
-    #     "month",
-    #     "latitude",
-    #     "longitude",
-    #     "altitude",
-    #     "site_code",
-    #     "network",
-    #     "insitu_vs_flask",
-    #     "sampling_strategy",
-    #     "gas",
-    #     "unit",
-    #     "version",
-    #     "instrument",
-    # ]
 
-    # for col in expected_cols:
-    #     assert col in df_combined.columns, f"Can't find column {col} in data frame."
+    expected_cols = [
+        "std_dev",
+        "numb",
+        "value",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "altitude",
+        "site_code",
+        "network",
+        "insitu_vs_flask",
+        "sampling_strategy",
+        "gas",
+        "unit",
+        "version",
+        "instrument",
+    ]
 
-    # for code in expected_sites:
-    #     assert (
-    #         code.upper() in df_combined.site_code.unique()
-    #     ), f"Can't finde site_code {code.upper()} in data frame."
+    for col in expected_cols:
+        assert col in df_combined.columns, f"Can't find column {col} in data frame."
+
+    for code in expected_sites:
+        assert (
+            code.upper() in df_combined.site_code.unique()
+        ), f"Can't finde site_code {code.upper()} in data frame."
