@@ -17,13 +17,15 @@ from ghg_forcing_for_cmip.utils import (
 
 
 @pytest.mark.parametrize("gas", ["ch4", "co2"])
-def test_download_satellite_data(gas, save_to_path="tests/test-data/satellite"):
-    os.makedirs(save_to_path + "/" + gas, exist_ok=True)
+def test_download_satellite_data(
+    gas, file_regression, save_to_path="tests/test_results/satellite"
+):
+    os.makedirs(os.path.join(save_to_path, gas), exist_ok=True)
 
     save_to_path = ensure_trailing_slash(save_to_path)
 
     df_final = validate_obs4mips_data(
-        path_to_nc="tests/expected_data/",
+        path_to_nc="tests/test_data/",
         gas=gas,
         factor=np.where(gas == "ch4", 1e9, 1e6),
     )
@@ -38,3 +40,5 @@ def test_download_satellite_data(gas, save_to_path="tests/test-data/satellite"):
         measurement_type="eo",
         remove_original_files=True,
     )
+
+    file_regression.check(save_to_path)

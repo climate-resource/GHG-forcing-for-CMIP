@@ -23,7 +23,7 @@ def test_download_extract_noaa(gas, sampling_strategy):
     df_all = []
     df_all.append(
         merge_netCDFs(
-            extract_dir="tests/expected_data/"
+            extract_dir="tests/test_data/"
             + f"{gas}_surface-{sampling_strategy}_ccgg_netCDF"
         )
     )

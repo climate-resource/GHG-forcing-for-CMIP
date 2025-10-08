@@ -47,14 +47,14 @@ def test_clean_and_save(gas, measurement_type):
     test_df["time"] = pd.to_datetime("01.02.2028")
 
     # create folder if not existent
-    os.makedirs(f"tests/test-data/{gas}", exist_ok=True)
+    os.makedirs(f"tests/test_results/{gas}", exist_ok=True)
 
     # run target function
-    clean_and_save(test_df, gas, "tests/test-data", measurement_type, False)
+    clean_and_save(test_df, gas, "tests/test_results", measurement_type, False)
 
     # check if files are saved
-    os.path.isfile(f"tests/test-data/{gas}/{gas}_{measurement_type}_raw.csv")
-    os.path.isfile(f"tests/test-data/{gas}/{gas}_{measurement_type}_raw.nc")
+    os.path.isfile(f"tests/test_results/{gas}/{gas}_{measurement_type}_raw.csv")
+    os.path.isfile(f"tests/test_results/{gas}/{gas}_{measurement_type}_raw.nc")
 
     # remove test-folder after testing
-    shutil.rmtree(f"tests/test-data/{gas}")
+    shutil.rmtree(f"tests/test_results/{gas}")

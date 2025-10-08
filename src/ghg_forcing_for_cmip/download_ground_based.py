@@ -49,7 +49,9 @@ def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) 
     # note: probably timeout has to be adjusted (currently only an initial guess)
     response = requests.get(url, timeout=10)
 
-    with open(save_to_path + f"/noaa_{gas}_surface_{sampling_strategy}.zip", "wb") as f:
+    with open(
+        os.path.join(save_to_path, f"noaa_{gas}_surface_{sampling_strategy}.zip"), "wb"
+    ) as f:
         f.write(response.content)
 
     print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path}")
@@ -371,14 +373,15 @@ def download_surface_data(
         )
 
         utils.unzip_download.with_options(name=f"unzip_download_{gas}_{sampling}")(
-            zip_path=save_to_path + f"/noaa_{gas}_surface_{sampling}.zip",
-            extract_dir=save_to_path + f"/{gas}/original",
+            zip_path=os.path.join(save_to_path, f"noaa_{gas}_surface_{sampling}.zip"),
+            extract_dir=os.path.join(save_to_path, f"{gas}/original"),
         )
 
         df_all.append(
             merge_netCDFs.with_options(name=f"merge_netCDFs_{gas}_{sampling}")(
-                extract_dir=save_to_path
-                + f"/{gas}/original/{gas}_surface-{sampling}_ccgg_netCDF"
+                extract_dir=os.path.join(
+                    save_to_path, f"{gas}/original/{gas}_surface-{sampling}_ccgg_netCDF"
+                )
             )
         )
 

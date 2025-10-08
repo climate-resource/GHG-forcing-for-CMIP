@@ -60,9 +60,6 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     Please refer to the following link for further details:
     https://cds.climate.copernicus.eu/how-to-api
     """
-    # TODO: Is there a way to check whether the /.cdsapirc file is
-    #  somewhere on the computer?
-
     if gas == "co2":
         dataset = "satellite-carbon-dioxide"
     elif gas == "ch4":
@@ -80,7 +77,7 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
         "version": ["4_5"],
     }
     # setup saving location
-    target = save_to_path + f"/obs4mips_x{gas}.zip"
+    target = os.path.join(save_to_path, f"obs4mips_x{gas}.zip")
 
     client = Client()
 
@@ -121,7 +118,7 @@ def validate_obs4mips_data(
         file for file in all_files if "OBS4MIPS" in file and f"X{gas.upper()}" in file
     )
 
-    df_raw = xr.open_dataset(path_to_nc + f"/{ds}").to_dataframe().reset_index()
+    df_raw = xr.open_dataset(os.path.join(path_to_nc, ds)).to_dataframe().reset_index()
     df_raw = df_raw[df_raw[f"x{gas}"] != np.float32(1e20)].reset_index()
     df = pd.DataFrame({})
 
@@ -175,12 +172,12 @@ def download_satellite_data(
     make_api_request(gas=gas, save_to_path=save_to_path)
 
     unzip_download.with_options(name="unzip_download")(
-        zip_path=save_to_path + f"obs4mips_x{gas}.zip",
-        extract_dir=save_to_path + f"{gas}/original",
+        zip_path=os.path.join(save_to_path, f"obs4mips_x{gas}.zip"),
+        extract_dir=os.path.join(save_to_path, f"{gas}/original"),
     )
 
     df_final = validate_obs4mips_data(
-        path_to_nc=save_to_path + f"{gas}/original",
+        path_to_nc=os.path.join(save_to_path, f"{gas}/original"),
         gas=gas,
         factor=np.where(gas == "ch4", 1e9, 1e6),
     )
