@@ -120,40 +120,41 @@ def merge_netCDFs(
 
     df_list = []
     for file in nc_files:
-        final_df = pd.DataFrame()
-        ds = xr.open_dataset(utils.ensure_trailing_slash(extract_dir) + file)
-        df = ds.to_dataframe().reset_index()
+        if file.endswith("MonthlyData.nc") or file.endswith("event.nc"):
+            final_df = pd.DataFrame()
+            ds = xr.open_dataset(utils.ensure_trailing_slash(extract_dir) + file)
+            df = ds.to_dataframe().reset_index()
 
-        if file.endswith("MonthlyData.nc"):
-            # insitu data
-            final_df["std_dev"] = df.value_std_dev.values
-            final_df["numb"] = df.nvalue.values
-            final_df["value"] = df.value.values
-            final_df["year"] = df.time.dt.year.values
-            final_df["month"] = df.time.dt.month.values
-            final_df["latitude"] = df.latitude.values
-            final_df["longitude"] = df.longitude.values
-            final_df["altitude"] = df.altitude.values
-        elif file.endswith("event.nc"):
-            # flask data
-            final_df = stats_from_events(df)
-        else:
-            # skip all other files in zip-folder
-            continue
+            if file.endswith("MonthlyData.nc"):
+                # insitu data
+                final_df["std_dev"] = df.value_std_dev.values
+                final_df["numb"] = df.nvalue.values
+                final_df["value"] = df.value.values
+                final_df["year"] = df.time.dt.year.values
+                final_df["month"] = df.time.dt.month.values
+                final_df["latitude"] = df.latitude.values
+                final_df["longitude"] = df.longitude.values
+                final_df["altitude"] = df.altitude.values
 
-        final_df["site_code"] = ds.attrs["site_code"]
-        final_df["network"] = "noaa"
-        final_df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
-        final_df["sampling_strategy"] = file.split("_")[2]
-        final_df["gas"] = ds.attrs["dataset_parameter"]
-        final_df["unit"] = np.where(
-            ds.attrs["dataset_parameter"] == "ch4", "ppb", "ppm"
-        )
-        final_df["version"] = ds.attrs["dataset_creation_date"]
-        final_df["instrument"] = "noaa"
-        final_df["value"] = np.where(final_df["value"] < 0.0, np.nan, final_df["value"])
+            if file.endswith("event.nc"):
+                # flask data
+                final_df = stats_from_events(df)
 
-        df_list.append(final_df)
+            final_df["site_code"] = ds.attrs["site_code"]
+            final_df["network"] = "noaa"
+            final_df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
+            final_df["sampling_strategy"] = file.split("_")[2]
+            final_df["gas"] = ds.attrs["dataset_parameter"]
+            final_df["unit"] = np.where(
+                ds.attrs["dataset_parameter"] == "ch4", "ppb", "ppm"
+            )
+            final_df["version"] = ds.attrs["dataset_creation_date"]
+            final_df["instrument"] = "noaa"
+            final_df["value"] = np.where(
+                final_df["value"] < 0.0, np.nan, final_df["value"]
+            )
+
+            df_list.append(final_df)
 
     df_combined = pd.concat(df_list)
 
