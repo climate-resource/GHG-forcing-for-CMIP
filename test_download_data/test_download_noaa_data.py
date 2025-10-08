@@ -7,9 +7,11 @@ from web APIs
 
 import os
 
+import numpy as np
 import pytest
 
 from ghg_forcing_for_cmip.download_ground_based import download_zip_from_noaa
+from ghg_forcing_for_cmip.utils import unzip_download
 
 
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
@@ -41,23 +43,22 @@ def test_download_extract_noaa(gas, sampling_strategy):
     ), f"Expected file {expected_file} was not created"
     assert os.stat(expected_file).st_size > 0, "Downloaded file is empty"
 
-    assert exp_numb_files != 0
-    # # %% test unzipping of files
-    # # unzip folder
-    # unzip_download(zip_path=expected_file, extract_dir=save_dir + "extracted")
+    # %% test unzipping of files
+    # unzip folder
+    unzip_download(zip_path=expected_file, extract_dir=save_dir + "extracted")
 
-    # all_files = os.listdir(
-    #     save_dir + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
-    # )
+    all_files = os.listdir(
+        save_dir + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+    )
 
-    # observed_sites = [
-    #     site.split("_")[1] for site in all_files if not site.startswith("README")
-    # ]
+    observed_sites = [
+        site.split("_")[1] for site in all_files if not site.startswith("README")
+    ]
 
-    # # check that number of files is as expected
-    # assert len(all_files) == exp_numb_files
-    # # check that all observation sites are included as expected
-    # np.testing.assert_array_equal(np.sort(expected_sites), np.sort(observed_sites))
+    # check that number of files is as expected
+    assert len(all_files) == exp_numb_files
+    # check that all observation sites are included as expected
+    np.testing.assert_array_equal(np.sort(expected_sites), np.sort(observed_sites))
 
     # # %% test merging
     # df_all = []
