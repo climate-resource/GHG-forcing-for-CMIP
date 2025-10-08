@@ -8,9 +8,13 @@ from web APIs
 import os
 
 import numpy as np
+import pandas as pd
 import pytest
 
-from ghg_forcing_for_cmip.download_ground_based import download_zip_from_noaa
+from ghg_forcing_for_cmip.download_ground_based import (
+    download_zip_from_noaa,
+    merge_netCDFs,
+)
 from ghg_forcing_for_cmip.utils import unzip_download
 
 
@@ -60,38 +64,38 @@ def test_download_extract_noaa(gas, sampling_strategy):
     # check that all observation sites are included as expected
     np.testing.assert_array_equal(np.sort(expected_sites), np.sort(observed_sites))
 
-    # # %% test merging
-    # df_all = []
-    # df_all.append(
-    #     merge_netCDFs(
-    #         extract_dir=save_dir
-    #         + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
-    #     )
-    # )
+    # %% test merging
+    df_all = []
+    df_all.append(
+        merge_netCDFs(
+            extract_dir=save_dir
+            + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+        )
+    )
 
-    # df_combined = pd.concat(df_all)
+    df_combined = pd.concat(df_all)
 
-    # expected_cols = [
-    #     "std_dev",
-    #     "numb",
-    #     "value",
-    #     "year",
-    #     "month",
-    #     "latitude",
-    #     "longitude",
-    #     "altitude",
-    #     "site_code",
-    #     "network",
-    #     "insitu_vs_flask",
-    #     "sampling_strategy",
-    #     "gas",
-    #     "unit",
-    #     "version",
-    #     "instrument",
-    # ]
+    expected_cols = [
+        "std_dev",
+        "numb",
+        "value",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "altitude",
+        "site_code",
+        "network",
+        "insitu_vs_flask",
+        "sampling_strategy",
+        "gas",
+        "unit",
+        "version",
+        "instrument",
+    ]
 
-    # for col in expected_cols:
-    #     assert col in df_combined.columns, f"Can't find column {col} in data frame."
+    for col in expected_cols:
+        assert col in df_combined.columns, f"Can't find column {col} in data frame."
 
     # for code in expected_sites:
     #     assert (
