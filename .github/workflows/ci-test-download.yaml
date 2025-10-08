@@ -25,6 +25,7 @@ jobs:
           # If you have better proof of whether this is needed or not,
           # feel free to update.
           shell: bash
+      timeout-minutes: 10
       steps:
         - name: Check out repository
           uses: actions/checkout@v4
