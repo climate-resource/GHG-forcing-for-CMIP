@@ -7,6 +7,8 @@ from web APIs
 
 import pytest
 
+from ghg_forcing_for_cmip.download_ground_based import download_zip_from_noaa
+
 
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
 @pytest.mark.parametrize("sampling_strategy", ["insitu", "flask"])
@@ -18,16 +20,16 @@ def test_download_extract_noaa(gas, sampling_strategy):
     ) as f:
         lines = f.read()
     expected_sites = lines.split()
-    return expected_sites
-    # # Note: number of file plus Readme
-    # exp_numb_files = len(expected_sites) + 1
 
-    # save_dir = "test_download_data/test-data/"
+    # Note: number of file plus Readme
+    exp_numb_files = len(expected_sites) + 1
 
-    # # %% test downloading
-    # # download NOAA data in test directory
-    # download_zip_from_noaa(gas, sampling_strategy, save_to_path=save_dir)
+    save_dir = "test_download_data/test-data/"
 
+    # %% test downloading
+    # download NOAA data in test directory
+    download_zip_from_noaa(gas, sampling_strategy, save_to_path=save_dir)
+    return exp_numb_files
     # # Expected file name
     # expected_file = save_dir + f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
