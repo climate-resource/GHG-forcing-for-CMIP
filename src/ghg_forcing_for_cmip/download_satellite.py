@@ -3,7 +3,6 @@ Download satellite data
 
 In this module we download the OBS4MIPs data
 used for satellite measurements of CO2 and CH4
-
 """
 
 import os
