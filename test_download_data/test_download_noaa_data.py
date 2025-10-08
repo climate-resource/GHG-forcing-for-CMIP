@@ -18,6 +18,7 @@ from ghg_forcing_for_cmip.download_ground_based import (
 from ghg_forcing_for_cmip.utils import unzip_download
 
 
+@pytest.mark.timeout(120)
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
 @pytest.mark.parametrize("sampling_strategy", ["insitu", "flask"])
 def test_download_extract_noaa(gas, sampling_strategy):

@@ -44,7 +44,7 @@ jobs:
             ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
           run: |
             echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
-            uv run pytest -r a -v src test_download_data --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
+            uv run pytest -r -s a -v src test_download_data --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
             uv run coverage report
         - name: Upload coverage reports to Codecov with GitHub Action
           uses: codecov/codecov-action@v4.2.0
