@@ -21,6 +21,7 @@ from ghg_forcing_for_cmip.utils import unzip_download
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
 @pytest.mark.parametrize("sampling_strategy", ["insitu", "flask"])
 def test_download_extract_noaa(gas, sampling_strategy):
+    print("start")
     # expected results
     with open(
         f"test_download_data/expected_noaa/expected_sites_{gas}_{sampling_strategy}.txt",
