@@ -6,6 +6,7 @@ concentration data from (A)GAGE and NOAA networks
 """
 
 import os
+from pathlib import Path
 from typing import Any, Union
 
 import numpy as np
@@ -19,7 +20,9 @@ from ghg_forcing_for_cmip import CONFIG, utils, validation
 
 
 @task(description="Download zip-folder from NOAA", cache_policy=CONFIG.CACHE_POLICIES)
-def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) -> None:
+def download_zip_from_noaa(
+    gas: str, sampling_strategy: str, save_to_path: Path
+) -> None:
     """
     Download NOAA data as NETCDF zip-file
 
@@ -36,7 +39,6 @@ def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) 
         path to save downloaded data
     """
     # setup directory
-    save_to_path = utils.ensure_trailing_slash(save_to_path)
     os.makedirs(save_to_path, exist_ok=True)
 
     if sampling_strategy == "insitu":
@@ -49,12 +51,10 @@ def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) 
     # note: probably timeout has to be adjusted (currently only an initial guess)
     response = requests.get(url, timeout=10)
 
-    with open(
-        os.path.join(save_to_path, f"noaa_{gas}_surface_{sampling_strategy}.zip"), "wb"
-    ) as f:
+    with open(save_to_path / f"noaa_{gas}_surface_{sampling_strategy}.zip", "wb") as f:
         f.write(response.content)
 
-    print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path}")
+    print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path!s}")
 
 
 def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
@@ -102,7 +102,7 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
 
 @task(description="Merge information from single files into one single netCDF")
 def merge_netCDFs(
-    extract_dir: str,
+    extract_dir: Path,
 ) -> pd.DataFrame:
     """
     Combine netCDF files into a single dataframe
@@ -124,7 +124,7 @@ def merge_netCDFs(
     for file in nc_files:
         if file.endswith("MonthlyData.nc") or file.endswith("event.nc"):
             final_df = pd.DataFrame()
-            ds = xr.open_dataset(utils.ensure_trailing_slash(extract_dir) + file)
+            ds = xr.open_dataset(extract_dir / file)
             df = ds.to_dataframe().reset_index()
 
             if file.endswith("MonthlyData.nc"):
@@ -365,23 +365,24 @@ def download_surface_data(
         otherwise they are removed
 
     """
+    save_to_path_arg = Path(save_to_path)
+
     df_all = []
 
     for sampling in ["flask", "insitu"]:
         download_zip_from_noaa.with_options(name=f"download_noaa_zip_{gas}_{sampling}")(
-            gas=gas, sampling_strategy=sampling, save_to_path=save_to_path
+            gas=gas, sampling_strategy=sampling, save_to_path=save_to_path_arg
         )
 
         utils.unzip_download.with_options(name=f"unzip_download_{gas}_{sampling}")(
-            zip_path=os.path.join(save_to_path, f"noaa_{gas}_surface_{sampling}.zip"),
-            extract_dir=os.path.join(save_to_path, f"{gas}/original"),
+            zip_path=save_to_path_arg / f"noaa_{gas}_surface_{sampling}.zip",
+            extract_dir=save_to_path_arg / f"{gas}/original",
         )
 
         df_all.append(
             merge_netCDFs.with_options(name=f"merge_netCDFs_{gas}_{sampling}")(
-                extract_dir=os.path.join(
-                    save_to_path, f"{gas}/original/{gas}_surface-{sampling}_ccgg_netCDF"
-                )
+                extract_dir=save_to_path_arg
+                / f"{gas}/original/{gas}_surface-{sampling}_ccgg_netCDF"
             )
         )
 
@@ -397,7 +398,7 @@ def download_surface_data(
     utils.clean_and_save(
         df_final,
         gas=gas,
-        save_to_path=save_to_path,
+        save_to_path=save_to_path_arg,
         measurement_type="gb",
         remove_original_files=remove_original_files,
     )

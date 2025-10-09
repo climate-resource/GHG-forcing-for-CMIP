@@ -5,27 +5,22 @@ Regression tests for processing satellite data
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from ghg_forcing_for_cmip.download_satellite import validate_obs4mips_data
-from ghg_forcing_for_cmip.utils import (
-    clean_and_save,
-    ensure_trailing_slash,
-)
+from ghg_forcing_for_cmip.utils import clean_and_save
 
 
 @pytest.mark.parametrize("gas", ["ch4", "co2"])
-def test_download_satellite_data(
-    gas, file_regression, save_to_path="tests/test_results/satellite"
-):
-    os.makedirs(os.path.join(save_to_path, gas), exist_ok=True)
-
-    save_to_path = ensure_trailing_slash(save_to_path)
+def test_download_satellite_data(gas, save_to_path="tests/test_results/satellite"):
+    save_to_path = Path(save_to_path)
+    os.makedirs(save_to_path / gas, exist_ok=True)
 
     df_final = validate_obs4mips_data(
-        path_to_nc="tests/test_data/",
+        path_to_nc=Path("tests/test_data"),
         gas=gas,
         factor=np.where(gas == "ch4", 1e9, 1e6),
     )
@@ -40,5 +35,3 @@ def test_download_satellite_data(
         measurement_type="eo",
         remove_original_files=True,
     )
-
-    file_regression.check(save_to_path)

@@ -6,6 +6,7 @@ from web APIs
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -32,14 +33,14 @@ def test_download_extract_noaa(gas, sampling_strategy):
     # Note: number of file plus Readme
     exp_numb_files = len(expected_sites) + 1
 
-    save_dir = "test_download_data/test-data/"
+    save_dir = Path("test_download_data/test-data/")
 
     # %% test downloading
     # download NOAA data in test directory
     download_zip_from_noaa(gas, sampling_strategy, save_to_path=save_dir)
 
     # Expected file name
-    expected_file = save_dir + f"noaa_{gas}_surface_{sampling_strategy}.zip"
+    expected_file = save_dir / f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
     # Assertions for downloading zip
     assert os.path.isfile(
@@ -49,10 +50,10 @@ def test_download_extract_noaa(gas, sampling_strategy):
 
     # %% test unzipping of files
     # unzip folder
-    unzip_download(zip_path=expected_file, extract_dir=save_dir + "extracted")
+    unzip_download(zip_path=expected_file, extract_dir=save_dir / "extracted")
 
     all_files = os.listdir(
-        save_dir + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+        save_dir / f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
     )
 
     observed_sites = [
@@ -69,7 +70,7 @@ def test_download_extract_noaa(gas, sampling_strategy):
     df_all.append(
         merge_netCDFs(
             extract_dir=save_dir
-            + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+            / f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
         )
     )
 

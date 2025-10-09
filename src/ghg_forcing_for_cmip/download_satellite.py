@@ -6,6 +6,7 @@ used for satellite measurements of CO2 and CH4
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,6 @@ from prefect import flow, task
 from ghg_forcing_for_cmip import CONFIG
 from ghg_forcing_for_cmip.utils import (
     clean_and_save,
-    ensure_trailing_slash,
     unzip_download,
 )
 from ghg_forcing_for_cmip.validation import EODataSchema
@@ -28,7 +28,7 @@ from ghg_forcing_for_cmip.validation import EODataSchema
     task_run_name="download_zip_from_cds_{gas}",
     cache_policy=CONFIG.CACHE_POLICIES,
 )
-def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
+def make_api_request(gas: str, save_to_path: Path) -> None:
     """
     Request data from Climate Data Store via API
 
@@ -77,16 +77,16 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
         "version": ["4_5"],
     }
     # setup saving location
-    target = os.path.join(save_to_path, f"obs4mips_x{gas}.zip")
+    target = save_to_path / f"obs4mips_x{gas}.zip"
 
     client = Client()
 
     if not client.check_authentication():
         raise ValueError("authentification of CDS client failed")  # noqa: TRY003
 
-    client.retrieve(dataset, request, target=target)
+    client.retrieve(dataset, request, target=str(target))
 
-    return print(f"downloaded OBS4MIPs data to {target}")
+    return print(f"downloaded OBS4MIPs data to {target!s}")
 
 
 @task(
@@ -95,7 +95,7 @@ def make_api_request(gas: str, save_to_path: str = "data/downloads") -> None:
     cache_policy=CONFIG.CACHE_POLICIES,
 )
 def validate_obs4mips_data(
-    path_to_nc: str, gas: str = "co2", factor: float = 1e6
+    path_to_nc: Path, gas: str = "co2", factor: float = 1e6
 ) -> pd.DataFrame:
     """
     Preprocess OBS4MIPS data from nc to csv format
@@ -118,7 +118,7 @@ def validate_obs4mips_data(
         file for file in all_files if "OBS4MIPS" in file and f"X{gas.upper()}" in file
     )
 
-    df_raw = xr.open_dataset(os.path.join(path_to_nc, ds)).to_dataframe().reset_index()
+    df_raw = xr.open_dataset(path_to_nc / ds).to_dataframe().reset_index()
     df_raw = df_raw[df_raw[f"x{gas}"] != np.float32(1e20)].reset_index()
     df = pd.DataFrame({})
 
@@ -167,17 +167,17 @@ def download_satellite_data(
         otherwise they are removed
 
     """
-    save_to_path = ensure_trailing_slash(save_to_path)
+    save_to_path_arg = Path(save_to_path)
 
-    make_api_request(gas=gas, save_to_path=save_to_path)
+    make_api_request(gas=gas, save_to_path=save_to_path_arg)
 
     unzip_download.with_options(name="unzip_download")(
-        zip_path=os.path.join(save_to_path, f"obs4mips_x{gas}.zip"),
-        extract_dir=os.path.join(save_to_path, f"{gas}/original"),
+        zip_path=save_to_path_arg / f"obs4mips_x{gas}.zip",
+        extract_dir=save_to_path_arg / f"{gas}/original",
     )
 
     df_final = validate_obs4mips_data(
-        path_to_nc=os.path.join(save_to_path, f"{gas}/original"),
+        path_to_nc=save_to_path_arg / f"{gas}/original",
         gas=gas,
         factor=np.where(gas == "ch4", 1e9, 1e6),
     )
@@ -186,7 +186,7 @@ def download_satellite_data(
     clean_and_save(
         df_final,
         gas=gas,
-        save_to_path=save_to_path,
+        save_to_path=save_to_path_arg,
         measurement_type="eo",
         remove_original_files=remove_original_files,
     )

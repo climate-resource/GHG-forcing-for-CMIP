@@ -5,6 +5,8 @@ Regression tests for downloading GHG concentrations
 from web APIs
 """
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -23,8 +25,8 @@ def test_download_extract_noaa(gas, sampling_strategy):
     df_all = []
     df_all.append(
         merge_netCDFs(
-            extract_dir="tests/test_data/"
-            + f"{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+            extract_dir=Path("tests/test_data")
+            / f"{gas}_surface-{sampling_strategy}_ccgg_netCDF"
         )
     )
 

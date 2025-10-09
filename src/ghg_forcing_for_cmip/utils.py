@@ -5,29 +5,13 @@ Module including helper functions
 import os
 import shutil
 import zipfile
+from pathlib import Path
 
 import pandas as pd
 import xarray as xr
 from prefect import task
 
 from ghg_forcing_for_cmip import CONFIG
-
-
-def ensure_trailing_slash(path: str) -> str:
-    """
-    Ensure trailing slash at the end of a path
-
-    Parameters
-    ----------
-    path
-        the path / directory
-
-    Returns
-    -------
-    :
-        path with trailing slash
-    """
-    return path if path.endswith("/") else os.path.join(path, "/")
 
 
 @task(
@@ -38,7 +22,7 @@ def ensure_trailing_slash(path: str) -> str:
 def clean_and_save(
     df: pd.DataFrame,
     gas: str,
-    save_to_path: str,
+    save_to_path: Path,
     measurement_type: str,
     remove_original_files: bool,
 ) -> None:
@@ -66,10 +50,9 @@ def clean_and_save(
         whether downloaded files should be kept;
         otherwise they are removed
     """
-    save_to_path = ensure_trailing_slash(save_to_path)
     # save as csv
     df.to_csv(
-        os.path.join(save_to_path, gas, f"{gas}_{measurement_type}_raw.csv"),
+        save_to_path / gas / f"{gas}_{measurement_type}_raw.csv",
         index=False,
     )
 
@@ -88,17 +71,15 @@ def clean_and_save(
 
     # reconvert datetime format (info is lost when converting df to ds)
     ds["time"] = df.time
-    ds.to_netcdf(os.path.join(save_to_path, gas, f"{gas}_{measurement_type}_raw.nc"))
+    ds.to_netcdf(save_to_path / gas / f"{gas}_{measurement_type}_raw.nc")
 
     # clean-up directory
-    if remove_original_files and os.path.exists(
-        os.path.join(save_to_path, gas, "original")
-    ):
-        shutil.rmtree(os.path.join(save_to_path, gas, "original"))
+    if remove_original_files and os.path.exists(save_to_path / gas / "original"):
+        shutil.rmtree(save_to_path / gas / "original")
 
 
 @task(description="Unzip downloaded data", cache_policy=CONFIG.CACHE_POLICIES)
-def unzip_download(zip_path: str, extract_dir: str) -> None:
+def unzip_download(zip_path: Path, extract_dir: Path) -> None:
     """
     Unzips a given ZIP file into the target directory.
 
@@ -119,4 +100,4 @@ def unzip_download(zip_path: str, extract_dir: str) -> None:
 
     os.remove(zip_path)
 
-    print(f"Extracted {zip_path} to {extract_dir}")
+    print(f"Extracted {zip_path!s} to {extract_dir!s}")
