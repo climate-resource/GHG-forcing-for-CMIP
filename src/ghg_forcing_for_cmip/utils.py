@@ -5,27 +5,13 @@ Module including helper functions
 import os
 import shutil
 import zipfile
+from pathlib import Path
+
 import pandas as pd
 import xarray as xr
 from prefect import task
 
 from ghg_forcing_for_cmip import CONFIG
-
-def ensure_trailing_slash(path: str) -> str:
-    """
-    Ensure trailing slash at the end of a path
-
-    Parameters
-    ----------
-    path
-        the path / directory
-
-    Returns
-    -------
-    :
-        path with trailing slash
-    """
-    return path if path.endswith("/") else path + "/"
 
 
 @task(
@@ -34,9 +20,11 @@ def ensure_trailing_slash(path: str) -> str:
     cache_policy=CONFIG.CACHE_POLICIES,
 )
 def clean_and_save(
-    df: pd.DataFrame, gas: str, save_to_path: str, 
+    df: pd.DataFrame,
+    gas: str,
+    save_to_path: Path,
     measurement_type: str,
-    remove_original_files: bool
+    remove_original_files: bool,
 ) -> None:
     """
     Clean up folder and save final dataset
@@ -54,7 +42,7 @@ def clean_and_save(
         path to save the results
 
     measurement_type :
-        string used to discriminate ground_based 
+        string used to discriminate ground_based
         and satellite data from each other;
         either "gb" or "eo"
 
@@ -62,9 +50,11 @@ def clean_and_save(
         whether downloaded files should be kept;
         otherwise they are removed
     """
-    save_to_path = ensure_trailing_slash(save_to_path)
     # save as csv
-    df.to_csv(save_to_path + gas + f"/{gas}_{measurement_type}_raw.csv", index=False)
+    df.to_csv(
+        save_to_path / gas / f"{gas}_{measurement_type}_raw.csv",
+        index=False,
+    )
 
     # save as netcdf
     ds = xr.Dataset.from_dataframe(df)
@@ -77,21 +67,19 @@ def clean_and_save(
     year, month, latitude, longitude = (
         df[var].unique() for var in ["year", "month", lat, lon]
     )
-    ds = ds.assign_coords(
-        {"year": year, "month": month, lat: latitude, lon: longitude}
-    )
+    ds = ds.assign_coords({"year": year, "month": month, lat: latitude, lon: longitude})
 
     # reconvert datetime format (info is lost when converting df to ds)
     ds["time"] = df.time
-    ds.to_netcdf(save_to_path + gas + f"/{gas}_{measurement_type}_raw.nc")
+    ds.to_netcdf(save_to_path / gas / f"{gas}_{measurement_type}_raw.nc")
 
     # clean-up directory
-    if remove_original_files and os.path.exists(save_to_path + gas + "/original"):
-        shutil.rmtree(save_to_path + gas + "/original")
+    if remove_original_files and os.path.exists(save_to_path / gas / "original"):
+        shutil.rmtree(save_to_path / gas / "original")
 
 
 @task(description="Unzip downloaded data", cache_policy=CONFIG.CACHE_POLICIES)
-def unzip_download(zip_path: str, extract_dir: str) -> None:
+def unzip_download(zip_path: Path, extract_dir: Path) -> None:
     """
     Unzips a given ZIP file into the target directory.
 
@@ -112,4 +100,4 @@ def unzip_download(zip_path: str, extract_dir: str) -> None:
 
     os.remove(zip_path)
 
-    print(f"Extracted {zip_path} to {extract_dir}")
+    print(f"Extracted {zip_path!s} to {extract_dir!s}")

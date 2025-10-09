@@ -10,7 +10,7 @@ docs/api/*
 
 # Databases
 *.db
-tests/test-data/
+tests/test_results/
 test_download_data/test-data/
 
 # scratch
