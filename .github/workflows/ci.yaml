@@ -96,7 +96,6 @@ jobs:
           # We don't have that right now, because we're not sure this pain point exists.
           uv-dependency-install-flags: "--all-extras --group tests"
       - name: Run tests
-          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           uv run pytest -r a -v src tests --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
           uv run coverage report
       - name: Upload coverage reports to Codecov with GitHub Action
@@ -148,11 +147,7 @@ jobs:
           uv pip compile --python ${{ matrix.python-version }} --resolution ${{ matrix.resolution-strategy }} --all-extras pyproject.toml -o requirements-tmp.txt
           uv pip install --requirements requirements-tmp.txt .
       - name: Run tests
-        env:
-          ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
-          ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
         run: |
-          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           uv run --no-sync pytest tests -r a -v
 
   tests-without-extras:
@@ -189,11 +184,7 @@ jobs:
           pip install -r requirements-locked.txt
           pip install -r requirements-only-tests-min-locked.txt
       - name: Run tests
-        env:
-          ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
-          ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
         run: |
-          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           pytest tests -r a -vv tests
 
   imports-without-extras:
