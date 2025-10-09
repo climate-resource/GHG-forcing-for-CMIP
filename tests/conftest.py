@@ -8,6 +8,13 @@ import pandas as pd
 import pytest
 
 
+def pytest_runtest_setup(item):
+    if any(
+        item.iter_markers(name="download")
+    ) and "download" not in item.config.getoption("-m"):
+        pytest.skip("skip download by default")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def pandas_terminal_width():
     # Set pandas terminal width so that doctests don't depend on terminal width.
