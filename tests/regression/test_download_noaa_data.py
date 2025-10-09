@@ -6,24 +6,73 @@ from web APIs
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from ghg_forcing_for_cmip.download_data import (
+from ghg_forcing_for_cmip.download_ground_based import (
     download_zip_from_noaa,
     merge_netCDFs,
-    unzip_download,
 )
+from ghg_forcing_for_cmip.utils import unzip_download
 
 
 @pytest.mark.parametrize("gas", ["co2", "ch4"])
-@pytest.mark.parametrize("sampling_strategy", ["flask"])  # "insitu"
+@pytest.mark.parametrize("sampling_strategy", ["flask", "insitu"])
 def test_download_extract_noaa(gas, sampling_strategy):
+    if sampling_strategy == "insitu":
+        expected_sites = ["brw", "mko"]
+    else:
+        expected_sites = ["abp", "alt", "ams"]
+
+    # test merging
+    df_all = []
+    df_all.append(
+        merge_netCDFs(
+            extract_dir=Path("tests/test_data")
+            / f"{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+        )
+    )
+
+    df_combined = pd.concat(df_all)
+
+    expected_cols = [
+        "std_dev",
+        "numb",
+        "value",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "altitude",
+        "site_code",
+        "network",
+        "insitu_vs_flask",
+        "sampling_strategy",
+        "gas",
+        "unit",
+        "version",
+        "instrument",
+    ]
+
+    for col in expected_cols:
+        assert col in df_combined.columns, f"Can't find column {col} in data frame."
+
+    for code in expected_sites:
+        assert (
+            code.upper() in df_combined.site_code.unique()
+        ), f"Can't finde site_code {code.upper()} in data frame."
+
+
+@pytest.mark.download
+@pytest.mark.parametrize("gas", ["co2", "ch4"])
+@pytest.mark.parametrize("sampling_strategy", ["insitu", "flask"])
+def test_download_extract_noaa_full(gas, sampling_strategy):
     # expected results
     with open(
-        f"tests/expected_noaa/expected_sites_{gas}_{sampling_strategy}.txt",
+        f"tests/test_data/expected_noaa/expected_sites_{gas}_{sampling_strategy}.txt",
         encoding="utf-8",
     ) as f:
         lines = f.read()
@@ -32,14 +81,14 @@ def test_download_extract_noaa(gas, sampling_strategy):
     # Note: number of file plus Readme
     exp_numb_files = len(expected_sites) + 1
 
-    save_dir = "tests/test-data/"
+    save_dir = Path("tests/test_results/")
 
     # %% test downloading
     # download NOAA data in test directory
     download_zip_from_noaa(gas, sampling_strategy, save_to_path=save_dir)
 
     # Expected file name
-    expected_file = save_dir + f"noaa_{gas}_surface_{sampling_strategy}.zip"
+    expected_file = save_dir / f"noaa_{gas}_surface_{sampling_strategy}.zip"
 
     # Assertions for downloading zip
     assert os.path.isfile(
@@ -49,10 +98,10 @@ def test_download_extract_noaa(gas, sampling_strategy):
 
     # %% test unzipping of files
     # unzip folder
-    unzip_download(zip_path=expected_file, extract_dir=save_dir + "extracted")
+    unzip_download(zip_path=expected_file, extract_dir=save_dir / "extracted")
 
     all_files = os.listdir(
-        save_dir + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+        save_dir / f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
     )
 
     observed_sites = [
@@ -69,7 +118,7 @@ def test_download_extract_noaa(gas, sampling_strategy):
     df_all.append(
         merge_netCDFs(
             extract_dir=save_dir
-            + f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
+            / f"extracted/{gas}_surface-{sampling_strategy}_ccgg_netCDF"
         )
     )
 

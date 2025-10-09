@@ -1,13 +1,12 @@
 """
-Download data
+Download ground-based data
 
 The task of this module is data scraping of the GHG
-concentration data from e.g. (A)GAGE, NOAA
+concentration data from (A)GAGE and NOAA networks
 """
 
 import os
-import shutil
-import zipfile
+from pathlib import Path
 from typing import Any, Union
 
 import numpy as np
@@ -21,7 +20,9 @@ from ghg_forcing_for_cmip import CONFIG, utils, validation
 
 
 @task(description="Download zip-folder from NOAA", cache_policy=CONFIG.CACHE_POLICIES)
-def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) -> None:
+def download_zip_from_noaa(
+    gas: str, sampling_strategy: str, save_to_path: Path
+) -> None:
     """
     Download NOAA data as NETCDF zip-file
 
@@ -38,7 +39,6 @@ def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) 
         path to save downloaded data
     """
     # setup directory
-    save_to_path = utils.ensure_trailing_slash(save_to_path)
     os.makedirs(save_to_path, exist_ok=True)
 
     if sampling_strategy == "insitu":
@@ -51,35 +51,10 @@ def download_zip_from_noaa(gas: str, sampling_strategy: str, save_to_path: str) 
     # note: probably timeout has to be adjusted (currently only an initial guess)
     response = requests.get(url, timeout=10)
 
-    with open(save_to_path + f"/noaa_{gas}_surface_{sampling_strategy}.zip", "wb") as f:
+    with open(save_to_path / f"noaa_{gas}_surface_{sampling_strategy}.zip", "wb") as f:
         f.write(response.content)
 
-    print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path}")
-
-
-@task(description="Unzip downloaded data", cache_policy=CONFIG.CACHE_POLICIES)
-def unzip_download(zip_path: str, extract_dir: str) -> None:
-    """
-    Unzips a given ZIP file into the target directory.
-
-    Parameters
-    ----------
-    zip_path :
-        Path to the zip file (e.g., "data/downloads/noaa_ch4_surface_flask.zip")
-
-    extract_dir :
-        Path where the files should be extracted.
-    """
-    # make sure target directory exists
-    os.makedirs(extract_dir, exist_ok=True)
-
-    # unzip
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_dir)
-
-    os.remove(zip_path)
-
-    print(f"Extracted {zip_path} to {extract_dir}")
+    print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path!s}")
 
 
 def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
@@ -127,7 +102,7 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
 
 @task(description="Merge information from single files into one single netCDF")
 def merge_netCDFs(
-    extract_dir: str,
+    extract_dir: Path,
 ) -> pd.DataFrame:
     """
     Combine netCDF files into a single dataframe
@@ -147,40 +122,41 @@ def merge_netCDFs(
 
     df_list = []
     for file in nc_files:
-        final_df = pd.DataFrame()
-        ds = xr.open_dataset(utils.ensure_trailing_slash(extract_dir) + file)
-        df = ds.to_dataframe().reset_index()
+        if file.endswith("MonthlyData.nc") or file.endswith("event.nc"):
+            final_df = pd.DataFrame()
+            ds = xr.open_dataset(extract_dir / file)
+            df = ds.to_dataframe().reset_index()
 
-        if file.endswith("MonthlyData.nc"):
-            # insitu data
-            final_df["std_dev"] = df.value_std_dev.values
-            final_df["numb"] = df.nvalue.values
-            final_df["value"] = df.value.values
-            final_df["year"] = df.time.dt.year.values
-            final_df["month"] = df.time.dt.month.values
-            final_df["latitude"] = df.latitude.values
-            final_df["longitude"] = df.longitude.values
-            final_df["altitude"] = df.altitude.values
-        elif file.endswith("event.nc"):
-            # flask data
-            final_df = stats_from_events(df)
-        else:
-            # skip all other files in zip-folder
-            continue
+            if file.endswith("MonthlyData.nc"):
+                # insitu data
+                final_df["std_dev"] = df.value_std_dev.values
+                final_df["numb"] = df.nvalue.values
+                final_df["value"] = df.value.values
+                final_df["year"] = df.time.dt.year.values
+                final_df["month"] = df.time.dt.month.values
+                final_df["latitude"] = df.latitude.values
+                final_df["longitude"] = df.longitude.values
+                final_df["altitude"] = df.altitude.values
 
-        final_df["site_code"] = ds.attrs["site_code"]
-        final_df["network"] = "noaa"
-        final_df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
-        final_df["sampling_strategy"] = file.split("_")[2]
-        final_df["gas"] = ds.attrs["dataset_parameter"]
-        final_df["unit"] = np.where(
-            ds.attrs["dataset_parameter"] == "ch4", "ppb", "ppm"
-        )
-        final_df["version"] = ds.attrs["dataset_creation_date"]
-        final_df["instrument"] = "noaa"
-        final_df["value"] = np.where(final_df["value"] < 0.0, np.nan, final_df["value"])
+            if file.endswith("event.nc"):
+                # flask data
+                final_df = stats_from_events(df)
 
-        df_list.append(final_df)
+            final_df["site_code"] = ds.attrs["site_code"]
+            final_df["network"] = "noaa"
+            final_df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
+            final_df["sampling_strategy"] = file.split("_")[2]
+            final_df["gas"] = ds.attrs["dataset_parameter"]
+            final_df["unit"] = np.where(
+                ds.attrs["dataset_parameter"] == "ch4", "ppb", "ppm"
+            )
+            final_df["version"] = ds.attrs["dataset_creation_date"]
+            final_df["instrument"] = "noaa"
+            final_df["value"] = np.where(
+                final_df["value"] < 0.0, np.nan, final_df["value"]
+            )
+
+            df_list.append(final_df)
 
     df_combined = pd.concat(df_list)
 
@@ -235,8 +211,7 @@ def compute_bounds(
 
 
 def get_indices(
-    values: "pd.Series[Any]",
-    bounds: npt.NDArray[Union[np.int_, np.float32]],
+    values: "pd.Series[Any]", bounds: npt.NDArray[Union[np.int_, np.float32]]
 ) -> npt.NDArray[Union[np.int_, np.float32]]:
     """
     Compute indices based on CONFIG.LAT/LON_BINS
@@ -369,55 +344,6 @@ def validate_surface_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@task(
-    name="clean_and_save",
-    description="Clean directory and save file",
-    cache_policy=CONFIG.CACHE_POLICIES,
-)
-def clean_and_save(
-    df: pd.DataFrame, gas: str, save_to_path: str, remove_original_files: bool
-) -> None:
-    """
-    Clean up folder and save final dataset
-
-    Parameters
-    ----------
-    df :
-        final, post-processed data
-
-    gas :
-        greenhouse gas,
-        either ch4 or co2
-
-    save_to_path :
-        path to save the results
-
-    remove_original_files :
-        whether downloaded files should be kept;
-        otherwise they are removed
-    """
-    save_to_path = utils.ensure_trailing_slash(save_to_path)
-    # save as csv
-    df.to_csv(save_to_path + gas + f"/{gas}_raw.csv", index=False)
-
-    # save as netcdf
-    ds = xr.Dataset.from_dataframe(df)
-    year, month, latitude, longitude = (
-        df[var].unique() for var in ["year", "month", "latitude", "longitude"]
-    )
-    ds = ds.assign_coords(
-        {"year": year, "month": month, "latitude": latitude, "longitude": longitude}
-    )
-
-    # reconvert datetime format (info is lost when converting df to ds)
-    ds["time"] = df.time
-    ds.to_netcdf(save_to_path + gas + f"/{gas}_raw.nc")
-
-    # clean-up directory
-    if remove_original_files and os.path.exists(save_to_path + gas + "/original"):
-        shutil.rmtree(save_to_path + gas + "/original")
-
-
 @flow(name="download_surface_data", description="Download and preprocess surface data")
 def download_surface_data(
     gas: str, remove_original_files: bool, save_to_path: str = "data/downloads"
@@ -439,22 +365,24 @@ def download_surface_data(
         otherwise they are removed
 
     """
+    save_to_path_arg = Path(save_to_path)
+
     df_all = []
 
     for sampling in ["flask", "insitu"]:
         download_zip_from_noaa.with_options(name=f"download_noaa_zip_{gas}_{sampling}")(
-            gas=gas, sampling_strategy=sampling, save_to_path=save_to_path
+            gas=gas, sampling_strategy=sampling, save_to_path=save_to_path_arg
         )
 
-        unzip_download.with_options(name=f"unzip_download_{gas}_{sampling}")(
-            zip_path=save_to_path + f"/noaa_{gas}_surface_{sampling}.zip",
-            extract_dir=save_to_path + f"/{gas}/original",
+        utils.unzip_download.with_options(name=f"unzip_download_{gas}_{sampling}")(
+            zip_path=save_to_path_arg / f"noaa_{gas}_surface_{sampling}.zip",
+            extract_dir=save_to_path_arg / f"{gas}/original",
         )
 
         df_all.append(
             merge_netCDFs.with_options(name=f"merge_netCDFs_{gas}_{sampling}")(
-                extract_dir=save_to_path
-                + f"/{gas}/original/{gas}_surface-{sampling}_ccgg_netCDF"
+                extract_dir=save_to_path_arg
+                / f"{gas}/original/{gas}_surface-{sampling}_ccgg_netCDF"
             )
         )
 
@@ -467,13 +395,14 @@ def download_surface_data(
     df_final = validate_surface_data(df_processed)
 
     # clean up repo and save file
-    clean_and_save(
+    utils.clean_and_save(
         df_final,
         gas=gas,
-        save_to_path=save_to_path,
+        save_to_path=save_to_path_arg,
+        measurement_type="gb",
         remove_original_files=remove_original_files,
     )
 
 
 if __name__ == "__main__":
-    download_surface_data(gas="ch4", remove_original_files=True)
+    download_surface_data(gas="ch4", remove_original_files=False)

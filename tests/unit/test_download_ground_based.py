@@ -1,20 +1,15 @@
 """
-Test download data
+Test download of ground-based data
 
 Unit tests for downloading GHG concentrations
 from web APIs
 """
 
-import os
-import shutil
-
 import numpy as np
 import pandas as pd
-import pytest
 
-from ghg_forcing_for_cmip.download_data import (
+from ghg_forcing_for_cmip.download_ground_based import (
     add_lat_lon_bnds,
-    clean_and_save,
     get_indices,
     stats_from_events,
 )
@@ -35,30 +30,6 @@ def test_stats_from_events():
     np.testing.assert_almost_equal(observed_df.value.mean(), expected_mean, decimal=3)
     np.testing.assert_almost_equal(observed_df.std_dev.mean(), expected_std, decimal=3)
     np.testing.assert_equal(np.unique(observed_df.numb), expected_count)
-
-
-@pytest.mark.parametrize("gas", ["ch4", "co2"])
-def test_clean_and_save(gas):
-    # prepare test dataframe
-    test_df = pd.DataFrame()
-    for var, val in zip(
-        ["year", "month", "latitude", "longitude"], [2015, 1, 2.5, 2.5]
-    ):
-        test_df[var] = val
-    test_df["time"] = pd.to_datetime("01.02.2028")
-
-    # create folder if not existent
-    os.makedirs(f"tests/test-data/{gas}", exist_ok=True)
-
-    # run target function
-    clean_and_save(test_df, gas, "tests/test-data", False)
-
-    # check if files are saved
-    os.path.isfile(f"tests/test-data/{gas}/{gas}_raw.csv")
-    os.path.isfile(f"tests/test-data/{gas}/{gas}_raw.nc")
-
-    # remove test-folder after testing
-    shutil.rmtree(f"tests/test-data/{gas}")
 
 
 def test_add_lat_lon_bnds():
