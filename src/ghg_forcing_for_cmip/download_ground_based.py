@@ -125,7 +125,11 @@ def merge_netCDFs(
         if file.endswith("MonthlyData.nc") or file.endswith("event.nc"):
             final_df = pd.DataFrame()
             ds = xr.open_dataset(extract_dir / file)
-            df = ds.to_dataframe().reset_index()
+            df_raw = ds.to_dataframe().reset_index()
+            # maintain only values with valid quality flag
+            df = df_raw[df_raw.qcflag == bytes("...", encoding="utf")].reset_index(
+                drop=True
+            )
 
             if file.endswith("MonthlyData.nc"):
                 # insitu data
@@ -405,4 +409,4 @@ def download_surface_data(
 
 
 if __name__ == "__main__":
-    download_surface_data(gas="ch4", remove_original_files=False)
+    download_surface_data(gas="co2", remove_original_files=False)
