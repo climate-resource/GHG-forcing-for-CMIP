@@ -52,8 +52,12 @@ plots = [
     "matplotlib>=3.9.4",
     "seaborn>=0.13.2",
 ]
+eval = [
+    "scikit-learn>=1.6.1",
+]
 full = [
     "ghg-forcing-for-cmip[plots]",
+    "ghg-forcing-for-cmip[eval]",
 ]
 
 [dependency-groups]

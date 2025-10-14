@@ -7,6 +7,7 @@ after scraping of data
 
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 import pandera.pandas as pa
 from pandera.typing.pandas import Series
@@ -68,3 +69,51 @@ class EODataSchema(pa.DataFrameModel):
     pre: Series[float] = pa.Field(gt=0, lt=1)
     column_averaging_kernel: Series[float]
     vmr_profile_apriori: Series[float]
+
+
+def compute_discrepancy_collocated(
+    d: pd.DataFrame, gas: str, measure: str
+) -> pd.DataFrame:
+    """
+    Compute rmse per site code in collocated data
+
+    Parameters
+    ----------
+    d :
+        data frame with collocated data
+
+    gas :
+        either "ch4" or "co2"
+
+    measure:
+        either "rmse" or "dcor";
+        rmse: stands for root mean squared error
+        d_cor: refers to the correlation difference (1-cor)
+
+    Returns
+    -------
+    :
+        dataframe with rmse information
+    """
+    if measure not in ["rmse", "dcor"]:
+        raise ValueError(  # noqa: TRY003
+            f"measure must be either 'rmse' or 'dcor', but got {measure}"
+        )
+
+    if measure == "rmse":
+        res = (
+            d.groupby("site_code")[["site_code", "value_eo", "value_gb"]]
+            .apply(lambda d: np.sqrt(np.mean((d.value_eo - d.value_gb) ** 2)))
+            .reset_index()
+            .rename(columns={0: "rmse_" + gas})
+        )
+
+    if measure == "dcor":
+        res = (
+            d.groupby("site_code")[["site_code", "value_eo", "value_gb"]]
+            .apply(lambda d: 1 - abs(np.corrcoef(d.value_eo, d.value_gb)[0, 1]))
+            .reset_index()
+            .rename(columns={0: "dcor_" + gas})
+        )
+
+    return res
