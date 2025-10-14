@@ -18,7 +18,7 @@ def plot_map(  # noqa: PLR0913
     lon_value: str = "longitude",
     lat_value: str = "latitude",
     marker: str = "x",
-    markersize=20,
+    markersize: int = 20,
 ) -> None:
     """
     Plot world map with observation stations
@@ -32,14 +32,14 @@ def plot_map(  # noqa: PLR0913
         title of the plot
     """
     try:
-        import geopandas
+        import geopandas  # type: ignore[import-untyped]
     except ImportError as exc:
         raise MissingOptionalDependencyError(
             "plotting", requirement="geopandas"
         ) from exc
 
     try:
-        from geodatasets import get_path
+        from geodatasets import get_path  # type: ignore[import-untyped]
     except ImportError as exc:
         raise MissingOptionalDependencyError(
             "plotting", requirement="geodatasets"
@@ -92,7 +92,7 @@ def plot_monthly_average(
         axis object from matplotlib.pyplot
     """
     try:
-        import seaborn as sns
+        import seaborn as sns  # type: ignore[import-untyped]
     except ImportError as exc:
         raise MissingOptionalDependencyError("plotting", requirement="seaborn") from exc
 
