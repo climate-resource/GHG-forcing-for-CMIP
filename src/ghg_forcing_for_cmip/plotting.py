@@ -5,12 +5,10 @@ Plotting functions for tutorials in documentation
 
 from typing import Any
 
-import geopandas
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from geodatasets import get_path
+
+from ghg_forcing_for_cmip.exceptions import MissingOptionalDependencyError
 
 
 def plot_map(  # noqa: PLR0913
@@ -33,6 +31,20 @@ def plot_map(  # noqa: PLR0913
     title :
         title of the plot
     """
+    try:
+        import geopandas
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geopandas"
+        ) from exc
+
+    try:
+        from geodatasets import get_path
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geodatasets"
+        ) from exc
+
     gdf = geopandas.GeoDataFrame(
         d,
         geometry=geopandas.points_from_xy(d[lon_value], d[lat_value]),
@@ -79,6 +91,11 @@ def plot_monthly_average(
     :
         axis object from matplotlib.pyplot
     """
+    try:
+        import seaborn as sns
+    except ImportError as exc:
+        raise MissingOptionalDependencyError("plotting", requirement="seaborn") from exc
+
     d["time_fractional"] = d.year + d.month / 12
     d_avg = (
         d.groupby(["year", "month"])
@@ -139,6 +156,18 @@ def plot_average_hemisphere(d_colloc: pd.DataFrame, gas: str) -> None:
     gas :
         either "co2" or "ch4"
     """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="matplotlib"
+        ) from exc
+
+    try:
+        import seaborn as sns
+    except ImportError as exc:
+        raise MissingOptionalDependencyError("plotting", requirement="seaborn") from exc
+
     conditions = [d_colloc["lat"] > 30, d_colloc["lat"] < -30]  # noqa: PLR2004
     d_colloc["hemisphere"] = np.select(
         conditions, ["Northern", "Southern"], default="Tropics"
