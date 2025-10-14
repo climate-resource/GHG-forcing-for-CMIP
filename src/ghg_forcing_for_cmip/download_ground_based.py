@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from typing import Any, Union
 
+import httpx
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -100,6 +101,86 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@task(description="Download methane data from AGAGE network")
+def download_agage(save_to_path: Path) -> pd.DataFrame:
+    """
+    Download methane concentrations from (A)GAGE database
+
+    Parameters
+    ----------
+    save_to_path:
+        path where data should be stored
+
+    Returns
+    -------
+    :
+      dataframe summarizing all single data files
+    """
+    os.makedirs(save_to_path, exist_ok=True)
+
+    r_compounds = httpx.get(
+        "https://www-air.larc.nasa.gov/missions/agage/api/data/compounds"
+    )
+    # check response
+    r_compounds.raise_for_status()
+    # get id for methane
+    r_compunds_dict = pd.DataFrame(r_compounds.json())
+    compound_id = r_compunds_dict[r_compunds_dict.compound_name == "Methane"][
+        "id"
+    ].values[0]
+
+    # Get files available for extracted id
+    r_files = []
+    page_number = 1
+    while True:
+        try:
+            response = httpx.get(
+                f"https://www-air.larc.nasa.gov/missions/agage/api/data/{page_number}",
+                params={
+                    "recommended": True,
+                    "compound": compound_id,
+                    "data_frequency": 2,
+                    "product_type": 1,
+                },
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            break
+        else:
+            # data_frequency: 2 stands for "monthly"
+            # product_type: 1 stands for "mole fraction"
+            r_file = httpx.get(
+                f"https://www-air.larc.nasa.gov/missions/agage/api/data/{page_number}",
+                params={
+                    "recommended": True,
+                    "compound": compound_id,
+                    "data_frequency": 2,
+                    "product_type": 1,
+                },
+            )
+            page_number += 1
+
+        r_files.append(pd.DataFrame(r_file.json()))
+
+    file_ids = pd.concat(r_files)
+
+    # check that all files are included
+    if len(file_ids) != file_ids["count"].unique()[0]:
+        raise ValueError(  # noqa: TRY003
+            "length of extracted data files does not correspond to database-counts"
+        )
+
+    # download netCDF zip.files
+    for file_id, file_name in zip(file_ids.id, file_ids.file_name):
+        response = requests.get(
+            f"https://www-air.larc.nasa.gov/missions/agage/api/data/download/{file_id}",
+            timeout=10,
+        )
+
+        with open(save_to_path / file_name.replace(".nc", ".zip"), "wb") as f:
+            f.write(response.content)
+
+
 @task(description="Merge information from single files into one single netCDF")
 def merge_netCDFs(
     extract_dir: Path,
@@ -122,7 +203,11 @@ def merge_netCDFs(
 
     df_list = []
     for file in nc_files:
-        if file.endswith("MonthlyData.nc") or file.endswith("event.nc"):
+        if (
+            file.endswith("MonthlyData.nc")
+            or file.endswith("event.nc")
+            or file.startswith("agage")
+        ):
             final_df = pd.DataFrame()
             ds = xr.open_dataset(extract_dir / file)
             df = ds.to_dataframe().reset_index()
@@ -368,7 +453,10 @@ def download_surface_data(
     save_to_path_arg = Path(save_to_path)
 
     df_all = []
+    # AGAGE network
+    download_agage(save_to_path=save_to_path / "ch4/original/agage")
 
+    # NOAA network
     for sampling in ["flask", "insitu"]:
         download_zip_from_noaa.with_options(name=f"download_noaa_zip_{gas}_{sampling}")(
             gas=gas, sampling_strategy=sampling, save_to_path=save_to_path_arg
