@@ -6,6 +6,7 @@ after scraping of data
 """
 
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -71,9 +72,7 @@ class EODataSchema(pa.DataFrameModel):
     vmr_profile_apriori: Series[float]
 
 
-def compute_discrepancy_collocated(
-    d: pd.DataFrame, gas: str, measure: str
-) -> pd.DataFrame:
+def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str) -> Any:
     """
     Compute rmse per site code in collocated data
 
