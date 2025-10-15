@@ -25,13 +25,13 @@ from ghg_forcing_for_cmip import plotting
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
 # %%
-d_gb_ch4 = pd.read_csv("../../data/downloads/ch4/ch4_gb_raw.csv")
-d_gb_co2 = pd.read_csv("../../data/downloads/co2/co2_gb_raw.csv")
+d_gb_ch4 = pd.read_csv("data/downloads/ch4/ch4_gb_raw.csv")
+d_gb_co2 = pd.read_csv("data/downloads/co2/co2_gb_raw.csv")
 d_gb_ch4.head()
 
 # %%
-d_eo_ch4 = pd.read_csv("../../data/downloads/ch4/ch4_eo_raw.csv")
-d_eo_co2 = pd.read_csv("../../data/downloads/co2/co2_eo_raw.csv")
+d_eo_ch4 = pd.read_csv("data/downloads/ch4/ch4_eo_raw.csv")
+d_eo_co2 = pd.read_csv("data/downloads/co2/co2_eo_raw.csv")
 d_eo_ch4.head()
 
 # %% [markdown]
@@ -137,8 +137,8 @@ d_colloc_co2 = d_gb_co2_sel.merge(
     suffixes=["_gb", "_eo"],
 )
 
-d_colloc_ch4.to_csv("../../data/downloads/ch4_collocated.csv")
-d_colloc_co2.to_csv("../../data/downloads/co2_collocated.csv")
+d_colloc_ch4.to_csv("data/downloads/ch4_collocated.csv")
+d_colloc_co2.to_csv("data/downloads/co2_collocated.csv")
 d_colloc_ch4.head()
 
 # %%
@@ -196,8 +196,8 @@ d_col_sel_ch4 = d_colloc_ch4[
     d_colloc_ch4.site_code.isin(sites_selected_ch4)
 ].reset_index(drop=True)
 
-d_col_sel_co2.to_csv("../../data/downloads/co2_collocated_sites.csv")
-d_col_sel_ch4.to_csv("../../data/downloads/ch4_collocated_sites.csv")
+d_col_sel_co2.to_csv("data/downloads/co2_collocated_sites.csv")
+d_col_sel_ch4.to_csv("data/downloads/ch4_collocated_sites.csv")
 
 # %%
 fig, axs = plt.subplots(2, 4, figsize=(11, 4), constrained_layout=True)
