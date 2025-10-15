@@ -130,7 +130,7 @@ def download_agage(save_to_path: Path) -> None:
     page_number = 1
     while True:
         try:
-            response = httpx.get(
+            httpx.get(
                 f"https://www-air.larc.nasa.gov/missions/agage/api/data/{page_number}",
                 params={
                     "recommended": True,
@@ -138,8 +138,8 @@ def download_agage(save_to_path: Path) -> None:
                     "data_frequency": 2,
                     "product_type": 1,
                 },
-            )
-            response.raise_for_status()
+            ).raise_for_status()
+
         except httpx.HTTPStatusError:
             break
         else:
