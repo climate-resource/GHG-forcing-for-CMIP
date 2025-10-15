@@ -243,36 +243,38 @@ def plot_collocated_rmse(
     ).merge(
         compute_discrepancy_collocated(d_colloc_ch4, "ch4", measure), on="site_code"
     )
+    df_measure["sd_co2"] = np.sqrt(df_measure["var_co2"])
+    df_measure["sd_ch4"] = np.sqrt(df_measure["var_ch4"])
 
-    _, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(5, 7))
-    sns.scatterplot(
-        data=df_measure.sort_values(by=f"{measure}_co2"),
-        x=f"{measure}_co2",
-        y="site_code",
-        ax=axs[0],
-    )
-    sns.scatterplot(
-        data=df_measure.sort_values(by=f"{measure}_ch4"),
-        x=f"{measure}_ch4",
-        y="site_code",
-        ax=axs[1],
-    )
+    _, axs = plt.subplots(2, 1, constrained_layout=True, figsize=(8, 5))
+    for meas in ["rmse", "bias", "sd"]:
+        sns.lineplot(
+            data=df_measure.sort_values(by=f"{meas}_co2"),
+            y=f"{meas}_co2",
+            x="site_code",
+            ax=axs[0],
+            label=meas.upper(),
+        )
+        sns.lineplot(
+            data=df_measure.sort_values(by=f"{meas}_ch4"),
+            y=f"{meas}_ch4",
+            x="site_code",
+            ax=axs[1],
+        )
     for i in range(2):
         axs[i].tick_params(axis="both", labelsize=8)
         axs[i].set_xlabel(measure.upper())
+        axs[i].tick_params(axis="x", rotation=90)
+        axs[i].axhline(0, linestyle="dashed", color="darkgrey", lw=1)
     axs[1].set_ylabel("")
     axs[1].set_title(
-        (
-            f"CH4-GB vs. CH4-EO\n avg. {measure.upper()}:"
-            + f"{df_measure[f'{measure}_ch4'].mean():.2f}"
-        ),
+        ("Methane (avg. RMSE:" + f"{df_measure[f'{measure}_ch4'].mean():.2f})"),
         fontsize="medium",
     )
     axs[0].set_title(
-        (
-            f"CO2-GB vs. CO2-EO\n avg. {measure.upper()}:"
-            + f"{df_measure[f'{measure}_co2'].mean():.2f}"
-        ),
+        ("Carbon Dioxide (avg. RMSE:" + f"{df_measure[f'{measure}_co2'].mean():.2f})"),
         fontsize="medium",
     )
+    axs[0].set_ylabel("CO2 in ppm")
+    axs[1].set_ylabel("CH4 in ppb")
     return axs

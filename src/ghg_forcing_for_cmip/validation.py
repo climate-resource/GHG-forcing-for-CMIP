@@ -92,7 +92,7 @@ def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str) -> A
     Returns
     -------
     :
-        dataframe with rmse information
+        dataframe with measure information
     """
     if measure not in ["rmse", "dcor"]:
         raise ValueError(  # noqa: TRY003
@@ -102,7 +102,15 @@ def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str) -> A
     if measure == "rmse":
         res = (
             d.groupby("site_code")[["site_code", "value_eo", "value_gb"]]
-            .apply(lambda d: np.sqrt(np.mean((d.value_eo - d.value_gb) ** 2)))
+            .apply(
+                lambda g: pd.Series(
+                    {
+                        "rmse_" + gas: np.sqrt(np.mean((g.value_eo - g.value_gb) ** 2)),
+                        "bias_" + gas: np.mean(g.value_eo - g.value_gb),
+                        "var_" + gas: np.var(g.value_eo - g.value_gb),
+                    }
+                )
+            )
             .reset_index()
             .rename(columns={0: "rmse_" + gas})
         )
