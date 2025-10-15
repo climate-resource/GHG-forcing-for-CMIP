@@ -102,7 +102,7 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @task(description="Download methane data from AGAGE network")
-def download_agage(save_to_path: Path) -> pd.DataFrame:
+def download_agage(save_to_path: Path) -> None:
     """
     Download methane concentrations from (A)GAGE database
 
@@ -111,10 +111,6 @@ def download_agage(save_to_path: Path) -> pd.DataFrame:
     save_to_path:
         path where data should be stored
 
-    Returns
-    -------
-    :
-      dataframe summarizing all single data files
     """
     os.makedirs(save_to_path, exist_ok=True)
 
@@ -181,6 +177,33 @@ def download_agage(save_to_path: Path) -> pd.DataFrame:
             f.write(response.content)
 
 
+@task(description="unzip and postprocess AGAGE data")
+def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
+    """
+    Unzip and merge single AGAGE data files
+
+    Parameters
+    ----------
+    zip_path :
+        Path to the zip file (e.g., "data/downloads/")
+
+    extract_dir :
+        path to extracted netCDF files
+
+    Returns
+    -------
+    :
+        combined data files from single AGAGE datasets
+    """
+    # unzip
+    files = os.listdir(zip_path)
+    for file in files:
+        if file.endswith(".zip") and file.startswith("agage"):
+            utils.unzip_download(zip_path / file, extract_dir)
+
+    return merge_netCDFs(extract_dir)
+
+
 @task(description="Merge information from single files into one single netCDF")
 def merge_netCDFs(
     extract_dir: Path,
@@ -212,7 +235,20 @@ def merge_netCDFs(
             ds = xr.open_dataset(extract_dir / file)
             df = ds.to_dataframe().reset_index()
 
+            if file.startswith("agage"):
+                network = "agage"
+
+                final_df["std_dev"] = df.mf_variability.values
+                final_df["numb"] = df.mf_count.values
+                final_df["value"] = df.mf.values
+                final_df["year"] = df.time.dt.year.values
+                final_df["month"] = df.time.dt.month.values
+                final_df["latitude"] = ds.attrs["inlet_latitude"]
+                final_df["longitude"] = ds.attrs["inlet_longitude"]
+                final_df["altitude"] = df.inlet_height.values
+
             if file.endswith("MonthlyData.nc"):
+                network = "noaa"
                 # insitu data
                 final_df["std_dev"] = df.value_std_dev.values
                 final_df["numb"] = df.nvalue.values
@@ -224,19 +260,32 @@ def merge_netCDFs(
                 final_df["altitude"] = df.altitude.values
 
             if file.endswith("event.nc"):
+                network = "noaa"
                 # flask data
                 final_df = stats_from_events(df)
 
             final_df["site_code"] = ds.attrs["site_code"]
-            final_df["network"] = "noaa"
-            final_df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
-            final_df["sampling_strategy"] = file.split("_")[2]
-            final_df["gas"] = ds.attrs["dataset_parameter"]
-            final_df["unit"] = np.where(
-                ds.attrs["dataset_parameter"] == "ch4", "ppb", "ppm"
+            final_df["network"] = network
+            final_df["insitu_vs_flask"] = (
+                ds.attrs["dataset_project"].split("-")[-1]
+                if network == "noaa"
+                else np.nan
             )
-            final_df["version"] = ds.attrs["dataset_creation_date"]
-            final_df["instrument"] = "noaa"
+            final_df["sampling_strategy"] = (
+                file.split("_")[2] if network == "noaa" else np.nan
+            )
+            final_df["gas"] = (
+                ds.attrs["dataset_parameter"] if network == "noaa" else "ch4"
+            )
+            final_df["unit"] = "ppb" if final_df["gas"].unique() == "ch4" else "ppm"
+            final_df["version"] = (
+                ds.attrs["dataset_creation_date"]
+                if network == "noaa"
+                else ds.attrs["version"]
+            )
+            final_df["instrument"] = (
+                "noaa" if network == "noaa" else ds.attrs["instrument"]
+            )
             final_df["value"] = np.where(
                 final_df["value"] < 0.0, np.nan, final_df["value"]
             )
@@ -454,7 +503,12 @@ def download_surface_data(
 
     df_all = []
     # AGAGE network
-    download_agage(save_to_path=save_to_path / "ch4/original/agage")
+    download_agage(save_to_path=save_to_path_arg / "ch4/original/agage")
+
+    df_agage = postprocess_agage(
+        zip_path=save_to_path_arg / "ch4/original/agage",
+        extract_dir=save_to_path_arg / "ch4/original/agage",
+    )
 
     # NOAA network
     for sampling in ["flask", "insitu"]:
@@ -474,7 +528,7 @@ def download_surface_data(
             )
         )
 
-    df_combined = pd.concat(df_all)
+    df_combined = pd.concat([*df_all, df_agage])
 
     # add bins for latitudes, longitudes
     df_processed = add_lat_lon_bnds(df_combined)
