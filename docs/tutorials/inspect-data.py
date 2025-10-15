@@ -21,12 +21,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ghg_forcing_for_cmip import plotting
-from ghg_forcing_for_cmip.utils import download_data
+from ghg_forcing_for_cmip import download_ground_based, download_satellite, plotting
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
 # run pipeline to download data
-download_data()
+for gas in ["ch4", "co2"]:
+    download_ground_based.download_surface_data(gas=gas, remove_original_files=True)
+    download_satellite.download_satellite_data(gas=gas, remove_original_files=True)
 # %%
 d_gb_ch4 = pd.read_csv("data/downloads/ch4/ch4_gb_raw.csv")
 d_gb_co2 = pd.read_csv("data/downloads/co2/co2_gb_raw.csv")

@@ -10,11 +10,8 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 from prefect import task
-from tqdm import tqdm
 
 from ghg_forcing_for_cmip import CONFIG
-from ghg_forcing_for_cmip.download_ground_based import download_surface_data
-from ghg_forcing_for_cmip.download_satellite import download_satellite_data
 
 
 @task(
@@ -104,14 +101,3 @@ def unzip_download(zip_path: Path, extract_dir: Path) -> None:
     os.remove(zip_path)
 
     print(f"Extracted {zip_path!s} to {extract_dir!s}")
-
-
-def download_data():
-    """
-    Download satellite and ground-based data
-
-    used for tutorials to download data when running docs
-    """
-    for gas in tqdm(["ch4", "co2"]):
-        download_surface_data(gas=gas, remove_original_files=True)
-        download_satellite_data(gas=gas, remove_original_files=True)
