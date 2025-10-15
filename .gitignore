@@ -12,6 +12,7 @@ docs/api/*
 *.db
 tests/test_results/
 test_download_data/test-data/
+data/*
 
 # scratch
 scratch/
@@ -41,7 +42,6 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
 eggs/
 .eggs/
 lib/
