@@ -1,5 +1,11 @@
+# Data
+docs/tutorials/data
+
 # Notebooks
 *.ipynb
+
+# Local prefect database or other things
+.prefect
 
 # Auto-generated docs and helper files
 docs/api/*

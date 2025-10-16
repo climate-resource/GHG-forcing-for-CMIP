@@ -173,10 +173,48 @@ d_col_sorted_ch4 = (
 d_col_sorted_ch4.rename(columns={"value_gb": "count"}).head(10)
 
 # %%
-sites_selected_co2 = ["SMO", "MLO", "TAP", "NMB"]
-sites_selected_ch4 = ["SMO", "MLO", "WLG", "ASK"]
+max_lat = -50.0
+d_col_sorted_co2[d_col_sorted_co2["lat"] <= max_lat].rename(
+    columns={"value_gb": "count"}
+).head(2)
+# d_col_sorted_ch4[d_col_sorted_ch4["lat"] <= max_lat].rename(
+#     columns={"value_gb": "count"}
+# ).head(2)
+
+# %%
+min_lat = 50.0
+d_col_sorted_co2[d_col_sorted_co2["lat"] >= max_lat].rename(
+    columns={"value_gb": "count"}
+).head(2)
+# d_col_sorted_ch4[d_col_sorted_ch4["lat"] >= max_lat].rename(
+#     columns={"value_gb": "count"}
+# ).head(2)
+
+# %%
+sites_selected_co2 = [
+    "SMO",
+    "MLO",
+    # "TAP",
+    # "CGO",
+    # "NMB",
+    "USH",
+    "OXK",
+]
+sites_selected_ch4 = [
+    "SMO",
+    "MLO",
+    # "WLG",
+    # "CGO",
+    # "ASK",
+    "USH",
+    "BRW",
+]
 
 _, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(8, 5))
+# Could we add a label argument here
+# so that each point is labelled with that label
+# (and has a different marker)
+# so then we can add a legend and see which site is which?
 plotting.plot_map(
     d_col_sorted_co2[d_col_sorted_co2.site_code.isin(sites_selected_co2)],
     "Selected sites - CO2",
