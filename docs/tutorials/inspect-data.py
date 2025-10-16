@@ -46,14 +46,19 @@ d_eo_ch4.head()
 _, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(11, 6))
 plotting.plot_map(
     d_gb_ch4,
-    f"NOAA observations sites ({d_gb_ch4.year.min()}-{d_gb_ch4.year.max()})"
-    + "\n $CH_4$ data",
+    # Don't need the +, just put the strings in brackets and they're automatically joined
+    (
+        f"NOAA observations sites ({d_gb_ch4.year.min()}-{d_gb_ch4.year.max()})"
+        "\n $CH_4$ data"
+    ),
     axs[0],
 )
 plotting.plot_map(
     d_gb_co2,
-    f"NOAA observations sites ({d_gb_co2.year.min()}-{d_gb_co2.year.max()})"
-    + "\n $CO_2$ data",
+    (
+        f"NOAA observations sites ({d_gb_co2.year.min()}-{d_gb_co2.year.max()})"
+        "\n $CO_2$ data"
+    ),
     axs[1],
 )
 
@@ -63,21 +68,14 @@ plotting.plot_map(
 
 # %%
 _, axs = plt.subplots(2, 3, constrained_layout=True, figsize=(9, 3))
-for i, year in enumerate([2003, 2008, 2013]):
+
+# Zip plus `.flatten` lets you avoid this enumerate thinking
+# and double loop
+for ax, year in zip(axs.flatten(), [2003, 2008, 2013, 2018, 2020, 2022]):
     plotting.plot_map(
         d_eo_ch4[d_eo_ch4.year == year],
         f"OBS4MIPs ({year}), $CH_4$ data",
-        axs[0, i],
-        "lon",
-        "lat",
-        ".",
-        5,
-    )
-for i, year in enumerate([2018, 2020, 2022]):
-    plotting.plot_map(
-        d_eo_ch4[d_eo_ch4.year == year],
-        f"OBS4MIPs ({year}), $CH_4$ data",
-        axs[1, i],
+        ax,
         "lon",
         "lat",
         ".",
@@ -89,21 +87,13 @@ for i, year in enumerate([2018, 2020, 2022]):
 
 # %%
 _, axs = plt.subplots(2, 3, constrained_layout=True, figsize=(9, 3))
-for i, year in enumerate([2003, 2008, 2013]):
+# Zip plus `.flatten` lets you avoid this enumerate thinking
+# and double loop
+for ax, year in zip(axs.flatten(), [2003, 2008, 2013, 2018, 2020, 2022]):
     plotting.plot_map(
         d_eo_co2[d_eo_co2.year == year],
         f"OBS4MIPs ({year}), $CO_2$ data",
-        axs[0, i],
-        "lon",
-        "lat",
-        ".",
-        5,
-    )
-for i, year in enumerate([2018, 2020, 2022]):
-    plotting.plot_map(
-        d_eo_co2[d_eo_co2.year == year],
-        f"OBS4MIPs ({year}), $CO_2$ data",
-        axs[1, i],
+        ax,
         "lon",
         "lat",
         ".",
@@ -173,10 +163,48 @@ d_col_sorted_ch4 = (
 d_col_sorted_ch4.rename(columns={"value_gb": "count"}).head(10)
 
 # %%
-sites_selected_co2 = ["SMO", "MLO", "TAP", "NMB"]
-sites_selected_ch4 = ["SMO", "MLO", "WLG", "ASK"]
+max_lat = -50.0
+d_col_sorted_co2[d_col_sorted_co2["lat"] <= max_lat].rename(
+    columns={"value_gb": "count"}
+).head(2)
+# d_col_sorted_ch4[d_col_sorted_ch4["lat"] <= max_lat].rename(
+#     columns={"value_gb": "count"}
+# ).head(2)
+
+# %%
+min_lat = 50.0
+d_col_sorted_co2[d_col_sorted_co2["lat"] >= max_lat].rename(
+    columns={"value_gb": "count"}
+).head(2)
+# d_col_sorted_ch4[d_col_sorted_ch4["lat"] >= max_lat].rename(
+#     columns={"value_gb": "count"}
+# ).head(2)
+
+# %%
+sites_selected_co2 = [
+    "SMO",
+    "MLO",
+    # "TAP",
+    # "CGO",
+    # "NMB",
+    "USH",
+    "OXK",
+]
+sites_selected_ch4 = [
+    "SMO",
+    "MLO",
+    # "WLG",
+    # "CGO",
+    # "ASK",
+    "USH",
+    "BRW",
+]
 
 _, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(8, 5))
+# Could we add a label argument here
+# so that each point is labelled with that label
+# (and has a different marker)
+# so then we can add a legend and see which site is which?
 plotting.plot_map(
     d_col_sorted_co2[d_col_sorted_co2.site_code.isin(sites_selected_co2)],
     "Selected sites - CO2",
@@ -205,19 +233,25 @@ d_col_sel_ch4.to_csv("data/downloads/ch4/ch4_collocated_sites.csv")
 
 # %%
 fig, axs = plt.subplots(2, 4, figsize=(11, 4), constrained_layout=True)
-for i, site in enumerate(sites_selected_co2):
+
+# Same zip trick as above
+for site, ax in zip(sites_selected_co2, axs[0, :]):
     d = d_col_sel_co2[d_col_sel_co2.site_code == site].copy()
     rmse_co2 = compute_discrepancy_collocated(d, "co2", "rmse")
-    axs[0, i] = plotting.plot_monthly_average(d, "$CO_2$", axs[0, i])
-    axs[0, i].set_title(
+    ax = plotting.plot_monthly_average(d, "$CO_2$", ax)
+    ax.set_title(
+        # As above re ability to use brackets instead of +
+        # (although this is really very optional
+        # and probably more a style choice than there being a right answer)
         site
         + f", RMSE: {rmse_co2['rmse_co2'].values[0]:.2f},"
         + f"\nBias: {rmse_co2['bias_co2'].values[0]:.2f}, "
         + f"SD: {np.sqrt(rmse_co2['var_co2'].values[0]):.2f}",
         fontsize="small",
     )
-    axs[0, i].legend(fontsize="x-small", handlelength=0.4)
+    ax.legend(fontsize="x-small", handlelength=0.4)
 
+# zip could be used here too
 for i, site in enumerate(sites_selected_ch4):
     d = d_col_sel_ch4[d_col_sel_ch4.site_code == site].copy()
     rmse_ch4 = compute_discrepancy_collocated(d, "ch4", "rmse")
@@ -233,3 +267,5 @@ for i, site in enumerate(sites_selected_ch4):
 
 # %%
 plotting.plot_collocated_rmse(d_colloc_co2, d_colloc_ch4, "rmse")
+
+# %%
