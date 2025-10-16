@@ -8,7 +8,7 @@
 #       jupytext_version: 1.17.2
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
-#     language: pythonhttps://github.com/climate-resource/GHG-forcing-for-CMIP/pulls
+#     language: python
 #     name: python3
 # ---
 
@@ -16,7 +16,7 @@
 # # Inspect data
 #
 
-# %%
+# %% editable=true slideshow={"slide_type": ""} tags=["remove_cell"]
 import logging
 
 import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ from ghg_forcing_for_cmip import download_ground_based, download_satellite, plot
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
 # run pipeline to download data
-for gas in ["ch4", "co2"]:
+for gas in ["co2", "ch4"]:
     download_ground_based.download_surface_data(gas=gas, remove_original_files=True)
     download_satellite.download_satellite_data(gas=gas, remove_original_files=True)
 # %%
