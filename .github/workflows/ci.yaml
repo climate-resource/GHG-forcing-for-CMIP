@@ -40,14 +40,22 @@ jobs:
           python-version: ${{ matrix.python-version }}
           uv-dependency-install-flags: "--all-extras --group docs"
       - name: docs
+        env:
+            ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
+            ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
         run: |
+          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           uv run mkdocs build --strict
       - uses: ./.github/actions/setup
         with:
           python-version: "3.11"
           uv-dependency-install-flags: "--all-extras --group docs --group dev"
       - name: docs-with-changelog
+        env:
+            ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
+            ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
         run: |
+          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           # Check CHANGELOG will build too
           uv run towncrier build --yes
           uv run mkdocs build --strict

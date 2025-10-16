@@ -122,6 +122,100 @@ For the rest of our developer docs, please see [development][development].
 
 <!--- --8<-- [end:installation] -->
 
+## Producing the forcings
+
+In order to produce the forcings, you need to run the notebooks.
+The easiest way to do this is with `make docs`.
+For this to work, you will also need to have a local prefect server running.
+Start this in a separate terminal with, `uv run prefect server start`.
+
+### Prefect set up
+
+[Maybe delete this, but I got myself in a big mess with this]
+If you use prefect in more than one project,
+you can get yourself in a mess.
+(This is basically because prefect assumes it will run on a server I think
+i.e. one config per machine.
+By using it for multiple projects on the same machine,
+we're breaking this a bit.)
+
+To avoid clashes, you will likely want to make a
+[profile](https://docs.prefect.io/v3/how-to-guides/configuration/manage-settings)
+specific to this project, e.g.
+
+```
+uv run prefect profile create ghg-forcing-for-cmip
+```
+
+Then use it with
+
+```
+uv run prefect profile use ghg-forcing-for-cmip
+```
+
+If you want the API to run in 'ephemeral' mode
+i.e. start up each time, add
+
+```
+uv run prefect config set PREFECT_SERVER_ALLOW_EPHEMERAL_MODE=True
+```
+
+To avoid clashes with other databases,
+tell prefect to use a database specific to this project
+
+```
+mkdir .prefect
+uv run prefect config set PREFECT_API_DATABASE_CONNECTION_URL='sqlite+aiosqlite:////path/to/this/repo/.prefect/prefect.db'
+```
+
+### Registering with ECMWF data stores
+
+In order for this to work, you need to follow
+[the ECMWF set up instructions](https://cds.climate.copernicus.eu/how-to-api).
+The instructions are not super clear,
+so here are some clarifications.
+
+The credentials go in `$HOME/.ecmwfdatastoresrc`.
+On unix-systems, this is `~/.ecmwfdatastoresrc`.
+
+In this file, you should have the following content
+
+```
+url: https://cds.climate.copernicus.eu/api
+key: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+The key is the ECMWF datastores key.
+This is the same content as the content you get if you follow
+the instructions at
+https://cds.climate.copernicus.eu/how-to-api,
+the file it needs to go into is just named differently.
+
+[@Flo as a note, see how the ECMWF datastore is also a rest API.
+They probably have POST/PATCH/DELETE end points too
+so they can manage adding and updating existing data,
+but obviously us users can't access them,
+we can probably only hit the GET end points :)]
+
+The first time you run, you will hit errors of the form
+
+```
+HTTPError: 403 Client Error: Forbidden for url: https://cds.climate.copernicus.eu/api/retrieve/v1/processes/satellite-methane/execution
+required licences not accepted
+Not all the required licences have been accepted; please visit https://cds.climate.copernicus.eu/datasets/satellite-methane?tab=download#manage-licences to accept the required licence(s).
+```
+
+Follow the links provided and accept the licences, then run again.
+(Yes, this is a bit stupid: an API that still requires manual acceptance.
+That's out of our control and fortunately we only have to do this once per token,
+so isn't a blocker for e.g. running in CI.)
+
+[For some reason, when I re-run the notebook, I don't get any prefect caching.
+Not sure if it's my fault because of the prefect set up stuff above
+or an issue with how this has been set up.
+TODO: make an issue then decide whether we tackle this now or later.
+Decision question: does Flo have/care about this issue or not?]
+
 ## Original template
 
 This project was generated from this template:

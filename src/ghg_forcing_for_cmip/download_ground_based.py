@@ -233,7 +233,11 @@ def merge_netCDFs(
         ):
             final_df = pd.DataFrame()
             ds = xr.open_dataset(extract_dir / file)
-            df = ds.to_dataframe().reset_index()
+            df_raw = ds.to_dataframe().reset_index()
+            # maintain only values with valid quality flag
+            df = df_raw[df_raw.qcflag == bytes("...", encoding="utf")].reset_index(
+                drop=True
+            )
 
             if file.startswith("agage"):
                 network = "agage"
