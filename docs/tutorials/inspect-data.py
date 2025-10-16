@@ -8,7 +8,7 @@
 #       jupytext_version: 1.17.2
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
-#     language: python
+#     language: pythonhttps://github.com/climate-resource/GHG-forcing-for-CMIP/pulls
 #     name: python3
 # ---
 
@@ -17,10 +17,13 @@
 #
 
 # %%
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+logging.getLogger("prefect").setLevel(logging.ERROR)
 from ghg_forcing_for_cmip import download_ground_based, download_satellite, plotting
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
