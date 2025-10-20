@@ -1,0 +1,7 @@
+cgo
+cmo
+mhd
+rpb
+smo
+tac
+thd

@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import Any, Union
 
+import httpx
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -105,6 +106,113 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+@task(
+  description="Download methane data from AGAGE network",
+  cache_policy=CONFIG.CACHE_POLICIES,
+)
+def download_agage(save_to_path: Path) -> None:
+    """
+    Download methane concentrations from (A)GAGE database
+
+    Parameters
+    ----------
+    save_to_path:
+        path where data should be stored
+
+    """
+    os.makedirs(save_to_path, exist_ok=True)
+
+    r_compounds = httpx.get(
+        "https://www-air.larc.nasa.gov/missions/agage/api/data/compounds"
+    )
+    # check response
+    r_compounds.raise_for_status()
+    # get id for methane
+    r_compunds_dict = pd.DataFrame(r_compounds.json())
+    compound_id = r_compunds_dict[r_compunds_dict.compound_name == "Methane"][
+        "id"
+    ].values[0]
+
+    # Get files available for extracted id
+    r_files = []
+    page_number = 1
+    while True:
+        try:
+            httpx.get(
+                f"https://www-air.larc.nasa.gov/missions/agage/api/data/{page_number}",
+                params={
+                    "recommended": True,
+                    "compound": compound_id,
+                    "data_frequency": 2,
+                    "product_type": 1,
+                },
+            ).raise_for_status()
+
+        except httpx.HTTPStatusError:
+            break
+        else:
+            # data_frequency: 2 stands for "monthly"
+            # product_type: 1 stands for "mole fraction"
+            r_file = httpx.get(
+                f"https://www-air.larc.nasa.gov/missions/agage/api/data/{page_number}",
+                params={
+                    "recommended": True,
+                    "compound": compound_id,
+                    "data_frequency": 2,
+                    "product_type": 1,
+                },
+            )
+            page_number += 1
+
+        r_files.append(pd.DataFrame(r_file.json()))
+
+    file_ids = pd.concat(r_files)
+
+    # check that all files are included
+    if len(file_ids) != file_ids["count"].unique()[0]:
+        raise ValueError(  # noqa: TRY003
+            "length of extracted data files does not correspond to database-counts"
+        )
+
+    # download netCDF zip.files
+    for file_id, file_name in zip(file_ids.id, file_ids.file_name):
+        response = requests.get(
+            f"https://www-air.larc.nasa.gov/missions/agage/api/data/download/{file_id}",
+            timeout=10,
+        )
+
+        with open(save_to_path / file_name.replace(".nc", ".zip"), "wb") as f:
+            f.write(response.content)
+
+
+@task(
+  description="unzip and postprocess AGAGE data",
+  cache_policy=CONFIG.CACHE_POLICIES,
+)
+def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
+    """
+    Unzip and merge single AGAGE data files
+
+    Parameters
+    ----------
+    zip_path :
+        Path to the zip file (e.g., "data/downloads/")
+
+    extract_dir :
+        path to extracted netCDF files
+
+    Returns
+    -------
+    :
+        combined data files from single AGAGE datasets
+    """
+    # unzip
+    files = os.listdir(zip_path)
+    for file in files:
+        if file.endswith(".zip") and file.startswith("agage"):
+            utils.unzip_download(zip_path / file, extract_dir)
+
+    return merge_netCDFs(extract_dir)
 
 @task(
     description="Merge information from single files into one single netCDF",
@@ -131,7 +239,11 @@ def merge_netCDFs(
 
     df_list = []
     for file in nc_files:
-        if file.endswith("MonthlyData.nc") or file.endswith("event.nc"):
+        if (
+            file.endswith("MonthlyData.nc")
+            or file.endswith("event.nc")
+            or file.startswith("agage")
+        ):
             final_df = pd.DataFrame()
             ds = xr.open_dataset(extract_dir / file)
             df_raw = ds.to_dataframe().reset_index()
@@ -140,7 +252,20 @@ def merge_netCDFs(
                 drop=True
             )
 
+            if file.startswith("agage"):
+                network = "agage"
+
+                final_df["std_dev"] = df.mf_variability.values
+                final_df["numb"] = df.mf_count.values
+                final_df["value"] = df.mf.values
+                final_df["year"] = df.time.dt.year.values
+                final_df["month"] = df.time.dt.month.values
+                final_df["latitude"] = ds.attrs["inlet_latitude"]
+                final_df["longitude"] = ds.attrs["inlet_longitude"]
+                final_df["altitude"] = df.inlet_height.values
+
             if file.endswith("MonthlyData.nc"):
+                network = "noaa"
                 # insitu data
                 final_df["std_dev"] = df.value_std_dev.values
                 final_df["numb"] = df.nvalue.values
@@ -152,19 +277,32 @@ def merge_netCDFs(
                 final_df["altitude"] = df.altitude.values
 
             if file.endswith("event.nc"):
+                network = "noaa"
                 # flask data
                 final_df = stats_from_events(df)
 
             final_df["site_code"] = ds.attrs["site_code"]
-            final_df["network"] = "noaa"
-            final_df["insitu_vs_flask"] = ds.attrs["dataset_project"].split("-")[-1]
-            final_df["sampling_strategy"] = file.split("_")[2]
-            final_df["gas"] = ds.attrs["dataset_parameter"]
-            final_df["unit"] = np.where(
-                ds.attrs["dataset_parameter"] == "ch4", "ppb", "ppm"
+            final_df["network"] = network
+            final_df["insitu_vs_flask"] = (
+                ds.attrs["dataset_project"].split("-")[-1]
+                if network == "noaa"
+                else np.nan
             )
-            final_df["version"] = ds.attrs["dataset_creation_date"]
-            final_df["instrument"] = "noaa"
+            final_df["sampling_strategy"] = (
+                file.split("_")[2] if network == "noaa" else np.nan
+            )
+            final_df["gas"] = (
+                ds.attrs["dataset_parameter"] if network == "noaa" else "ch4"
+            )
+            final_df["unit"] = "ppb" if final_df["gas"].unique() == "ch4" else "ppm"
+            final_df["version"] = (
+                ds.attrs["dataset_creation_date"]
+                if network == "noaa"
+                else ds.attrs["version"]
+            )
+            final_df["instrument"] = (
+                "noaa" if network == "noaa" else ds.attrs["instrument"]
+            )
             final_df["value"] = np.where(
                 final_df["value"] < 0.0, np.nan, final_df["value"]
             )
@@ -381,7 +519,15 @@ def download_surface_data(
     save_to_path_arg = Path(save_to_path)
 
     df_all = []
+    # AGAGE network
+    download_agage(save_to_path=save_to_path_arg / "ch4/original/agage")
 
+    df_agage = postprocess_agage(
+        zip_path=save_to_path_arg / "ch4/original/agage",
+        extract_dir=save_to_path_arg / "ch4/original/agage",
+    )
+
+    # NOAA network
     for sampling in ["flask", "insitu"]:
         download_zip_from_noaa.with_options(name=f"download_noaa_zip_{gas}_{sampling}")(
             gas=gas, sampling_strategy=sampling, save_to_path=save_to_path_arg
@@ -399,7 +545,7 @@ def download_surface_data(
             )
         )
 
-    df_combined = pd.concat(df_all)
+    df_combined = pd.concat([*df_all, df_agage])
 
     # add bins for latitudes, longitudes
     df_processed = add_lat_lon_bnds(df_combined)
