@@ -16,8 +16,6 @@ from ghg_forcing_for_cmip.plotting import (
     plot_monthly_average,
 )
 
-pytest_regressions = pytest.importorskip("pytest_regressions")
-
 
 @pytest.fixture(scope="module")
 def df_test1():

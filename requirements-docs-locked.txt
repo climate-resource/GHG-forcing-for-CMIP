@@ -67,6 +67,7 @@ hyperframe==6.1.0
 idna==3.10
 importlib-metadata==8.7.0
 importlib-resources==6.5.2 ; python_full_version < '3.10'
+iniconfig==2.0.0
 ipykernel==6.29.5
 ipython==8.18.1 ; python_full_version < '3.10'
 ipython==8.37.0 ; python_full_version == '3.10.*'
@@ -143,6 +144,7 @@ pendulum==3.1.0 ; python_full_version < '3.13'
 pexpect==4.9.0 ; (python_full_version < '3.10' and sys_platform == 'emscripten') or (sys_platform != 'emscripten' and sys_platform != 'win32')
 pillow==11.3.0
 platformdirs==4.3.6
+pluggy==1.5.0
 pooch==1.8.2
 prefect==3.3.1
 prometheus-client==0.21.1
@@ -162,6 +164,9 @@ pyparsing==3.2.5
 pyproj==3.6.1 ; python_full_version < '3.10'
 pyproj==3.7.1 ; python_full_version == '3.10.*'
 pyproj==3.7.2 ; python_full_version >= '3.11'
+pytest==8.3.4
+pytest-datadir==1.8.0
+pytest-regressions==2.8.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-json-logger==3.2.1

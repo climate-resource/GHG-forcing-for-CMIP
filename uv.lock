@@ -1323,6 +1323,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pandera" },
     { name = "prefect" },
+    { name = "pytest-regressions" },
     { name = "tqdm" },
     { name = "xarray", version = "2024.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "xarray", version = "2025.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
@@ -1460,7 +1461,6 @@ all-dev = [
     { name = "pymdown-extensions" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "pytest-regressions" },
     { name = "python-dateutil" },
     { name = "python-json-logger" },
     { name = "pywin32", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
@@ -1657,7 +1657,6 @@ tests = [
     { name = "pluggy" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "pytest-regressions" },
 ]
 tests-full = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -1668,7 +1667,6 @@ tests-full = [
     { name = "pluggy" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "pytest-regressions" },
 ]
 tests-min = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -1677,7 +1675,6 @@ tests-min = [
     { name = "packaging" },
     { name = "pluggy" },
     { name = "pytest" },
-    { name = "pytest-regressions" },
 ]
 
 [package.metadata]
@@ -1693,6 +1690,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "pandera", specifier = ">=0.26.1" },
     { name = "prefect", specifier = ">=3.3.1" },
+    { name = "pytest-regressions", specifier = ">=2.8.3" },
     { name = "scikit-learn", marker = "extra == 'eval'", specifier = ">=1.6.1" },
     { name = "seaborn", marker = "extra == 'plots'", specifier = ">=0.13.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -1807,7 +1805,6 @@ all-dev = [
     { name = "pymdown-extensions", specifier = "==10.16.1" },
     { name = "pytest", specifier = "==8.3.4" },
     { name = "pytest-cov", specifier = "==6.0.0" },
-    { name = "pytest-regressions", specifier = ">=2.8.3" },
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
     { name = "python-json-logger", specifier = "==3.2.1" },
     { name = "pywin32", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'", specifier = "==308" },
@@ -2003,7 +2000,6 @@ tests = [
     { name = "pluggy", specifier = "==1.5.0" },
     { name = "pytest", specifier = "==8.3.4" },
     { name = "pytest-cov", specifier = "==6.0.0" },
-    { name = "pytest-regressions", specifier = ">=2.8.3" },
 ]
 tests-full = [
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
@@ -2014,7 +2010,6 @@ tests-full = [
     { name = "pluggy", specifier = "==1.5.0" },
     { name = "pytest", specifier = "==8.3.4" },
     { name = "pytest-cov", specifier = "==6.0.0" },
-    { name = "pytest-regressions", specifier = ">=2.8.3" },
 ]
 tests-min = [
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
@@ -2023,7 +2018,6 @@ tests-min = [
     { name = "packaging", specifier = "==24.2" },
     { name = "pluggy", specifier = "==1.5.0" },
     { name = "pytest", specifier = "==8.3.4" },
-    { name = "pytest-regressions", specifier = ">=2.8.3" },
 ]
 
 [[package]]

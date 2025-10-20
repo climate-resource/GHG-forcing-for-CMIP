@@ -16,6 +16,7 @@ dependencies = [
     "prefect>=3.3.1",
     "tqdm>=4.67.1",
     "xarray>=2024.7.0",
+    "pytest-regressions>=2.8.3",
 ]
 readme = "README.md"
 classifiers = [
@@ -243,7 +244,6 @@ tests-min = [
     "packaging==24.2",
     "pluggy==1.5.0",
     "ecmwf-datastores-client>=0.4.0",
-    "pytest-regressions>=2.8.3",
 ]
 # Full test dependencies.
 tests-full = [
@@ -259,7 +259,6 @@ tests-full = [
     "pluggy==1.5.0",
     "pytest==8.3.4",
     "ecmwf-datastores-client>=0.4.0",
-    "pytest-regressions>=2.8.3",
 ]
 # Test dependencies
 # (partly split because liccheck uses toml,
