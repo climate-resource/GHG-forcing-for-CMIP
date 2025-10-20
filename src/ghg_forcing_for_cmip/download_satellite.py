@@ -5,6 +5,7 @@ In this module we download the OBS4MIPs data
 used for satellite measurements of CO2 and CH4
 """
 
+import logging
 import os
 from pathlib import Path
 
@@ -20,6 +21,12 @@ from ghg_forcing_for_cmip.utils import (
     unzip_download,
 )
 from ghg_forcing_for_cmip.validation import EODataSchema
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Default level
+    format="%(levelname)s: %(message)s",
+)
 
 
 @task(
@@ -79,14 +86,14 @@ def make_api_request(gas: str, save_to_path: Path) -> None:
     # setup saving location
     target = save_to_path / f"obs4mips_x{gas}.zip"
 
-    client = Client()
+    client = Client(progress=False)
 
     if not client.check_authentication():
         raise ValueError("authentification of CDS client failed")  # noqa: TRY003
 
     client.retrieve(dataset, request, target=str(target))
 
-    return print(f"downloaded OBS4MIPs data to {target!s}")
+    return logging.info(f"downloaded OBS4MIPs {gas} data to {target!s}")
 
 
 @task(

@@ -23,9 +23,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-logging.getLogger("prefect").setLevel(logging.ERROR)
 from ghg_forcing_for_cmip import download_ground_based, download_satellite, plotting
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
+
+# silent prefect run
+logging.getLogger("prefect").setLevel(logging.WARNING)
 
 # run pipeline to download data
 for gas in ["co2", "ch4"]:
@@ -49,7 +51,8 @@ d_eo_ch4.head()
 _, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(11, 6))
 plotting.plot_map(
     d_gb_ch4,
-    # Don't need the +, just put the strings in brackets and they're automatically joined
+    # Don't need the +, just put the strings in brackets and
+    # they're automatically joined
     (
         f"NOAA observations sites ({d_gb_ch4.year.min()}-{d_gb_ch4.year.max()})"
         "\n $CH_4$ data"
@@ -170,58 +173,59 @@ max_lat = -50.0
 d_col_sorted_co2[d_col_sorted_co2["lat"] <= max_lat].rename(
     columns={"value_gb": "count"}
 ).head(2)
-# d_col_sorted_ch4[d_col_sorted_ch4["lat"] <= max_lat].rename(
-#     columns={"value_gb": "count"}
-# ).head(2)
 
 # %%
 min_lat = 50.0
 d_col_sorted_co2[d_col_sorted_co2["lat"] >= max_lat].rename(
     columns={"value_gb": "count"}
 ).head(2)
-# d_col_sorted_ch4[d_col_sorted_ch4["lat"] >= max_lat].rename(
-#     columns={"value_gb": "count"}
-# ).head(2)
 
 # %%
 sites_selected_co2 = [
     "SMO",
     "MLO",
-    # "TAP",
-    # "CGO",
-    # "NMB",
     "USH",
     "OXK",
 ]
 sites_selected_ch4 = [
     "SMO",
     "MLO",
-    # "WLG",
-    # "CGO",
-    # "ASK",
     "USH",
     "BRW",
 ]
 
+sel_co2 = d_col_sorted_co2[d_col_sorted_co2.site_code.isin(sites_selected_co2)]
+sel_ch4 = d_col_sorted_ch4[d_col_sorted_ch4.site_code.isin(sites_selected_ch4)]
+
 _, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(8, 5))
-# Could we add a label argument here
-# so that each point is labelled with that label
-# (and has a different marker)
-# so then we can add a legend and see which site is which?
-plotting.plot_map(
-    d_col_sorted_co2[d_col_sorted_co2.site_code.isin(sites_selected_co2)],
+
+ax1 = plotting.plot_map(
+    sel_co2,
     "Selected sites - CO2",
     lon_value="lon",
     lat_value="lat",
     axs=axs[0],
 )
-plotting.plot_map(
-    d_col_sorted_ch4[d_col_sorted_ch4.site_code.isin(sites_selected_ch4)],
+ax2 = plotting.plot_map(
+    sel_ch4,
     "Selected sites - CH4",
     lon_value="lon",
     lat_value="lat",
     axs=axs[1],
 )
+
+for d, ax in zip([sel_co2, sel_ch4], [ax1, ax2]):
+    for lat, lon, label in zip(d.lat, d.lon, d.site_code):
+        ax.text(
+            lon + 15,
+            lat + 5,
+            label,
+            fontsize=8,
+            fontweight="bold",
+            ha="right",
+            va="bottom",
+            color="black",
+        )
 
 # %%
 d_col_sel_co2 = d_colloc_co2[
@@ -241,7 +245,7 @@ fig, axs = plt.subplots(2, 4, figsize=(11, 4), constrained_layout=True)
 for site, ax in zip(sites_selected_co2, axs[0, :]):
     d = d_col_sel_co2[d_col_sel_co2.site_code == site].copy()
     rmse_co2 = compute_discrepancy_collocated(d, "co2", "rmse")
-    ax = plotting.plot_monthly_average(d, "$CO_2$", ax)
+    ax = plotting.plot_monthly_average(d, "$CO_2$", ax)  # noqa: PLW2901
     ax.set_title(
         # As above re ability to use brackets instead of +
         # (although this is really very optional
@@ -252,7 +256,7 @@ for site, ax in zip(sites_selected_co2, axs[0, :]):
         + f"SD: {np.sqrt(rmse_co2['var_co2'].values[0]):.2f}",
         fontsize="small",
     )
-    ax.legend(fontsize="x-small", handlelength=0.4)
+    ax.legend(fontsize="x-small", handlelength=0.4, frameon=False)
 
 # zip could be used here too
 for i, site in enumerate(sites_selected_ch4):
@@ -266,7 +270,7 @@ for i, site in enumerate(sites_selected_ch4):
         + f"SD: {np.sqrt(rmse_ch4['var_ch4'].values[0]):.2f}",
         fontsize="small",
     )
-    axs[1, i].legend(fontsize="x-small", handlelength=0.4)
+    axs[1, i].legend(fontsize="x-small", handlelength=0.4, frameon=False)
 
 # %%
 plotting.plot_collocated_rmse(d_colloc_co2, d_colloc_ch4, "rmse")

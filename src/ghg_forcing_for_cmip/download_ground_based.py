@@ -5,6 +5,7 @@ The task of this module is data scraping of the GHG
 concentration data from (A)GAGE and NOAA networks
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import Any, Union
@@ -17,6 +18,11 @@ import xarray as xr
 from prefect import flow, task
 
 from ghg_forcing_for_cmip import CONFIG, utils, validation
+
+logging.basicConfig(
+    level=logging.INFO,  # Default level
+    format="%(levelname)s: %(message)s",
+)
 
 
 @task(description="Download zip-folder from NOAA", cache_policy=CONFIG.CACHE_POLICIES)
@@ -54,7 +60,7 @@ def download_zip_from_noaa(
     with open(save_to_path / f"noaa_{gas}_surface_{sampling_strategy}.zip", "wb") as f:
         f.write(response.content)
 
-    print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path!s}")
+    logging.info(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path!s}")
 
 
 def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
@@ -100,7 +106,10 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@task(description="Merge information from single files into one single netCDF")
+@task(
+    description="Merge information from single files into one single netCDF",
+    cache_policy=CONFIG.CACHE_POLICIES,
+)
 def merge_netCDFs(
     extract_dir: Path,
 ) -> pd.DataFrame:
