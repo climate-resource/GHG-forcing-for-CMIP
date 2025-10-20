@@ -20,6 +20,7 @@ def plot_map(  # noqa: PLR0913
     lat_value: str = "latitude",
     marker: str = "x",
     markersize: int = 20,
+    figsize=(7, 3),
 ) -> Any:
     """
     Plot world map with observation stations
@@ -31,6 +32,24 @@ def plot_map(  # noqa: PLR0913
 
     title :
         title of the plot
+
+    axs :
+        axes of matplotlib
+
+    lon_value :
+        name of longitudinal variable (column)
+
+    lat_value :
+        name of latitudinal variable (column)
+
+    marker :
+        shape of plot markers
+
+    markersize :
+        size of plot markers
+
+    figsize :
+        size of world map
 
     Returns
     -------
@@ -59,7 +78,7 @@ def plot_map(  # noqa: PLR0913
 
     world = geopandas.read_file(get_path("naturalearth.land"))
     world.plot(ax=axs, color="white", edgecolor="grey")
-    gdf.plot(figsize=(7, 3), ax=axs, color="red", marker=marker, markersize=markersize)
+    gdf.plot(figsize=figsize, ax=axs, color="red", marker=marker, markersize=markersize)
     axs.set_title(title)
     return axs
 
@@ -118,34 +137,6 @@ def plot_monthly_average(
     axs.spines["right"].set_visible(False)
     axs.spines["top"].set_visible(False)
     return axs
-
-
-def plot_vertical_apriori(d: pd.DataFrame, axs: Any, gas: str) -> None:
-    """
-    Plot vertical profile of apriori concentration in OBS4MIPS
-
-    Parameters
-    ----------
-    d :
-        dataframe incl. vertical information
-
-    axs :
-        axes from plt.subplots object
-
-    gas :
-        either "ch4" or "co2"
-    """
-    d = (
-        d.groupby("pre")
-        .agg({"vmr_profile_apriori": "mean", "value_eo": "mean"})
-        .reset_index()
-    )
-    axs.plot(d.vmr_profile_apriori, 1 - d.pre, label="apriori-profile")
-    axs.plot(d.value_eo, 1 - d.pre, label="column-average")
-    axs.set_xlabel(gas)
-    axs.set_yticks(np.round(d.pre.unique(), 2))
-    axs.set_yticklabels(np.round(d.pre.unique(), 2)[::-1])
-    axs.legend(frameon=False)
 
 
 def plot_average_hemisphere(d_colloc: pd.DataFrame, gas: str) -> None:
