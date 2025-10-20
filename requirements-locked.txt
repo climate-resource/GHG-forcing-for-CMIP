@@ -40,7 +40,6 @@ humanize==4.13.0
 hyperframe==6.1.0
 idna==3.10
 importlib-metadata==8.7.0
-iniconfig==2.0.0
 jinja2==3.1.5
 jinja2-humanize-extension==0.4.0
 jsonpatch==1.33
@@ -66,7 +65,6 @@ pandas==2.3.2
 pandera==0.26.1
 pathspec==0.12.1
 pendulum==3.1.0 ; python_full_version < '3.13'
-pluggy==1.5.0
 prefect==3.3.1
 prometheus-client==0.21.1
 pycparser==2.22 ; platform_python_implementation != 'PyPy'
@@ -75,9 +73,6 @@ pydantic-core==2.33.2
 pydantic-extra-types==2.10.5
 pydantic-settings==2.10.1
 pygments==2.19.1
-pytest==8.3.4
-pytest-datadir==1.8.0
-pytest-regressions==2.8.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-slugify==8.0.4

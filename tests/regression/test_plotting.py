@@ -5,7 +5,6 @@ Regression tests for plotting.py module
 import os
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
@@ -15,6 +14,9 @@ from ghg_forcing_for_cmip.plotting import (
     plot_map,
     plot_monthly_average,
 )
+
+pytest_regressions = pytest.importorskip("pytest_regressions")
+plt = pytest.importorskip("matplotlib.pyplot")
 
 
 @pytest.fixture(scope="module")
