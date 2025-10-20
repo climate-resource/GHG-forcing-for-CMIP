@@ -106,9 +106,10 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+
 @task(
-  description="Download methane data from AGAGE network",
-  cache_policy=CONFIG.CACHE_POLICIES,
+    description="Download methane data from AGAGE network",
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def download_agage(save_to_path: Path) -> None:
     """
@@ -184,10 +185,14 @@ def download_agage(save_to_path: Path) -> None:
         with open(save_to_path / file_name.replace(".nc", ".zip"), "wb") as f:
             f.write(response.content)
 
+    logging.info(
+        f"downloaded AGAGE-zip to {save_to_path / file_name.replace('.nc', '.zip')!s}"
+    )
+
 
 @task(
-  description="unzip and postprocess AGAGE data",
-  cache_policy=CONFIG.CACHE_POLICIES,
+    description="unzip and postprocess AGAGE data",
+    cache_policy=CONFIG.CACHE_POLICIES,
 )
 def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
     """
@@ -213,6 +218,7 @@ def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
             utils.unzip_download(zip_path / file, extract_dir)
 
     return merge_netCDFs(extract_dir)
+
 
 @task(
     description="Merge information from single files into one single netCDF",
@@ -247,10 +253,14 @@ def merge_netCDFs(
             final_df = pd.DataFrame()
             ds = xr.open_dataset(extract_dir / file)
             df_raw = ds.to_dataframe().reset_index()
-            # maintain only values with valid quality flag
-            df = df_raw[df_raw.qcflag == bytes("...", encoding="utf")].reset_index(
-                drop=True
-            )
+
+            if not file.startswith("agage"):
+                # maintain only values with valid quality flag
+                df = df_raw[df_raw.qcflag == bytes("...", encoding="utf")].reset_index(
+                    drop=True
+                )
+            else:
+                df = df_raw
 
             if file.startswith("agage"):
                 network = "agage"
