@@ -20,7 +20,7 @@ def plot_map(  # noqa: PLR0913
     lat_value: str = "latitude",
     marker: str = "x",
     markersize: int = 20,
-    figsize=(7, 3),
+    figsize: tuple[int, int] = (7, 3),
 ) -> Any:
     """
     Plot world map with observation stations
