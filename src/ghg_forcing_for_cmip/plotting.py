@@ -20,7 +20,7 @@ def plot_map(  # noqa: PLR0913
     lat_value: str = "latitude",
     marker: str = "x",
     markersize: int = 20,
-) -> None:
+) -> Any:
     """
     Plot world map with observation stations
 
@@ -31,6 +31,11 @@ def plot_map(  # noqa: PLR0913
 
     title :
         title of the plot
+
+    Returns
+    -------
+    :
+        axes from matplotlib pyplot
     """
     try:
         import geopandas  # type: ignore[import-untyped]
@@ -56,6 +61,7 @@ def plot_map(  # noqa: PLR0913
     world.plot(ax=axs, color="white", edgecolor="grey")
     gdf.plot(figsize=(7, 3), ax=axs, color="red", marker=marker, markersize=markersize)
     axs.set_title(title)
+    return axs
 
 
 def plot_monthly_average(
