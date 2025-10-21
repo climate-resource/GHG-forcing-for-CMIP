@@ -8,10 +8,6 @@ Produce CMIP7 GHG forcing data incl. earth observations.
 [![Main branch: supported Python versions](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fclimate-resource%2FGHG-forcing-for-CMIP%2Fmain%2Fpyproject.toml)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/pyproject.toml)
 [![Licence](https://img.shields.io/pypi/l/ghg-forcing-for-cmip?label=licence)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/LICENCE)
 
-**PyPI :**
-[![PyPI](https://img.shields.io/pypi/v/ghg-forcing-for-cmip.svg)](https://pypi.org/project/ghg-forcing-for-cmip/)
-[![PyPI install](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/install-pypi.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/install-pypi.yaml)
-
 **Tests :**
 [![CI](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/climate-resource/GHG-forcing-for-CMIP/branch/main/graph/badge.svg)](https://codecov.io/gh/climate-resource/GHG-forcing-for-CMIP)
