@@ -6,7 +6,7 @@ Produce CMIP7 GHG forcing data incl. earth observations.
 **Key info :**
 [![Docs](https://readthedocs.org/projects/ghg-forcing-for-cmip/badge/?version=latest)](https://ghg-forcing-for-cmip.readthedocs.io)
 [![Main branch: supported Python versions](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fclimate-resource%2FGHG-forcing-for-CMIP%2Fmain%2Fpyproject.toml)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/pyproject.toml)
-[![Licence](https://img.shields.io/pypi/l/ghg-forcing-for-cmip?label=licence)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/LICENCE)
+[![Licence](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/climate-resource/GHG-forcing-for-CMIP/blob/main/LICENCE)
 
 **Tests :**
 [![CI](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/climate-resource/GHG-forcing-for-CMIP/actions/workflows/ci.yaml)
