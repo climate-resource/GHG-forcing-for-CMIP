@@ -14,6 +14,7 @@ dependencies = [
     "pandas>=2.3.2",
     "pandera>=0.26.1",
     "prefect>=3.3.1",
+    "tqdm>=4.67.1",
     "xarray>=2024.7.0",
 ]
 readme = "README.md"
@@ -52,8 +53,12 @@ plots = [
     "matplotlib>=3.9.4",
     "seaborn>=0.13.2",
 ]
+eval = [
+    "scikit-learn>=1.6.1",
+]
 full = [
     "ghg-forcing-for-cmip[plots]",
+    "ghg-forcing-for-cmip[eval]",
 ]
 
 [dependency-groups]
@@ -238,6 +243,7 @@ tests-min = [
     "packaging==24.2",
     "pluggy==1.5.0",
     "ecmwf-datastores-client>=0.4.0",
+    "pytest-regressions>=2.8.3",
 ]
 # Full test dependencies.
 tests-full = [
@@ -253,6 +259,7 @@ tests-full = [
     "pluggy==1.5.0",
     "pytest==8.3.4",
     "ecmwf-datastores-client>=0.4.0",
+    "pytest-regressions>=2.8.3",
 ]
 # Test dependencies
 # (partly split because liccheck uses toml,

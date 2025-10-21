@@ -5,6 +5,7 @@ The task of this module is data scraping of the GHG
 concentration data from (A)GAGE and NOAA networks
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import Any, Union
@@ -18,6 +19,11 @@ import xarray as xr
 from prefect import flow, task
 
 from ghg_forcing_for_cmip import CONFIG, utils, validation
+
+logging.basicConfig(
+    level=logging.INFO,  # Default level
+    format="%(levelname)s: %(message)s",
+)
 
 
 @task(description="Download zip-folder from NOAA", cache_policy=CONFIG.CACHE_POLICIES)
@@ -55,7 +61,7 @@ def download_zip_from_noaa(
     with open(save_to_path / f"noaa_{gas}_surface_{sampling_strategy}.zip", "wb") as f:
         f.write(response.content)
 
-    print(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path!s}")
+    logging.info(f"downloaded NOAA-zip ({gas}-{sampling_strategy}) to {save_to_path!s}")
 
 
 def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
@@ -101,7 +107,10 @@ def stats_from_events(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@task(description="Download methane data from AGAGE network")
+@task(
+    description="Download methane data from AGAGE network",
+    cache_policy=CONFIG.CACHE_POLICIES,
+)
 def download_agage(save_to_path: Path) -> None:
     """
     Download methane concentrations from (A)GAGE database
@@ -176,8 +185,15 @@ def download_agage(save_to_path: Path) -> None:
         with open(save_to_path / file_name.replace(".nc", ".zip"), "wb") as f:
             f.write(response.content)
 
+    logging.info(
+        f"downloaded AGAGE-zip to {save_to_path / file_name.replace('.nc', '.zip')!s}"
+    )
 
-@task(description="unzip and postprocess AGAGE data")
+
+@task(
+    description="unzip and postprocess AGAGE data",
+    cache_policy=CONFIG.CACHE_POLICIES,
+)
 def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
     """
     Unzip and merge single AGAGE data files
@@ -204,7 +220,10 @@ def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
     return merge_netCDFs(extract_dir)
 
 
-@task(description="Merge information from single files into one single netCDF")
+@task(
+    description="Merge information from single files into one single netCDF",
+    cache_policy=CONFIG.CACHE_POLICIES,
+)
 def merge_netCDFs(
     extract_dir: Path,
 ) -> pd.DataFrame:
@@ -233,7 +252,15 @@ def merge_netCDFs(
         ):
             final_df = pd.DataFrame()
             ds = xr.open_dataset(extract_dir / file)
-            df = ds.to_dataframe().reset_index()
+            df_raw = ds.to_dataframe().reset_index()
+
+            if not file.startswith("agage"):
+                # maintain only values with valid quality flag
+                df = df_raw[df_raw.qcflag == bytes("...", encoding="utf")].reset_index(
+                    drop=True
+                )
+            else:
+                df = df_raw
 
             if file.startswith("agage"):
                 network = "agage"

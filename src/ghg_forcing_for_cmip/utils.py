@@ -2,6 +2,7 @@
 Module including helper functions
 """
 
+import logging
 import os
 import shutil
 import zipfile
@@ -12,6 +13,11 @@ import xarray as xr
 from prefect import task
 
 from ghg_forcing_for_cmip import CONFIG
+
+logging.basicConfig(
+    level=logging.INFO,  # Default level
+    format="%(levelname)s: %(message)s",
+)
 
 
 @task(
@@ -100,4 +106,4 @@ def unzip_download(zip_path: Path, extract_dir: Path) -> None:
 
     os.remove(zip_path)
 
-    print(f"Extracted {zip_path!s} to {extract_dir!s}")
+    logging.info(f"extracted {zip_path!s} to {extract_dir!s}")

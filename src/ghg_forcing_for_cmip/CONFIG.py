@@ -3,10 +3,9 @@ In this module all global configurations for the data pipeline are stored
 """
 
 import numpy as np
-from prefect.cache_policies import INPUTS, RUN_ID, TASK_SOURCE
+from prefect.cache_policies import INPUTS, TASK_SOURCE
 
-CACHE_POLICIES = TASK_SOURCE + INPUTS + RUN_ID
-
+CACHE_POLICIES = TASK_SOURCE + INPUTS
 """policies for task caching"""
 
 GRID_CELL_SIZE = 5
