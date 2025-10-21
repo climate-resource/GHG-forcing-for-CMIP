@@ -16,7 +16,7 @@
 # # Inspect data
 #
 
-# %% editable=true slideshow={"slide_type": ""} tags=["remove_cell"]
+# %%
 import logging
 
 import matplotlib.pyplot as plt
@@ -27,12 +27,12 @@ from ghg_forcing_for_cmip import download_ground_based, download_satellite, plot
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
 # silent prefect run
-logging.getLogger("prefect").setLevel(logging.WARNING)
+logging.getLogger("prefect").setLevel(logging.ERROR)
 
 # run pipeline to download data
 for gas in ["co2", "ch4"]:
-    download_ground_based.download_surface_data(gas=gas, remove_original_files=True)
-    download_satellite.download_satellite_data(gas=gas, remove_original_files=True)
+    download_ground_based.download_surface_data(gas=gas, remove_original_files=False)
+    download_satellite.download_satellite_data(gas=gas, remove_original_files=False)
 # %%
 d_gb_ch4 = pd.read_csv("data/downloads/ch4/ch4_gb_raw.csv")
 d_gb_co2 = pd.read_csv("data/downloads/co2/co2_gb_raw.csv")
@@ -274,5 +274,3 @@ for i, site in enumerate(sites_selected_ch4):
 
 # %%
 plotting.plot_collocated_rmse(d_colloc_co2, d_colloc_ch4, "rmse")
-
-# %%
