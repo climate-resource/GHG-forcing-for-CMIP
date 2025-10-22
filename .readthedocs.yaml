@@ -12,7 +12,7 @@ build:
     python: "3.11"
   jobs:
     create_environment:
-      - echo "url :${ECMWF_DATASTORES_URL}\nkey :${ECMWF_DATASTORES_KEY}" > ${HOME/.ecmwfdatastoresrc}
+      - echo "url :${ECMWF_DATASTORES_URL}\nkey :${ECMWF_DATASTORES_KEY}" > $HOME/.ecmwfdatastoresrc
     post_install:
       # RtD seems to be not happy with pdm installs,
       # hence use pip directly instead.
