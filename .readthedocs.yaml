@@ -11,9 +11,11 @@ build:
   tools:
     python: "3.11"
   jobs:
-    post_install:
+    pre_install:
       # ECMWF credentials
       - bash scripts/set-readthedocs-ecmwf-credentials.sh
+      - cat "$HOME/.ecmwfdatastoresrc"
+    post_install:
       # RtD seems to be not happy with pdm installs,
       # hence use pip directly instead.
       - python -m pip install -r requirements-docs-locked.txt
