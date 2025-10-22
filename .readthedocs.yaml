@@ -14,7 +14,7 @@ build:
     post_install:
       # RtD seems to be not happy with pdm installs,
       # hence use pip directly instead.
-      - 'echo -e "url: ${ECMWF_DATASTORES_URL}\nkey: ${ECMWF_DATASTORES_KEY}" > "$HOME/docs/.ecmwfdatastoresrc"'
+      - 'echo -e "url: ${ECMWF_DATASTORES_URL}\nkey: ${ECMWF_DATASTORES_KEY}" > "$HOME/.ecmwfdatastoresrc"'
       - python -m pip install -r requirements-docs-locked.txt
       - python -m pip list
     pre_build:
