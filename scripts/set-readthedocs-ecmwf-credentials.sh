@@ -1,3 +1,4 @@
 #!/bin/bash
 # printf "url: %s\nkey: %s\n" "${ECMWF_DATASTORES_URL}" "${ECMFW_DATASTORES_KEY}" > "$HOME/.ecmwfdatastoresrc"
-printf "url: %s\nkey: %s\n" "test" "test" >"$HOME/.ecmwfdatastoresrc"
+printf "url: %s\nkey: %s\n" "${ECMWF_DATASTORES_URL}" "test" >"$HOME/.ecmwfdatastoresrc"
+printf "url: %s\nkey: %s\n" "${ECMWF_DATASTORES_URL}" "test" >"$HOME/docs/.ecmwfdatastoresrc"
