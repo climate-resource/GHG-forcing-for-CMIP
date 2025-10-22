@@ -14,9 +14,9 @@ build:
     pre_install:
       # ECMWF credentials
       - bash scripts/set-readthedocs-ecmwf-credentials.sh
+      - echo $ECMWF_DATASTORES_URL
       - echo $HOME
       - cat "$HOME/.ecmwfdatastoresrc"
-      - cat "$HOME/docs/.ecmwfdatastoresrc"
     post_install:
       # RtD seems to be not happy with pdm installs,
       # hence use pip directly instead.
