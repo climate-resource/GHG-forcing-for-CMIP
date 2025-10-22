@@ -17,7 +17,7 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-symlinks
-     # - id: check-yaml
+      - id: check-yaml
       - id: debug-statements
       - id: detect-private-key
       - id: end-of-file-fixer
