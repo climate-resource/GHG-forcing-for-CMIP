@@ -44,7 +44,6 @@ jobs:
             ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
             ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
         run: |
-          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/docs/.ecmwfdatastoresrc"
           echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           uv run mkdocs build --strict
       - uses: ./.github/actions/setup
@@ -56,7 +55,6 @@ jobs:
             ECMWF_DATASTORES_URL: ${{ secrets.ECMWF_DATASTORES_URL }}
             ECMWF_DATASTORES_KEY: ${{ secrets.ECMWF_DATASTORES_KEY }}
         run: |
-          echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/docs/.ecmwfdatastoresrc"
           echo -e "url: $ECMWF_DATASTORES_URL\nkey: $ECMWF_DATASTORES_KEY" > "$HOME/.ecmwfdatastoresrc"
           # Check CHANGELOG will build too
           uv run towncrier build --yes
