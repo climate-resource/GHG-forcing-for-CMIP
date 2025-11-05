@@ -14,7 +14,7 @@ build:
     pre_install:
       # ECMWF credentials
       - bash scripts/set-readthedocs-ecmwf-credentials.sh
-      - echo ${ECMWF_DATASTORES_URL}
+      - echo $ECMWF_DATASTORES_URL
       - echo $HOME
       - cat "$HOME/.ecmwfdatastoresrc"
     post_install:
