@@ -8,7 +8,6 @@ import shutil
 import zipfile
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from prefect import task
@@ -108,59 +107,3 @@ def unzip_download(zip_path: Path, extract_dir: Path) -> None:
     os.remove(zip_path)
 
     logging.info(f"extracted {zip_path!s} to {extract_dir!s}")
-
-
-def weighted_average(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
-    """
-    Compute area weighted average
-
-    Parameters
-    ----------
-    d :
-        raw data frame
-
-    grouping_vars :
-        column names (variables) that
-        should be used to average over
-
-    Returns
-    -------
-    :
-        data frame with value corresponding
-        to weighted-by-area value
-    """
-    df = d.copy()
-    cols = set(df.columns).difference(["bnd", "lat_bnd", "lon_bnd"])
-
-    df_bnds = d.pivot_table(
-        index=list(cols), columns="bnd", values=["lat_bnd", "lon_bnd"]
-    ).reset_index()
-
-    # flatten multi-index
-    df_bnds.columns = [
-        "_".join(str(c) for c in col if c != "") for col in df_bnds.columns.values
-    ]
-
-    # prepare computation of weighted average
-    df_bnds["delta_lon"] = np.deg2rad(abs(df_bnds["lon_bnd_0"] - df_bnds["lon_bnd_1"]))
-    df_bnds["delta_lat"] = abs(
-        np.sin(abs(df_bnds["lat_bnd_0"])) - np.sin(abs(df_bnds["lat_bnd_1"]))
-    )
-    df_bnds["weight"] = df_bnds.delta_lon * df_bnds.delta_lat
-    df_bnds["value_weighted"] = df_bnds.value * df_bnds.weight
-
-    # group over relevant variables
-    df_aggregated = (
-        df_bnds.groupby(grouping_vars)
-        .agg({"value_weighted": "sum", "weight": "sum"})
-        .reset_index()
-    )
-
-    df_aggregated["value"] = df_aggregated.value_weighted / df_aggregated.weight
-
-    # merge data sets column-wise
-    df_aggregated.drop(columns=["value_weighted", "weight"], inplace=True)
-
-    return df.merge(
-        df_aggregated, how="outer", on=grouping_vars, suffixes=["_orig", "_weighted"]
-    )
