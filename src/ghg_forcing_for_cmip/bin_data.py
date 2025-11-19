@@ -52,6 +52,10 @@ def bin_minimum_grid(data: pd.DataFrame):
         for col in d_aggregated.columns.to_flat_index()
     ]
 
+    d_aggregated.rename(
+        columns={"value_mean": "value", "value_count": "n_value"}, inplace=True
+    )
+
     return d_aggregated
 
 
@@ -73,5 +77,11 @@ def bin_data(load_from_path: str, save_to_path: Optional[str]) -> None:
 
     d_binned = bin_minimum_grid(data)
 
+    # d_binned_agg = weighted_average(d_binned, ["lon", "year", "month"])
+
     if save_to_path is not None:
         d_binned.to_csv(save_to_path)
+
+
+if __name__ == "__main__":
+    bin_data(load_from_path="data/downloads/ch4/ch4_gb_raw.csv", save_to_path=None)

@@ -28,7 +28,7 @@ def test_bin_dataset(data_ch4_gb):
         "lat",
         "lat_bnd",
         "lon_bnd",
-        "value_mean",
-        "value_count",
+        "value",
+        "n_value",
     ]:
         assert var in d_binned.columns

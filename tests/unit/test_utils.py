@@ -8,10 +8,16 @@ import os
 import shutil
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from ghg_forcing_for_cmip.utils import clean_and_save
+from ghg_forcing_for_cmip.utils import clean_and_save, weighted_average
+
+
+@pytest.fixture
+def data_ch4_gb():
+    return pd.read_csv("tests/test_data/ch4_gb_raw_test.csv")
 
 
 @pytest.mark.parametrize("measurement_type", ["gb", "eo"])
@@ -43,3 +49,11 @@ def test_clean_and_save(gas, measurement_type):
 
     # remove test-folder after testing
     shutil.rmtree(path_to_results / gas)
+
+
+def test_weighted_average(data_ch4_gb):
+    d_weighted = weighted_average(
+        data_ch4_gb, ["longitude", "latitude", "lon", "lat", "year", "month"]
+    )
+
+    np.testing.assert_allclose(d_weighted.value_orig, d_weighted.value_weighted)
