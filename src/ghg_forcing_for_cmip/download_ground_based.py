@@ -574,4 +574,4 @@ def download_surface_data(
 
 
 if __name__ == "__main__":
-    download_surface_data(gas="ch4", remove_original_files=False)
+    download_surface_data(gas="co2", remove_original_files=False)
