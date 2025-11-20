@@ -105,9 +105,9 @@ def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str) -> A
             .apply(
                 lambda g: pd.Series(
                     {
-                        "rmse_" + gas: np.sqrt(np.mean((g.value_eo - g.value_gb) ** 2)),  # type: ignore
-                        "bias_" + gas: np.mean(g.value_eo - g.value_gb),  # type: ignore
-                        "var_" + gas: np.var(g.value_eo - g.value_gb),  # type: ignore
+                        "rmse_" + gas: np.sqrt(np.mean((g.value_eo - g.value_gb) ** 2)),
+                        "bias_" + gas: np.mean(g.value_eo - g.value_gb),
+                        "var_" + gas: np.var(g.value_eo - g.value_gb),
                     }
                 )
             )
@@ -118,7 +118,7 @@ def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str) -> A
     if measure == "dcor":
         res = (
             d.groupby("site_code")[["site_code", "value_eo", "value_gb"]]
-            .apply(lambda d: 1 - abs(np.corrcoef(d.value_eo, d.value_gb)[0, 1]))  # type: ignore
+            .apply(lambda d: 1 - abs(np.corrcoef(d.value_eo, d.value_gb)[0, 1]))
             .reset_index()
             .rename(columns={0: "dcor_" + gas})
         )
