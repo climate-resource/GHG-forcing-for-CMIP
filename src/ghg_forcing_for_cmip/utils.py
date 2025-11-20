@@ -137,9 +137,9 @@ def weighted_average(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
     ).reset_index()
 
     # flatten multi-index
-    df_bnds.columns = [
-        "_".join(str(c) for c in col if c != "") for col in df_bnds.columns.values
-    ]
+    df_bnds.columns = pd.Index(
+        ["_".join(str(c) for c in col if c != "") for col in df_bnds.columns.values]
+    )
 
     # prepare computation of weighted average
     df_bnds["delta_lon"] = np.deg2rad(abs(df_bnds["lon_bnd_0"] - df_bnds["lon_bnd_1"]))

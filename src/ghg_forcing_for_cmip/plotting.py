@@ -393,11 +393,11 @@ def plot_gridsizes(df: pd.DataFrame, grid_size: int, subset: bool) -> Any:
         )
 
     for hl in np.arange(0, 90 + grid_size, grid_size):
-        axs.axhline(hl, color="black", lw=0.5)
-        axs.axhline(-hl, color="black", lw=0.5)
+        axs.axhline(float(hl), color="black", lw=0.5)
+        axs.axhline(-float(hl), color="black", lw=0.5)
     for vl in np.arange(0, 180 + grid_size, grid_size):
-        axs.axvline(vl, color="black", lw=0.5)
-        axs.axvline(-vl, color="black", lw=0.5)
+        axs.axvline(float(vl), color="black", lw=0.5)
+        axs.axvline(-float(vl), color="black", lw=0.5)
 
     if subset:
         axs.set_xlim(-10, 40)
@@ -519,11 +519,11 @@ def plot_coverage(df_eo: pd.DataFrame, df_gb: pd.DataFrame, grid_size: int) -> A
     )
 
     for hl in np.arange(0, 90 + grid_size, grid_size):
-        axs.axhline(hl, color="black", lw=0.5)
-        axs.axhline(-hl, color="black", lw=0.5)
+        axs.axhline(float(hl), color="black", lw=0.5)
+        axs.axhline(-float(hl), color="black", lw=0.5)
     for vl in np.arange(0, 180 + grid_size, grid_size):
-        axs.axvline(vl, color="black", lw=0.5)
-        axs.axvline(-vl, color="black", lw=0.5)
+        axs.axvline(float(vl), color="black", lw=0.5)
+        axs.axvline(-float(vl), color="black", lw=0.5)
 
     axs.set_xlim(-10, 40)
     axs.set_ylim(30, 70)
