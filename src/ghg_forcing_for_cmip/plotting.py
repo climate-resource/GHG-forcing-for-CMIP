@@ -309,14 +309,14 @@ def plot_gridsizes(df: pd.DataFrame, grid_size: int, subset: bool) -> Any:
         ) from exc
 
     try:
-        import geopandas  # type: ignore[import-untyped]
+        import geopandas
     except ImportError as exc:
         raise MissingOptionalDependencyError(
             "plotting", requirement="geopandas"
         ) from exc
 
     try:
-        from geodatasets import get_path  # type: ignore[import-untyped]
+        from geodatasets import get_path
     except ImportError as exc:
         raise MissingOptionalDependencyError(
             "plotting", requirement="geodatasets"
@@ -437,14 +437,14 @@ def plot_coverage(df_eo: pd.DataFrame, df_gb: pd.DataFrame, grid_size: int) -> A
         ) from exc
 
     try:
-        import geopandas  # type: ignore[import-untyped]
+        import geopandas
     except ImportError as exc:
         raise MissingOptionalDependencyError(
             "plotting", requirement="geopandas"
         ) from exc
 
     try:
-        from geodatasets import get_path  # type: ignore[import-untyped]
+        from geodatasets import get_path
     except ImportError as exc:
         raise MissingOptionalDependencyError(
             "plotting", requirement="geodatasets"

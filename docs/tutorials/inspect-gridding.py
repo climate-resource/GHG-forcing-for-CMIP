@@ -19,10 +19,10 @@ from ghg_forcing_for_cmip import CONFIG, plotting
 
 # %%
 # load raw data set
-df_ch4 = pd.read_csv("../../data/downloads/ch4/ch4_gb_raw.csv")
-df_ch4_eo = pd.read_csv("../../data/downloads/ch4/ch4_eo_raw.csv")
-df_co2 = pd.read_csv("../../data/downloads/co2/co2_gb_raw.csv")
-df_co2_eo = pd.read_csv("../../data/downloads/co2/co2_eo_raw.csv")
+df_ch4 = pd.read_csv("data/downloads/ch4/ch4_gb_raw.csv")
+df_ch4_eo = pd.read_csv("data/downloads/ch4/ch4_eo_raw.csv")
+df_co2 = pd.read_csv("data/downloads/co2/co2_gb_raw.csv")
+df_co2_eo = pd.read_csv("data/downloads/co2/co2_eo_raw.csv")
 
 # %% [markdown]
 # ## Inspect gridding and coverage for ground-based data
