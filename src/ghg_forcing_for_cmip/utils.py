@@ -132,7 +132,7 @@ def weighted_average(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
     df = d.copy()
     cols = set(df.columns).difference(["bnd", "lat_bnd", "lon_bnd"])
 
-    df_bnds = d.pivot_table(
+    df_bnds = df.pivot(
         index=list(cols), columns="bnd", values=["lat_bnd", "lon_bnd"]
     ).reset_index()
 

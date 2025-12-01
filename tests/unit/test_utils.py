@@ -52,8 +52,33 @@ def test_clean_and_save(gas, measurement_type):
 
 
 def test_weighted_average(data_ch4_gb):
-    d_weighted = weighted_average(
-        data_ch4_gb, ["longitude", "latitude", "lon", "lat", "year", "month"]
+    # average over bnd=0 and bnd=1 conditions(= cell mean)
+    agg_cols = ["longitude", "latitude", "lon", "lat", "year", "month"]
+
+    d_test = data_ch4_gb.groupby(agg_cols).agg({"value": "mean"}).reset_index()
+
+    d_weighted = weighted_average(data_ch4_gb, agg_cols)
+
+    d_merged = d_weighted.merge(
+        d_test, how="outer", on=agg_cols, suffixes=("_agg", "_orig")
     )
 
-    np.testing.assert_allclose(d_weighted.value_orig, d_weighted.value_weighted)
+    # compare that cell means are the same (we don't average over latitudes,
+    # thus no further modification)
+    np.testing.assert_allclose(d_merged.value_agg, d_merged.value_orig)
+
+    # average over latitudes
+    agg_cols2 = ["lon", "year", "month"]
+
+    d_test2 = data_ch4_gb.groupby(agg_cols2).agg({"value": "mean"}).reset_index()
+
+    d_weighted2 = weighted_average(data_ch4_gb, agg_cols2)
+
+    d_merged2 = d_weighted2.merge(
+        d_test2, how="outer", on=agg_cols2, suffixes=("_agg", "_orig")
+    )
+
+    # this should fail, as its not only a simple average but weighting takes
+    # shape transformation of grid-cells into account
+    with pytest.raises(AssertionError):
+        np.testing.assert_allclose(d_merged2.value_agg, d_merged2.value_orig)
