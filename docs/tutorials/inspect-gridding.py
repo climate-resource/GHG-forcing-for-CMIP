@@ -12,6 +12,10 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# # Inspect gridding
+#
+
 # %%
 import pandas as pd
 
