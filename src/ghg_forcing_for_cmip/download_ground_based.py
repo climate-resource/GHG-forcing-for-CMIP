@@ -217,7 +217,9 @@ def postprocess_agage(zip_path: Path, extract_dir: Path) -> pd.DataFrame:
         if file.endswith(".zip") and file.startswith("agage"):
             utils.unzip_download(zip_path / file, extract_dir)
 
-    return merge_netCDFs(extract_dir)
+    df_agage = merge_netCDFs(extract_dir)
+
+    return df_agage.dropna(subset="value")
 
 
 @task(
@@ -555,7 +557,11 @@ def download_surface_data(
             )
         )
 
-    df_combined = pd.concat([*df_all, df_agage])
+    # agage only for CH4 not for CO2
+    if gas == "ch4":
+        df_combined = pd.concat([*df_all, df_agage])
+    else:
+        df_combined = pd.concat([*df_all])
 
     # add bins for latitudes, longitudes
     df_processed = add_lat_lon_bnds(df_combined)
@@ -574,4 +580,4 @@ def download_surface_data(
 
 
 if __name__ == "__main__":
-    download_surface_data(gas="ch4", remove_original_files=False)
+    download_surface_data(gas="co2", remove_original_files=False)

@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ghg_forcing_for_cmip.exceptions import MissingOptionalDependencyError
+from ghg_forcing_for_cmip.utils import weighted_average
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
 
@@ -275,3 +276,250 @@ def plot_collocated_rmse(
     axs[0].set_ylabel("CO2 in ppm")
     axs[1].set_ylabel("CH4 in ppb")
     return axs
+
+
+def plot_gridsizes(df: pd.DataFrame, grid_size: int, subset: bool) -> Any:
+    """
+    Plot earth gridding
+
+    Parameters
+    ----------
+    df :
+        raw ground-based data frame
+
+    grid_size :
+        size of grid cell;
+        should be CONFIG.GRID_CELL_SIZE
+
+    subset :
+        if true shows only Europe
+        if false shows Earth
+
+    Returns
+    -------
+    :
+        fig, axs from plot
+
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="matplotlib"
+        ) from exc
+
+    try:
+        import geopandas
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geopandas"
+        ) from exc
+
+    try:
+        from geodatasets import get_path
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geodatasets"
+        ) from exc
+
+    # compute grid-cell average
+    df_binned = weighted_average(df, ["lat", "lon"])
+
+    # min,max to standardize colorbar
+    vmin, vmax = np.min(df_binned.value), np.max(df_binned.value)
+
+    # raw data points
+    gdf = geopandas.GeoDataFrame(
+        df,
+        geometry=geopandas.points_from_xy(df.longitude, df.latitude),
+        crs="EPSG:4326",
+    )
+
+    # binned data points
+    gdf2 = geopandas.GeoDataFrame(
+        df_binned,
+        geometry=geopandas.points_from_xy(df_binned.lon, df_binned.lat),
+        crs="EPSG:4326",
+    )
+
+    world = geopandas.read_file(get_path("naturalearth.land"))
+
+    fig, axs = plt.subplots(1, 1)
+    world.plot(ax=axs, color="lightgrey", edgecolor="grey")
+    if subset:
+        gdf.plot(
+            ax=axs,
+            column=df.value,
+            marker="s",
+            markersize=5,
+            zorder=4,
+            vmin=vmin,
+            vmax=vmax,
+            legend=True,
+            legend_kwds={
+                "shrink": 0.8,
+                "label": f"{df.gas.iloc[0].upper()} [{df.unit.iloc[0]}]",
+                "orientation": "vertical",
+            },
+        )
+        gdf2.plot(
+            ax=axs,
+            column=df_binned.value,
+            marker="s",
+            markersize=50,
+            zorder=2,
+            vmin=vmin,
+            vmax=vmax,
+            edgecolor="black",
+        )
+    else:
+        gdf2.plot(
+            ax=axs,
+            column=df_binned.value,
+            marker="s",
+            markersize=int((5 * grid_size) / 2),
+            zorder=4,
+            vmin=vmin,
+            vmax=vmax,
+            legend=True,
+            legend_kwds={
+                "shrink": 0.5,
+                "label": f"{df.gas.iloc[0].upper()} [{df.unit.iloc[0]}]",
+                "orientation": "vertical",
+            },
+        )
+
+    for hl in np.arange(0, 90 + grid_size, grid_size):
+        axs.axhline(float(hl), color="black", lw=0.5)
+        axs.axhline(-float(hl), color="black", lw=0.5)
+    for vl in np.arange(0, 180 + grid_size, grid_size):
+        axs.axvline(float(vl), color="black", lw=0.5)
+        axs.axvline(-float(vl), color="black", lw=0.5)
+
+    if subset:
+        axs.set_xlim(-10, 40)
+        axs.set_ylim(30, 70)
+
+    axs.set_title(f"{grid_size} x {grid_size} grid size")
+    axs.set_xlabel("longitude")
+    axs.set_ylabel("latitude")
+
+    return fig, axs
+
+
+def plot_coverage(df_eo: pd.DataFrame, df_gb: pd.DataFrame, grid_size: int) -> Any:
+    """
+    Plot coverage of satellite and ground-based GHG
+
+    Parameters
+    ----------
+    df_eo :
+        raw satellite data frame
+
+    df_gb :
+        raw ground-based data frame
+
+    grid_size :
+        size of grid cell;
+        should be CONFIG.GRID_CELL_SIZE
+
+    Returns
+    -------
+    :
+        fig, axs from plot
+
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="matplotlib"
+        ) from exc
+
+    try:
+        import geopandas
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geopandas"
+        ) from exc
+
+    try:
+        from geodatasets import get_path
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geodatasets"
+        ) from exc
+
+    # compute grid-cell average
+    df_gb_binned = weighted_average(df_gb, ["lat", "lon"])
+
+    df_eo_binned = weighted_average(df_eo, ["lat", "lon"])
+
+    # min,max to standardize colorbar
+    vmin, vmax = np.min(df_gb_binned.value), np.max(df_gb_binned.value)
+
+    # binned data points
+    gdf_eo = geopandas.GeoDataFrame(
+        df_eo_binned,
+        geometry=geopandas.points_from_xy(df_eo_binned.lon - 0.5, df_eo_binned.lat),
+        crs="EPSG:4326",
+    )
+
+    gdf_gb = geopandas.GeoDataFrame(
+        df_gb_binned,
+        geometry=geopandas.points_from_xy(df_gb_binned.lon + 0.5, df_gb_binned.lat),
+        crs="EPSG:4326",
+    )
+
+    world = geopandas.read_file(get_path("naturalearth.land"))
+
+    legend_kwds = {
+        "shrink": 0.8,
+        "label": f"{df_gb.gas.iloc[0].upper()} [{df_gb.unit.iloc[0]}]",
+        "orientation": "vertical",
+    }
+
+    fig, axs = plt.subplots(1, 1)
+    world.plot(ax=axs, color="lightgrey", edgecolor="grey")
+
+    gdf_gb.plot(
+        ax=axs,
+        column=df_gb_binned.value,
+        marker="s",
+        edgecolor="black",
+        markersize=20,
+        zorder=2,
+        vmin=vmin,
+        vmax=vmax,
+        label="ground-based",
+        legend=True,
+        legend_kwds=legend_kwds,
+    )
+    gdf_eo.plot(
+        ax=axs,
+        column=df_eo_binned.value,
+        marker="D",
+        edgecolor="red",
+        markersize=20,
+        zorder=2,
+        vmin=vmin,
+        vmax=vmax,
+        label="satellite",
+    )
+
+    for hl in np.arange(0, 90 + grid_size, grid_size):
+        axs.axhline(float(hl), color="black", lw=0.5)
+        axs.axhline(-float(hl), color="black", lw=0.5)
+    for vl in np.arange(0, 180 + grid_size, grid_size):
+        axs.axvline(float(vl), color="black", lw=0.5)
+        axs.axvline(-float(vl), color="black", lw=0.5)
+
+    axs.set_xlim(-10, 40)
+    axs.set_ylim(30, 70)
+
+    axs.set_title(f"{grid_size} x {grid_size} grid size")
+    axs.set_xlabel("longitude")
+    axs.set_ylabel("latitude")
+    axs.legend(frameon=False, loc=(1.3, 0.8))
+
+    return fig, axs
