@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ghg_forcing_for_cmip.exceptions import MissingOptionalDependencyError
+from ghg_forcing_for_cmip.utils import weighted_average
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
 
@@ -322,11 +323,7 @@ def plot_gridsizes(df: pd.DataFrame, grid_size: int, subset: bool) -> Any:
         ) from exc
 
     # compute grid-cell average
-    df_binned = (
-        df.groupby(["lat_bnd", "lon_bnd", "lat", "lon"])
-        .agg({"value": "mean"})
-        .reset_index()
-    )
+    df_binned = weighted_average(df, ["lat", "lon"])
 
     # min,max to standardize colorbar
     vmin, vmax = np.min(df_binned.value), np.max(df_binned.value)
@@ -454,17 +451,9 @@ def plot_coverage(df_eo: pd.DataFrame, df_gb: pd.DataFrame, grid_size: int) -> A
         ) from exc
 
     # compute grid-cell average
-    df_gb_binned = (
-        df_gb.groupby(["lat_bnd", "lon_bnd", "lat", "lon"])
-        .agg({"value": "mean"})
-        .reset_index()
-    )
+    df_gb_binned = weighted_average(df_gb, ["lat", "lon"])
 
-    df_eo_binned = (
-        df_eo.groupby(["lat_bnd", "lon_bnd", "lat", "lon"])
-        .agg({"value": "mean"})
-        .reset_index()
-    )
+    df_eo_binned = weighted_average(df_eo, ["lat", "lon"])
 
     # min,max to standardize colorbar
     vmin, vmax = np.min(df_gb_binned.value), np.max(df_gb_binned.value)
@@ -510,7 +499,7 @@ def plot_coverage(df_eo: pd.DataFrame, df_gb: pd.DataFrame, grid_size: int) -> A
         ax=axs,
         column=df_eo_binned.value,
         marker="D",
-        edgecolor="black",
+        edgecolor="red",
         markersize=20,
         zorder=2,
         vmin=vmin,
