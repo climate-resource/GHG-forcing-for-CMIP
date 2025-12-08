@@ -8,12 +8,21 @@ authors = [
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 dependencies = [
+    "bambi>=0.13.0",
+    "darts>=0.37.1",
     "ecmwf-datastores-client>=0.4.0",
     "h5netcdf>=1.6.4",
     "netcdf4>=1.7.2",
     "pandas>=2.3.2",
+    "pandas-datareader>=0.10.0",
     "pandera>=0.26.1",
+    "pmdarima>=2.0.4",
+    "polars>=1.35.2",
     "prefect>=3.3.1",
+    "pykrige>=1.7.3",
+    "pymc>=5.12.0",
+    "scikit-learn>=1.6.1",
+    "skforecast[full]>=0.18.0",
     "tqdm>=4.67.1",
     "xarray>=2024.7.0",
 ]

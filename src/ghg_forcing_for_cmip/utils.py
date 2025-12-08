@@ -110,7 +110,7 @@ def unzip_download(zip_path: Path, extract_dir: Path) -> None:
     logging.info(f"extracted {zip_path!s} to {extract_dir!s}")
 
 
-def weighted_average(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
+def weighted_average(d: pd.DataFrame, grouping_vars: list[str], value="value") -> pd.DataFrame:
     """
     Compute area weighted average
 
@@ -147,7 +147,7 @@ def weighted_average(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
         np.sin(abs(df_bnds["lat_bnd_0"])) - np.sin(abs(df_bnds["lat_bnd_1"]))
     )
     df_bnds["weight"] = df_bnds.delta_lon * df_bnds.delta_lat
-    df_bnds["value_weighted"] = df_bnds.value * df_bnds.weight
+    df_bnds["value_weighted"] = df_bnds[value] * df_bnds.weight
 
     # group over relevant variables
     df_aggregated = (
@@ -156,7 +156,7 @@ def weighted_average(d: pd.DataFrame, grouping_vars: list[str]) -> pd.DataFrame:
         .reset_index()
     )
 
-    df_aggregated["value"] = df_aggregated.value_weighted / df_aggregated.weight
+    df_aggregated[value] = df_aggregated.value_weighted / df_aggregated.weight
 
     # merge data sets column-wise
     df_aggregated.drop(columns=["value_weighted", "weight"], inplace=True)
