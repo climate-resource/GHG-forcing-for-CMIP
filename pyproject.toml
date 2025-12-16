@@ -13,6 +13,7 @@ dependencies = [
     "ecmwf-datastores-client>=0.4.0",
     "h5netcdf>=1.6.4",
     "netcdf4>=1.7.2",
+    "nutpie>=0.10.0",
     "pandas>=2.3.2",
     "pandas-datareader>=0.10.0",
     "pandera>=0.26.1",
@@ -24,7 +25,9 @@ dependencies = [
     "scikit-learn>=1.6.1",
     "skforecast[full]>=0.18.0",
     "tqdm>=4.67.1",
+    "verde>=1.8.1",
     "xarray>=2024.7.0",
+    "xgboost>=2.1.4",
 ]
 readme = "README.md"
 classifiers = [
