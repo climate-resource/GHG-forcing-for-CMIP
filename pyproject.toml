@@ -453,3 +453,4 @@ unauthorized_licenses = [
 
 [tool.liccheck.authorized_packages]
 ujson = "5.11.0"
+ruamel.yaml.clib = "0.2.15"
