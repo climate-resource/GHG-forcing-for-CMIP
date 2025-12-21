@@ -1,6 +1,9 @@
 # Data
 docs/tutorials/data
 
+# ignore uv.lock
+uv.lock
+
 # Notebooks
 *.ipynb
 
