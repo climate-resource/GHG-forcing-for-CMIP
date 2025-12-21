@@ -8,6 +8,8 @@ authors = [
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 dependencies = [
+    "arviz>=0.17.1",
+    "bambi>=0.13.0",
     "ecmwf-datastores-client>=0.4.0",
     "h5netcdf>=1.6.4",
     "netcdf4>=1.7.2",
