@@ -500,7 +500,7 @@ def validate_surface_data(df: pd.DataFrame) -> pd.DataFrame:
     df["version"] = df.version.astype(str)
     df["instrument"] = df.instrument.astype(str)
 
-    validation.GroundDataSchema.validate(df)
+    validation.validate_gb_dataframe(df)
 
     return df
 

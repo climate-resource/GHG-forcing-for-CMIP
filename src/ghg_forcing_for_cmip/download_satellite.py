@@ -20,7 +20,7 @@ from ghg_forcing_for_cmip.utils import (
     clean_and_save,
     unzip_download,
 )
-from ghg_forcing_for_cmip.validation import EODataSchema
+from ghg_forcing_for_cmip.validation import validate_eo_dataframe
 
 # Configure logging
 logging.basicConfig(
@@ -148,7 +148,7 @@ def validate_obs4mips_data(
         df_raw[f"vmr_profile_{gas}_apriori"].astype(np.float64) * factor
     )
 
-    EODataSchema.validate(df)
+    validate_eo_dataframe(df)
 
     return df
 
