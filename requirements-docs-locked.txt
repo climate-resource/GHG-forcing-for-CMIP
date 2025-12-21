@@ -83,7 +83,7 @@ humanize==4.13.0 ; python_full_version < '3.10'
 humanize==4.15.0 ; python_full_version >= '3.10'
 hyperframe==6.1.0
 idna==3.10
-importlib-metadata==8.7.0
+importlib-metadata==8.7.1
 importlib-resources==6.5.2 ; python_full_version < '3.10'
 ipykernel==6.29.5
 ipython==8.18.1 ; python_full_version < '3.10'
