@@ -282,7 +282,7 @@ def plot_collocated_rmse(
 
 
 def plot_global_hemisphere(
-    df: pd.DataFrame, gas: str, figsize: Optional[tuple[int, int]]
+    df: pd.DataFrame, gas: str, unit: str, figsize: Optional[tuple[int, int]] = None
 ) -> Any:
     """
     Plot global average of GHG
@@ -296,6 +296,9 @@ def plot_global_hemisphere(
 
     gas :
         name of greenhouse gas
+
+    unit :
+        unit of greenhouse gas
 
     figsize :
         size of figure
@@ -316,7 +319,7 @@ def plot_global_hemisphere(
         legend=None,
     )
     sns.lineplot(data=df, x="date", y="value_gb_pred", hue="hemisphere", ax=axs)
-    axs.set_ylabel(gas.upper())
+    axs.set_ylabel(f"{gas.upper()} in {unit}")
     axs.spines[["right", "top"]].set_visible(False)
     axs.legend(frameon=False, handlelength=0.5, ncol=3)
 
@@ -420,7 +423,7 @@ def plot_coverage(  # noqa: PLR0913
         legend=True,
         legend_kwds=legend_kwds,
     )
-    gdf_highlight = gdf_gb[gdf_gb["obs_gb"] is True]
+    gdf_highlight = gdf_gb[gdf_gb["obs_gb"] == True]  # noqa
 
     if not gdf_highlight.empty:
         gdf_highlight.plot(
