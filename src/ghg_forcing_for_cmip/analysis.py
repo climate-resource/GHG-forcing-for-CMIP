@@ -2,10 +2,11 @@
 analysis pipeline for incorporating EO into GB
 """
 
-from typing import Any
+from typing import Any, Optional
 
 import arviz as az
 import bambi as bmb
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -66,3 +67,45 @@ def check_rhat(idata: Any, critical_rhat: float = 1.01) -> pd.DataFrame:
     print(f"Number of Rhat > {critical_rhat}: {len(rhat_critical)}.")
 
     return rhat_critical
+
+
+def predict_gb(
+    idata: Any,
+    model: Any,
+    in_sample_predictions: bool,
+    test_data: Optional[pd.DataFrame],
+    dv_name: str = "value_gb",
+) -> npt.NDArray:
+    """
+    Posterior predictions of dependent variable
+
+    Parameters
+    ----------
+    idata :
+        inference data object
+
+    model :
+        fitted model
+
+    in_sample_predictions :
+        whether predictions are based on data passed during
+        fitting or new data is used
+
+    test_data :
+        if out-of-sample predictions, this argument
+        specifies the external data
+
+    dv_name :
+        name of the predictor variable in the model
+
+    Returns
+    -------
+    :
+        predicted response variable
+    """
+    if in_sample_predictions:
+        model.predict(idata)
+    else:
+        model.predict(idata, data=test_data, kind="response", sample_new_groups=True)
+
+    return idata.posterior_predictive[dv_name].mean(dim=("chain", "draw")).values
