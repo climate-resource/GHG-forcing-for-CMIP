@@ -96,7 +96,7 @@ def predict_gb(
     idata: Any,
     model: Any,
     in_sample_predictions: bool,
-    test_data: Optional[pd.DataFrame],
+    test_data: Optional[pd.DataFrame] = None,
     dv_name: str = "value_gb",
 ) -> npt.NDArray:
     """

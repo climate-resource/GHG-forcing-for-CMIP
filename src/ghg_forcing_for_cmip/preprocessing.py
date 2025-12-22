@@ -171,3 +171,33 @@ def add_hemisphere(df: pd.DataFrame, split_value: Union[float, int]) -> pd.DataF
     df["hemisphere"] = np.select(conditions, choices, default="tropics")
 
     return df
+
+
+def concat_datasets(dfs: list[pd.DataFrame], obs_gb_value: list[bool]) -> pd.DataFrame:
+    """
+    Concatenate multiple dataframes
+
+    create additional variable indicating whether data is
+    observed or modelled
+
+    Parameters
+    ----------
+    dfs :
+        list of dataframes that shall be concatenated
+
+    obs_gb_value :
+        list of booleans indicating for each dataframe in
+        `dfs` whether data is observed or not.
+
+    Returns
+    -------
+    :
+        concatenated dataframe with "obs_gb" indicator
+        variable
+    """
+    dfs_prep = []
+    for df, obs_gb in zip(dfs, obs_gb_value):
+        df["obs_gb"] = obs_gb
+        dfs_prep.append(df)
+
+    return pd.concat(dfs_prep)
