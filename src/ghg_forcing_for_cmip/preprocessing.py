@@ -136,3 +136,38 @@ def combine_datasets(
             suffixes=("_gb", "_eo"),
         )
     )
+
+
+def add_hemisphere(df: pd.DataFrame, split_value: Union[float, int]) -> pd.DataFrame:
+    """
+    Add a grouping variable "hemisphere"
+
+    The levels are defined as follows:
+       + southern < - split_value,
+       + northern > split_value,
+       + -split_value < tropics < split_value
+
+    Parameters
+    ----------
+    df :
+        dataframe including lat variable
+
+    split_value :
+        latitudinal value where split in southern,
+        northern hemisphere and tropics should be done
+
+    Returns
+    -------
+    :
+        dataframe including new variable hemisphere
+    """
+    try:
+        df.lat
+    except AttributeError:
+        raise AttributeError("The dataframe has no variable 'lat'.")  # noqa: TRY003
+
+    conditions = [(df["lat"] > split_value), (df["lat"] < -split_value)]
+    choices = ["northern", "southern"]
+    df["hemisphere"] = np.select(conditions, choices, default="tropics")
+
+    return df
