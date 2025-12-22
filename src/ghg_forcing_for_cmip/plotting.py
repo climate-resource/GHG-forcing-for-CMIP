@@ -5,6 +5,8 @@ Plotting functions for tutorials in documentation
 
 from typing import Any, Optional
 
+import geodatasets
+import geopandas
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -317,5 +319,135 @@ def plot_global_hemisphere(
     axs.set_ylabel(gas.upper())
     axs.spines[["right", "top"]].set_visible(False)
     axs.legend(frameon=False, handlelength=0.5, ncol=3)
+
+    return fig, axs
+
+
+def plot_coverage(  # noqa: PLR0913
+    df: pd.DataFrame,
+    year: int,
+    grid_size: int,
+    gas: str,
+    unit: str,
+    ms: int = 10,
+    lw: float = 0.5,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    xlim: Optional[list[float]] = None,
+    ylim: Optional[list[float]] = None,
+) -> Any:
+    """
+    Plot GHG observations on world map
+
+    Parameters
+    ----------
+    df :
+        dataset including ghg data
+
+    year :
+        year for which data should be visualized
+
+    grid_size :
+        size of single grid cells
+
+    gas :
+        name of greenhouse gas
+
+    unit :
+        unit of greenhouse gas
+
+    ms :
+        marker size, by default 10
+
+    lw :
+        red border used to visualize observed data,
+        by default 0.5
+
+    vmin :
+        minimum scale value for legend,
+        if `None` will be determined by data
+
+    vmax :
+        maximum scale value for legend,
+        if `None` will be determined by data
+
+    xlim :
+        range of x-axis that should be visualized,
+        can be used to "zoom" into the map
+
+    ylim :
+        range of y-axis that should be visualized,
+        can be used to "zoom" into the map
+
+    Returns
+    -------
+    :
+        fig, axs
+    """
+    # compute grid-cell average
+    df_gb_binned = (
+        df[df.year == year]
+        .groupby(["lat", "lon"])
+        .agg({"value_gb": "mean", "obs_gb": "max"})
+        .reset_index()
+    )
+
+    gdf_gb = geopandas.GeoDataFrame(
+        df_gb_binned,
+        geometry=geopandas.points_from_xy(df_gb_binned.lon, df_gb_binned.lat),
+        crs="EPSG:4326",
+    )
+
+    world = geopandas.read_file(geodatasets.get_path("naturalearth.land"))
+
+    legend_kwds = {
+        "shrink": 0.8,
+        "label": f"{gas.upper()} [{unit}]",
+        "orientation": "vertical",
+    }
+
+    fig, axs = plt.subplots(1, 1, figsize=(12, 4))
+    world.plot(ax=axs, facecolor="none", edgecolor="black")
+
+    gdf_gb.plot(
+        ax=axs,
+        column=df_gb_binned.value_gb,
+        marker="s",
+        markersize=ms,
+        vmin=vmin,
+        vmax=vmax,
+        zorder=0,
+        legend=True,
+        legend_kwds=legend_kwds,
+    )
+    gdf_highlight = gdf_gb[gdf_gb["obs_gb"] is True]
+
+    if not gdf_highlight.empty:
+        gdf_highlight.plot(
+            ax=axs,
+            facecolor="none",
+            edgecolor="red",
+            linewidth=lw,
+            marker="s",
+            markersize=ms,
+            zorder=0,
+        )
+
+    for hl in np.arange(0, 90 + grid_size, grid_size):
+        axs.axhline(float(hl), color="lightgrey", lw=0.5)
+        axs.axhline(-float(hl), color="lightgrey", lw=0.5)
+    for vl in np.arange(0, 180 + grid_size, grid_size):
+        axs.axvline(float(vl), color="lightgrey", lw=0.5)
+        axs.axvline(-float(vl), color="lightgrey", lw=0.5)
+
+    if xlim is not None:
+        axs.set_xlim(xlim[0], xlim[1])
+
+    if ylim is not None:
+        axs.set_ylim(ylim[0], ylim[1])
+
+    axs.set_title(f"{grid_size} x {grid_size} grid size (red squares: observed GB)")
+    axs.set_xlabel("longitude")
+    axs.set_ylabel("latitude")
 
     return fig, axs

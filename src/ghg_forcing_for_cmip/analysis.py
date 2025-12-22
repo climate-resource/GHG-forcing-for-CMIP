@@ -126,8 +126,11 @@ def predict_gb(
     :
         predicted response variable
     """
+    if (not in_sample_predictions) & (test_data is None):
+        raise ValueError("If in_sample_predictions=False, test_data must be specified.")  # noqa: TRY003
+
     if in_sample_predictions:
-        model.predict(idata)
+        model.predict(idata, kind="response")
     else:
         model.predict(idata, data=test_data, kind="response", sample_new_groups=True)
 
