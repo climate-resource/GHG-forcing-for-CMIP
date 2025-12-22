@@ -3,10 +3,12 @@ Plotting functions for tutorials in documentation
 
 """
 
-from typing import Any
+from typing import Any, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 from ghg_forcing_for_cmip.exceptions import MissingOptionalDependencyError
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
@@ -275,3 +277,45 @@ def plot_collocated_rmse(
     axs[0].set_ylabel("CO2 in ppm")
     axs[1].set_ylabel("CH4 in ppb")
     return axs
+
+
+def plot_global_hemisphere(
+    df: pd.DataFrame, gas: str, figsize: Optional[tuple[int, int]]
+) -> Any:
+    """
+    Plot global average of GHG
+
+    grouped by northern, southern hemispheres and tropics
+
+    Parameters
+    ----------
+    df :
+        dataframe
+
+    gas :
+        name of greenhouse gas
+
+    figsize :
+        size of figure
+
+    Returns
+    -------
+    :
+        fig, axs
+    """
+    fig, axs = plt.subplots(1, 1, figsize=figsize)
+    sns.lineplot(
+        data=df,
+        x="date",
+        y="value_gb",
+        hue="hemisphere",
+        ax=axs,
+        alpha=0.2,
+        legend=None,
+    )
+    sns.lineplot(data=df, x="date", y="value_gb_pred", hue="hemisphere", ax=axs)
+    axs.set_ylabel(gas.upper())
+    axs.spines[["right", "top"]].set_visible(False)
+    axs.legend(frameon=False, handlelength=0.5, ncol=3)
+
+    return fig, axs

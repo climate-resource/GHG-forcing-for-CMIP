@@ -10,8 +10,14 @@ import numpy.typing as npt
 import pandas as pd
 
 
-def fit_gb_from_eo(
-    formula: str, df: pd.DataFrame, seed: int, categorical: list[str]
+def fit_gb_from_eo(  # noqa: PLR0913
+    formula: str,
+    df: pd.DataFrame,
+    seed: int,
+    categorical: list[str],
+    draws: int = 1000,
+    chains: int = 4,
+    cores: Optional[int] = None,
 ) -> Any:
     """
     Fit Bayesian regression model to predict GB from EO
@@ -31,13 +37,30 @@ def fit_gb_from_eo(
         list with variables in formula considered
         to be categorical
 
+    draws :
+        draws for MCMC sampling
+
+    chains :
+        chains used for MCMC sampling
+
+    cores :
+        cores used for MCMC sampling;
+        If `None`, it is equal to the number of CPUs in the system
+
     Returns
     -------
     Any
         model and inference object
     """
     model = bmb.Model(formula=formula, data=df, categorical=categorical)
-    idata = model.fit(draws=1000, chains=4, random_seed=seed, target_accept=0.95)
+    idata = model.fit(
+        draws=draws,
+        chains=chains,
+        cores=cores,
+        random_seed=seed,
+        target_accept=0.95,
+        inference_method="numpyro",
+    )
 
     return model, idata
 
