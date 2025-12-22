@@ -4,10 +4,12 @@ Data preprocessing
 Prepare data for statistical analysis to create a GHG forcing dataset.
 """
 
+import itertools
 from enum import Enum
 from typing import Union
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -201,3 +203,72 @@ def concat_datasets(dfs: list[pd.DataFrame], obs_gb_value: list[bool]) -> pd.Dat
         dfs_prep.append(df)
 
     return pd.concat(dfs_prep)
+
+
+def add_missing_lat_lon_combinations(  # noqa: PLR0913
+    df: pd.DataFrame,
+    year_seq: npt.NDArray,
+    grid_cell_size: int,
+    day: int,
+    months: int = 12,
+    max_lat: int = 90,
+    max_lon: int = 180,
+    selected_vars: list[str] = ["year", "month", "lat", "lon"],
+) -> pd.DataFrame:
+    """
+    Add all missing latitude-longitude combinations to the data grid
+
+    1. create template data grid with all possible combinations
+    2. merge template data grid with observed data
+
+    Parameters
+    ----------
+    df :
+        observed data
+
+    year_seq :
+        array with years
+
+    grid_cell_size :
+        size of grid cell
+
+    day :
+        day used for creating a date
+
+    months :
+        number of months in a year,
+        by default 12
+
+    max_lat :
+        maximum absolute latitudinale value,
+        by default 90
+
+    max_lon :
+        maximum absolute longitudinale value,
+        by default 180
+
+    selected_vars :
+        relevant data variables for merging,
+        by default ["year", "month", "lat", "lon"]
+
+    Returns
+    -------
+    :
+        data set with all possible lat x lon combination
+    """
+    df_template = pd.DataFrame(
+        itertools.product(
+            year_seq,
+            np.arange(1, int(months + 1), 1),
+            np.arange(-(max_lat - (grid_cell_size / 2)), max_lat, grid_cell_size),
+            np.arange(-(max_lon - (grid_cell_size / 2)), max_lon, grid_cell_size),
+        ),
+        columns=selected_vars,
+    )
+
+    # combine dataset with template data to get also all combinations
+    # where both, GB and EO are NaN
+    df_total = df.merge(df_template, on=selected_vars, how="outer")
+    df_total["date"] = pd.to_datetime(df_total[["year", "month"]].assign(day=day))
+
+    return df_total.set_index("date")
