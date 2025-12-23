@@ -539,3 +539,138 @@ def plot_hemisphere(  # noqa: PLR0913
     axs.spines[["right", "top"]].set_visible(False)
 
     return fig, axs
+
+
+def plot_future_predictions(  # noqa: PLR0913
+    df_observed: pd.DataFrame,
+    df_coverage: pd.DataFrame,
+    df_future_years: pd.DataFrame,
+    min_year: int,
+    split_value: int,
+    figsize: tuple[int],
+    gas: str,
+    unit: str,
+    day: int,
+) -> Any:
+    """
+    Plot observed, fitted, and predicted data
+
+    Monthly aggregated across hemispheres and for the global mean.
+
+    Parameters
+    ----------
+    df_observed :
+        observed GHG data
+
+    df_coverage :
+        predicted data within observed year range showing full coverage
+
+    df_future_years :
+        predicted data for future years
+
+    min_year :
+        minimum year for truncating the x-axis
+
+    split_value :
+        value used to differentiate between southern,
+        northern hemisphere, and tropics
+
+    figsize :
+        size of plot
+
+    gas :
+        name of GHG
+
+    unit :
+        unit of GHG
+
+    day :
+        day used for creating a date variable
+
+    Returns
+    -------
+    :
+        fig, axs
+    """
+    df_full = df_coverage[df_coverage.year > min_year].copy()
+
+    df_future_years = preprocessing.add_hemisphere(
+        df_future_years[df_future_years.year > min_year].copy(), split_value=split_value
+    )
+    df_future_years["date"] = pd.to_datetime(
+        df_future_years[["year", "month"]].assign(day=day)
+    )
+
+    df_observed = preprocessing.add_hemisphere(
+        df_observed[df_observed.year > min_year].copy(), split_value=split_value
+    )
+    df_observed["date"] = pd.to_datetime(df_observed[["year", "month"]].assign(day=day))
+
+    dv_name_list = ["value_gb", "value_gb_pred", "value"]
+
+    dfs_hemi, dfs_global = [], []
+    for df, dv_name in zip([df_full, df_future_years, df_observed], dv_name_list):
+        dfs_hemi.append(
+            df.groupby(["date", "hemisphere"]).agg({dv_name: "mean"}).reset_index()
+        )
+        dfs_global.append(df.groupby(["date"]).agg({dv_name: "mean"}).reset_index())
+
+    fig, axs = plt.subplots(1, 2, constrained_layout=True, figsize=figsize)
+    for hemi in ["southern", "northern", "tropics"]:
+        sns.lineplot(
+            data=dfs_hemi[2][(dfs_hemi[2].hemisphere == hemi)],
+            x="date",
+            y="value",
+            ax=axs[0],
+            lw=1,
+            color="black",
+            linestyle="dashed",
+        )
+
+    sns.lineplot(
+        data=dfs_hemi[0],
+        x="date",
+        y=dv_name_list[0],
+        hue="hemisphere",
+        alpha=0.3,
+        ax=axs[0],
+        legend=False,
+        lw=3,
+    )
+    sns.lineplot(
+        data=dfs_hemi[1],
+        x="date",
+        y=dv_name_list[1],
+        hue="hemisphere",
+        ax=axs[0],
+        linestyle="dashed",
+    )
+
+    sns.lineplot(
+        data=dfs_global[2],
+        x="date",
+        y=dv_name_list[2],
+        ax=axs[1],
+        lw=1,
+        color="black",
+        linestyle="dashed",
+    )
+    sns.lineplot(
+        data=dfs_global[0],
+        x="date",
+        y=dv_name_list[0],
+        ax=axs[1],
+        legend=False,
+        alpha=0.3,
+        lw=3,
+    )
+    sns.lineplot(
+        data=dfs_global[1], x="date", y=dv_name_list[1], ax=axs[1], linestyle="dashed"
+    )
+
+    axs[0].set_ylabel(f"{gas.upper()} in {unit}")
+    for i in range(2):
+        axs[i].spines[["right", "top"]].set_visible(False)
+    axs[0].legend(frameon=False, handlelength=0.5, ncol=3)
+
+    return fig, axs
