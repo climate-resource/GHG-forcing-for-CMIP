@@ -128,15 +128,14 @@ def combine_datasets(
     :
         Combined dataframe with ground-based and satellite data
     """
-    return (
-        df_gb[select_cols]
-        .drop_duplicates()
-        .merge(
-            df_eo[select_cols],
-            on=["year", "month", "lat", "lon"],
-            how="outer",
-            suffixes=("_gb", "_eo"),
-        )
+    df_gb_agg = df_gb.groupby([select_cols]).agg({"value": "mean"}).reset_index()
+    df_eo_agg = df_eo.groupby([select_cols]).agg({"value": "mean"}).reset_index()
+
+    return df_gb_agg.merge(
+        df_eo_agg,
+        on=["year", "month", "lat", "lon"],
+        how="outer",
+        suffixes=("_gb", "_eo"),
     )
 
 
