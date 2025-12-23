@@ -6,9 +6,11 @@ from typing import Any, Optional
 
 import arviz as az
 import bambi as bmb
+import lightgbm as lgb
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from sklearn import linear_model
 from xgboost import XGBRegressor
 
 
@@ -220,3 +222,63 @@ def preprocess_dataset(df: pd.DataFrame) -> pd.DataFrame:
     df_feat["year_squared"] = df_feat["decimal_year"] ** 2
 
     return df_feat
+
+
+def fit_prediction_model(
+    df_coverage: pd.DataFrame,
+    min_year_pred: int,
+    trend_features: list[str],
+    resid_features: list[str],
+) -> Any:
+    """
+    Fit model for prediction task
+
+    Parameters
+    ----------
+    df_coverage :
+        full coverage dataset
+
+    min_year_pred :
+        minimum year used to inform prediction
+
+    trend_features :
+        features/predictors used to estimate trend
+
+    resid_features :
+        features/predictors used to estimate
+        seasonality, irregularities etc.
+
+    Returns
+    -------
+    :
+        fitted trend_model and residual_model
+    """
+    df_coverage_processed = preprocess_dataset(df_coverage)
+    df_coverage_processed = df_coverage_processed[
+        df_coverage_processed.year > min_year_pred
+    ]
+
+    X_linear = df_coverage_processed[trend_features]
+    y_actual = df_coverage_processed["value_gb"]
+
+    trend_model = linear_model.LinearRegression()
+    trend_model.fit(X_linear, y_actual)
+
+    df_coverage_processed["linear_trend"] = trend_model.predict(X_linear)
+    df_coverage_processed["residuals"] = (
+        df_coverage_processed["value_gb"] - df_coverage_processed["linear_trend"]
+    )
+
+    train_data = lgb.Dataset(
+        df_coverage_processed[resid_features], label=df_coverage_processed["residuals"]
+    )
+    params = {
+        "objective": "regression",
+        "metric": "rmse",
+        "verbose": -1,
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+    }
+    residual_model = lgb.train(params, train_data, num_boost_round=500)
+
+    return trend_model, residual_model
