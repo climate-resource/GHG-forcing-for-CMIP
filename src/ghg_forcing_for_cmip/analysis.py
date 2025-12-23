@@ -2,6 +2,7 @@
 analysis pipeline for incorporating EO into GB
 """
 
+import itertools
 from typing import Any, Optional
 
 import arviz as az
@@ -12,6 +13,8 @@ import numpy.typing as npt
 import pandas as pd
 from sklearn import linear_model
 from xgboost import XGBRegressor
+
+from ghg_forcing_for_cmip import preprocessing
 
 
 def fit_gb_from_eo(  # noqa: PLR0913
@@ -180,50 +183,6 @@ def do_gap_filling(
     return df_missing[["date", "year", "month", "lat", "lon", "value_gb", "obs_gb"]]
 
 
-def preprocess_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocess dataset for prediction task
-
-    feature engineering and scaling
-
-    Parameters
-    ----------
-    df :
-        raw dataset that shall be used
-        for fitting prediction model
-
-    Returns
-    -------
-    :
-        dataset prepared for prediction task
-    """
-    df_feat = df.copy()
-
-    month_decimal = (df_feat["month"] - 1) / 12
-
-    # cyclical time features
-    df_feat["month_sin"] = np.sin(2 * np.pi * month_decimal)
-    df_feat["month_cos"] = np.cos(2 * np.pi * month_decimal)
-
-    # spatial coordinates
-    # converts Lat/Lon to x, y, z to represent the spherical globe accurately
-    # convert degrees to radians first
-    lat_rad = np.radians(df_feat["lat"])
-    lon_rad = np.radians(df_feat["lon"])
-
-    df_feat["x_coord"] = np.cos(lat_rad) * np.cos(lon_rad)
-    df_feat["y_coord"] = np.cos(lat_rad) * np.sin(lon_rad)
-    df_feat["z_coord"] = np.sin(lat_rad)
-
-    df_feat["decimal_year"] = df_feat["year"] + month_decimal
-    df_feat["lat_x_year"] = df_feat["decimal_year"] * df_feat["lat"]
-
-    # captures non-linear growth (improves slope accuracy for future)
-    df_feat["year_squared"] = df_feat["decimal_year"] ** 2
-
-    return df_feat
-
-
 def fit_prediction_model(
     df_coverage: pd.DataFrame,
     min_year_pred: int,
@@ -253,7 +212,7 @@ def fit_prediction_model(
     :
         fitted trend_model and residual_model
     """
-    df_coverage_processed = preprocess_dataset(df_coverage)
+    df_coverage_processed = preprocessing.preprocess_prediction_dataset(df_coverage)
     df_coverage_processed = df_coverage_processed[
         df_coverage_processed.year > min_year_pred
     ]
@@ -282,3 +241,76 @@ def fit_prediction_model(
     residual_model = lgb.train(params, train_data, num_boost_round=500)
 
     return trend_model, residual_model
+
+
+def predict_future_years(  # noqa: PLR0913
+    trend_model: Any,
+    residual_model: Any,
+    trend_features: list[str],
+    resid_features: list[str],
+    pred_year_range: list[int],
+    months: int,
+    grid_cell_size: int,
+    max_lat: int,
+    max_lon: int,
+) -> pd.DataFrame:
+    """
+    Predict GHG values for future years
+
+    Parameters
+    ----------
+    trend_model :
+        fitted trend_model
+
+    residual_model :
+        fitted residual_model
+
+    trend_features :
+        features/predictors used for trend_model
+
+    resid_features :
+        features/predictors used for residual_model
+
+    pred_year_range :
+        min/max year used for predicting future years
+
+    months :
+        number of months
+
+    grid_cell_size :
+        size of a single grid-cell
+
+    max_lat :
+        maximum absolute latitudinal value
+
+    max_lon :
+        maximum absolute longitudinal value
+
+    Returns
+    -------
+    :
+        dataframe for future years with predicted
+        GHG values in a variable: "value_gb_pred"
+    """
+    future_template_data = pd.DataFrame(
+        itertools.product(
+            np.arange(pred_year_range[0], pred_year_range[1], 1),  # years
+            np.arange(1, months, 1),  # months
+            np.arange(
+                -(max_lat - (grid_cell_size / 2)), max_lat, grid_cell_size
+            ),  # latitudes
+            np.arange(
+                -(max_lon - (grid_cell_size / 2)), max_lon, grid_cell_size
+            ),  # longitudes
+        ),
+        columns=["year", "month", "lat", "lon"],
+    )
+
+    future_data_grid = preprocessing.preprocess_prediction_dataset(future_template_data)
+
+    trend_prediction = trend_model.predict(future_data_grid[trend_features])
+    resid_prediction = residual_model.predict(future_data_grid[resid_features])
+
+    future_data_grid["value_gb_pred"] = trend_prediction + resid_prediction
+
+    return future_data_grid
