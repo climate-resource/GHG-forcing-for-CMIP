@@ -271,3 +271,47 @@ def add_missing_lat_lon_combinations(  # noqa: PLR0913
     df_total["date"] = pd.to_datetime(df_total[["year", "month"]].assign(day=day))
 
     return df_total.set_index("date")
+
+
+def preprocess_prediction_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocess dataset for prediction task
+
+    feature engineering and scaling
+
+    Parameters
+    ----------
+    df :
+        raw dataset that shall be used
+        for fitting prediction model
+
+    Returns
+    -------
+    :
+        dataset prepared for prediction task
+    """
+    df_feat = df.copy()
+
+    month_decimal = (df_feat["month"] - 1) / 12
+
+    # cyclical time features
+    df_feat["month_sin"] = np.sin(2 * np.pi * month_decimal)
+    df_feat["month_cos"] = np.cos(2 * np.pi * month_decimal)
+
+    # spatial coordinates
+    # converts Lat/Lon to x, y, z to represent the spherical globe accurately
+    # convert degrees to radians first
+    lat_rad = np.radians(df_feat["lat"])
+    lon_rad = np.radians(df_feat["lon"])
+
+    df_feat["x_coord"] = np.cos(lat_rad) * np.cos(lon_rad)
+    df_feat["y_coord"] = np.cos(lat_rad) * np.sin(lon_rad)
+    df_feat["z_coord"] = np.sin(lat_rad)
+
+    df_feat["decimal_year"] = df_feat["year"] + month_decimal
+    df_feat["lat_x_year"] = df_feat["decimal_year"] * df_feat["lat"]
+
+    # captures non-linear growth (improves slope accuracy for future)
+    df_feat["year_squared"] = df_feat["decimal_year"] ** 2
+
+    return df_feat
