@@ -8,6 +8,7 @@ import arviz as az
 import bambi as bmb
 import numpy.typing as npt
 import pandas as pd
+from xgboost import XGBRegressor
 
 
 def fit_gb_from_eo(  # noqa: PLR0913
@@ -135,3 +136,42 @@ def predict_gb(
         model.predict(idata, data=test_data, kind="response", sample_new_groups=True)
 
     return idata.posterior_predictive[dv_name].mean(dim=("chain", "draw")).values
+
+
+def do_gap_filling(
+    df_partial_coverage: pd.DataFrame, df_missing: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Predict missing data (gap filling) to get GHG measures that show full coverage
+
+    Parameters
+    ----------
+    df_partial_coverage :
+        collocated and predicted-from-eo data
+        showing partial coverage
+
+    df_missing :
+        data frame indicating grid-cells for
+        which both value-eo and value-gb is
+        missing
+
+    Returns
+    -------
+    :
+        return predictions for missing
+        lat x lon combinations (grid cells)
+    """
+    target_variables = ["lat", "lon", "year", "season_sin", "season_cos"]
+
+    X_train = df_partial_coverage[target_variables]
+    y_train = df_partial_coverage["value_gb"]
+
+    # fit model based on given data
+    model_xgb = XGBRegressor(n_estimators=200)
+    model_xgb.fit(X_train, y_train)
+
+    # predict based on fitted model
+    df_missing["value_gb"] = model_xgb.predict(df_missing[target_variables])
+    df_missing["obs_gb"] = False
+
+    return df_missing[["date", "year", "month", "lat", "lon", "value_gb", "obs_gb"]]
