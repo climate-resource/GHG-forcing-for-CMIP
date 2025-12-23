@@ -21,6 +21,7 @@ dependencies = [
     "ruamel-yaml-clib==0.2.15",
     "tqdm>=4.67.1",
     "xarray>=2024.7.0",
+    "xgboost>=2.1.4",
 ]
 readme = "README.md"
 classifiers = [
