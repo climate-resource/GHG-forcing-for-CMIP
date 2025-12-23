@@ -107,7 +107,7 @@ def prepare_dataset(
 def combine_datasets(
     df_gb: pd.DataFrame,
     df_eo: pd.DataFrame,
-    select_cols: list[str] = ["year", "month", "lat", "lon", "value"],
+    select_cols: list[str] = ["year", "month", "lat", "lon"],
 ) -> pd.DataFrame:
     """
     Combine ground-based and satellite datasets
@@ -128,12 +128,12 @@ def combine_datasets(
     :
         Combined dataframe with ground-based and satellite data
     """
-    df_gb_agg = df_gb.groupby([select_cols]).agg({"value": "mean"}).reset_index()
-    df_eo_agg = df_eo.groupby([select_cols]).agg({"value": "mean"}).reset_index()
+    df_gb_agg = df_gb.groupby(select_cols).agg({"value": "mean"}).reset_index()
+    df_eo_agg = df_eo.groupby(select_cols).agg({"value": "mean"}).reset_index()
 
     return df_gb_agg.merge(
         df_eo_agg,
-        on=["year", "month", "lat", "lon"],
+        on=select_cols,
         how="outer",
         suffixes=("_gb", "_eo"),
     )
