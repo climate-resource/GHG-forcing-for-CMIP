@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from ghg_forcing_for_cmip import preprocessing
 from ghg_forcing_for_cmip.exceptions import MissingOptionalDependencyError
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
@@ -452,5 +453,89 @@ def plot_coverage(  # noqa: PLR0913
     axs.set_title(f"{grid_size} x {grid_size} grid size (red squares: observed GB)")
     axs.set_xlabel("longitude")
     axs.set_ylabel("latitude")
+
+    return fig, axs
+
+
+def plot_hemisphere(  # noqa: PLR0913
+    df_pred: pd.DataFrame,
+    df_obs: pd.DataFrame,
+    gas: str,
+    unit: str,
+    year_min: int,
+    split_value: int,
+    figsize: tuple[int],
+    day: int,
+) -> Any:
+    """
+    Plot observed and predicted data aggregated over different hemispheres
+
+    Parameters
+    ----------
+    df_pred :
+        predicted data, spanning full coverage
+
+    df_obs :
+        observed ground-based data
+
+    gas :
+        name of greenhouse gas
+
+    unit :
+        unit of greenhouse gas measurement
+
+    year_min :
+        minimum year used for showing x-range
+
+    split_value :
+        value used to differentiate between
+        northern, southern hemisphere and tropics
+
+    figsize :
+        plot size
+
+    day :
+        day used for constructing date variable
+
+    Returns
+    -------
+    Any
+        fig, axs
+    """
+    df_coverage = preprocessing.add_hemisphere(df_pred, split_value=split_value)
+    df_observed = preprocessing.add_hemisphere(df_obs, split_value=split_value)
+    df_observed["date"] = pd.to_datetime(df_observed[["year", "month"]].assign(day=day))
+    df_observed = (
+        df_observed[df_observed.year > year_min]
+        .groupby(["date", "hemisphere"])
+        .agg({"value": "mean"})
+        .reset_index()
+    )
+
+    fig, axs = plt.subplots(1, 1, figsize=figsize)
+    sns.lineplot(
+        data=df_coverage.groupby(["date", "hemisphere"])
+        .agg({"value_gb": "mean"})
+        .reset_index(),
+        x="date",
+        y="value_gb",
+        hue="hemisphere",
+        ax=axs,
+        lw=3,
+        alpha=0.4,
+    )
+    for hemi in df_observed.hemisphere.unique():
+        sns.scatterplot(
+            data=df_observed[df_observed.hemisphere == hemi],
+            x="date",
+            y="value",
+            color="black",
+            ax=axs,
+            lw=0,
+            s=5,
+        )
+    axs.legend(frameon=False, handlelength=0.5, ncol=3)
+    axs.set_ylabel(f"{gas.upper()} in {unit}")
+    axs.spines[["right", "top"]].set_visible(False)
 
     return fig, axs
