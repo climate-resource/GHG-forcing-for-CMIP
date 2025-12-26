@@ -42,7 +42,7 @@ def standardize_feature(series: pd.Series) -> pd.Series:
 
 
 def prepare_dataset(
-    df_combined: pd.DataFrame, condition: Union[Condition, str], day: int
+    df_combined: pd.DataFrame, condition: Union[Condition, str], day: int = 15
 ) -> pd.DataFrame:
     """
     Prepare datasets for statistical analysis
@@ -208,7 +208,7 @@ def add_missing_lat_lon_combinations(  # noqa: PLR0913
     df: pd.DataFrame,
     year_seq: npt.NDArray,
     grid_cell_size: int,
-    day: int,
+    day: int = 15,
     months: int = 12,
     max_lat: int = 90,
     max_lon: int = 180,

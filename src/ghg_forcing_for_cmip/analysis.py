@@ -249,10 +249,11 @@ def predict_future_years(  # noqa: PLR0913
     trend_features: list[str],
     resid_features: list[str],
     pred_year_range: list[int],
-    months: int,
     grid_cell_size: int,
-    max_lat: int,
-    max_lon: int,
+    max_lat: int = 90,
+    max_lon: int = 180,
+    months: int = 12,
+    day: int = 15,
 ) -> pd.DataFrame:
     """
     Predict GHG values for future years
@@ -286,6 +287,9 @@ def predict_future_years(  # noqa: PLR0913
     max_lon :
         maximum absolute longitudinal value
 
+    day :
+        day used for creating a date variable
+
     Returns
     -------
     :
@@ -307,6 +311,9 @@ def predict_future_years(  # noqa: PLR0913
     )
 
     future_data_grid = preprocessing.preprocess_prediction_dataset(future_template_data)
+    future_data_grid["date"] = pd.to_datetime(
+        future_data_grid[["year", "month"]].assign(day=day)
+    )
 
     trend_prediction = trend_model.predict(future_data_grid[trend_features])
     resid_prediction = residual_model.predict(future_data_grid[resid_features])

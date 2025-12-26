@@ -465,7 +465,7 @@ def plot_hemisphere(  # noqa: PLR0913
     year_min: int,
     split_value: int,
     figsize: tuple[int],
-    day: int,
+    day: int = 15,
 ) -> Any:
     """
     Plot observed and predicted data aggregated over different hemispheres
@@ -550,7 +550,7 @@ def plot_future_predictions(  # noqa: PLR0913
     figsize: tuple[int],
     gas: str,
     unit: str,
-    day: int,
+    day: int = 15,
 ) -> Any:
     """
     Plot observed, fitted, and predicted data
@@ -672,5 +672,127 @@ def plot_future_predictions(  # noqa: PLR0913
     for i in range(2):
         axs[i].spines[["right", "top"]].set_visible(False)
     axs[0].legend(frameon=False, handlelength=0.5, ncol=3)
+
+    return fig, axs
+
+
+def plot_future_predictions_location(  # noqa: PLR0913
+    df_observed: pd.DataFrame,
+    df_fitted: pd.DataFrame,
+    df_predicted: pd.DataFrame,
+    year_min: int,
+    figsize: tuple[int],
+    gas: str,
+    unit: str,
+    no_locations: int = 12,
+) -> Any:
+    """
+    Plot future years
+
+    Parameters
+    ----------
+    df_observed :
+        observed data set
+
+    df_fitted :
+        fitted data to observed data
+
+    df_predicted :
+        predict future data
+
+    year_min :
+        minimum year used for truncating the x-axis
+
+    figsize :
+        size of figure
+
+    gas :
+        name of greenhouse gas
+
+    unit :
+        unit of greenhouse gas
+
+    no_locations :
+        number of locations that show
+        predicted vs. fitted data
+
+    Returns
+    -------
+    :
+        fig, axs
+    """
+    selected_locations = (
+        df_observed[df_observed.year > year_min][["lat", "lon", "site_code"]]
+        .drop_duplicates()
+        .iloc[:no_locations]
+        .reset_index()
+    )
+
+    fig, axs = plt.subplots(
+        4, 3, constrained_layout=True, sharey=True, sharex=True, figsize=figsize
+    )
+    k = 0
+    for j in range(4):
+        for i in range(3):
+            observed_loc = df_observed[
+                (df_observed.lat == selected_locations.lat[k])
+                & (df_observed.lon == selected_locations.lon[k])
+                & (df_observed.year > year_min)
+            ]
+            fitted_loc = df_fitted[
+                (df_fitted.lat == selected_locations.lat[k])
+                & (df_fitted.lon == selected_locations.lon[k])
+                & (df_fitted.year > year_min)
+            ]
+            predicted_loc = df_predicted[
+                (df_predicted.lat == selected_locations.lat[k])
+                & (df_predicted.lon == selected_locations.lon[k])
+                & (df_predicted.year > year_min)
+            ]
+            if (i == 0) & (j == 0):
+                label_obs, label_fit, label_pred = "observed", "fitted", "predicted"
+            else:
+                label_obs, label_fit, label_pred = None, None, None
+
+            sns.scatterplot(
+                data=observed_loc,
+                x="date",
+                y="value",
+                label=label_obs,
+                s=5,
+                lw=0,
+                color="black",
+                zorder=2,
+                ax=axs[j, i],
+            )
+            sns.lineplot(
+                data=fitted_loc,
+                x="date",
+                y="value_gb",
+                label=label_fit,
+                zorder=0,
+                lw=2,
+                alpha=0.5,
+                ax=axs[j, i],
+            )
+            sns.lineplot(
+                data=predicted_loc,
+                x="date",
+                y="value_gb_pred",
+                label=label_pred,
+                zorder=3,
+                ax=axs[j, i],
+            )
+            axs[j, i].set_title(
+                (
+                    f"site: {selected_locations.site_code[k]}",
+                    f", lat: {selected_locations.lat[k]}",
+                    f", lon: {selected_locations.lon[k]}",
+                )
+            )
+            axs[j, i].spines[["right", "top"]].set_visible(False)
+            k += 1
+        axs[j, 0].set_ylabel(f"{gas.upper()} in {unit}")
+    axs[0, 0].legend(frameon=False, handlelength=0.5)
 
     return fig, axs
