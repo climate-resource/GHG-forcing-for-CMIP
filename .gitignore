@@ -3,6 +3,8 @@ docs/tutorials/data
 
 # Notebooks
 *.ipynb
+*.pdf
+*.html
 
 # Local prefect database or other things
 .prefect
@@ -166,3 +168,8 @@ dmypy.json
 
 # Mac stuff
 *.DS_Store
+
+
+# manuscript compiled files
+manuscript/tutorial_files/
+manuscript/datasets/

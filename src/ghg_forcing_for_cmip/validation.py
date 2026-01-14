@@ -105,7 +105,7 @@ class EODataRow(BaseModel):
         return v
 
 
-def validate_gb_dataframe(df: pd.DataFrame) -> list[GroundDataRow]:
+def validate_gb_dataframe(df: pd.DataFrame) -> None:
     """
     Iterate over DataFrame rows and validates them against the Pydantic model.
     """
@@ -115,7 +115,7 @@ def validate_gb_dataframe(df: pd.DataFrame) -> list[GroundDataRow]:
     try:
         # List comprehension triggers validation for every row
         for record in records:
-            GroundDataRow(**record)
+            GroundDataRow(**record)  # type: ignore
 
     except ValidationError as e:
         print("GB dataframe validation failed.")
@@ -123,7 +123,7 @@ def validate_gb_dataframe(df: pd.DataFrame) -> list[GroundDataRow]:
         raise
 
 
-def validate_eo_dataframe(df: pd.DataFrame) -> list[EODataRow]:
+def validate_eo_dataframe(df: pd.DataFrame) -> None:
     """
     Iterate over DataFrame rows and validates them against the Pydantic model.
     """
@@ -133,7 +133,7 @@ def validate_eo_dataframe(df: pd.DataFrame) -> list[EODataRow]:
     try:
         # List comprehension triggers validation for every row
         for record in records:
-            EODataRow(**record)
+            EODataRow(**record)  # type: ignore
 
     except ValidationError as e:
         print("EO dataframe validation failed.")
@@ -141,7 +141,9 @@ def validate_eo_dataframe(df: pd.DataFrame) -> list[EODataRow]:
         raise
 
 
-def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str):
+def compute_discrepancy_collocated(
+    d: pd.DataFrame, gas: str, measure: str
+) -> pd.DataFrame:
     """
     Compute rmse per site code in collocated data
 
@@ -174,9 +176,9 @@ def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str):
             .apply(
                 lambda g: pd.Series(
                     {
-                        "rmse_" + gas: np.sqrt(np.mean((g.value_eo - g.value_gb) ** 2)),  # type: ignore
-                        "bias_" + gas: np.mean(g.value_eo - g.value_gb),  # type: ignore
-                        "var_" + gas: np.var(g.value_eo - g.value_gb),  # type: ignore
+                        "rmse_" + gas: np.sqrt(np.mean((g.value_eo - g.value_gb) ** 2)),
+                        "bias_" + gas: np.mean(g.value_eo - g.value_gb),
+                        "var_" + gas: np.var(g.value_eo - g.value_gb),
                     }
                 )
             )
@@ -187,7 +189,7 @@ def compute_discrepancy_collocated(d: pd.DataFrame, gas: str, measure: str):
     if measure == "dcor":
         res = (
             d.groupby("site_code")[["site_code", "value_eo", "value_gb"]]
-            .apply(lambda d: 1 - abs(np.corrcoef(d.value_eo, d.value_gb)[0, 1]))  # type: ignore
+            .apply(lambda d: 1 - abs(np.corrcoef(d.value_eo, d.value_gb)[0, 1]))
             .reset_index()
             .rename(columns={0: "dcor_" + gas})
         )

@@ -54,7 +54,7 @@ plotting.plot_map(
     # Don't need the +, just put the strings in brackets and
     # they're automatically joined
     (
-        f"NOAA observations sites ({d_gb_ch4.year.min()}-{d_gb_ch4.year.max()})"
+        f"Observations sites ({d_gb_ch4.year.min()}-{d_gb_ch4.year.max()})"
         "\n $CH_4$ data"
     ),
     axs[0],
@@ -62,7 +62,7 @@ plotting.plot_map(
 plotting.plot_map(
     d_gb_co2,
     (
-        f"NOAA observations sites ({d_gb_co2.year.min()}-{d_gb_co2.year.max()})"
+        f"Observations sites ({d_gb_co2.year.min()}-{d_gb_co2.year.max()})"
         "\n $CO_2$ data"
     ),
     axs[1],

@@ -1,0 +1,1344 @@
+---
+title: "Produce Greenhouse gas forcings for CMIP by incorporating earth observations into ground-based data"
+format:
+  pdf:
+    documentclass: article
+    number-sections: true
+    table-of-contents: true
+execute:
+  echo: false
+  message: false
+  warning: false
+bibliography: references.bib
+---
+
+```{python}
+#| include: false
+#| label: load-pkgs-set-global-vars
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import arviz as az
+import bambi as bmb
+import os
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from ghg_forcing_for_cmip import plotting, preprocessing, analysis
+
+REPLICATIONS = 30
+SPLIT_VALUE = 30
+SEED = 12113
+CRIT_RHAT = 1.01 # for diagnostics in Appendix
+CRIT_ESS = 100   # for diagnostics in Appendix
+
+# for saving files locally
+folder_path = "datasets"
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+```
+
+# Introduction
+Earth observations (EO) provide an effective means of monitoring the global distribution of greenhouse gases with high spatiotemporal resolution and are considered a valuable complement to ground-based (GB) observations by improving overall monitoring coverage, frequency and resolution [@yue2016space;@hu2024review].
+
+However, integrating EO and GB datasets presents methodological challenges. EO data represent column-averaged dry-air mole fractions ($X_{CO_2}$ or $X_{CH_4}$), while GB instruments measure near-surface concentrations ($CO_2$ or $CH_4$). Systematic discrepancies arise from vertical gradients in atmospheric composition, which differ substantially between $CO_2$ (relatively well-mixed) and $CH_4$ (pronounced vertical gradients). A mapping is therefore required to calibrate EO measurements to GB-equivalent surface values, accounting for these physical differences while propagating uncertainty appropriately.
+
+This work, we use a statistical approach to compute this mapping using a Bayesian hierarchical modeling framework for assimilating EO and GB data to generate unified $CO_2$ and $CH_4$ concentration datasets suitable for CMIP applications. The approach employs Gaussian Process components to capture spatial structure and hierarchical seasonality to account for latitudinal variations. We demonstrate the methodology using OBS4MIPS satellite products and NOAA/AGAGE ground-based measurements, generating composite datasets that extend GB coverage globally while maintaining explicit uncertainty quantification. Additionally, we provide an initial idea for a forecasting model to project concentrations into future years, enabling scenario development for climate projections.
+
+The remainder of this paper is structured as follows. @sec-datasets introduces the GB and EO datasets used in the analysis. @sec-motivation recapture the motivationg and the challenge for the current analysis. @sec-method outlines the methodological framework, including the Bayesian calibration model for data integration and the forecasting approach for temporal extrapolation. @sec-results presents results for both $CO_2$ and $CH_4$, evaluating model performance and examining regional patterns. Finally, @sec-discussion discusses the findings and limitations.
+
+# Datasets {#sec-datasets}
+In the following section we introduce the ground-based (GB) and earth observation (EO) data set used throughout this working paper.
+
+## Ground-based Data
+
+```{python}
+#| label: read-datasets
+
+co2_gb = pd.read_csv("../data/downloads/co2/co2_gb_raw.csv")
+ch4_gb = pd.read_csv("../data/downloads/ch4/ch4_gb_raw.csv")
+co2_eo = pd.read_csv("../data/downloads/co2/co2_eo_raw.csv")
+ch4_eo = pd.read_csv("../data/downloads/ch4/ch4_eo_raw.csv")
+
+def create_summaries(d_gb):
+    d_subset = d_gb.drop(columns=["lat", "lon", "lat_bnd", "lon_bnd", "bnd", "time_fractional", "year", "month"])
+    d_subset = d_subset.drop_duplicates().reset_index(drop=True)
+
+    return dict(
+        N = len(d_subset),
+        min_year = d_subset.time.min(),
+        max_year = d_subset.time.max(),
+        no_sites = len(d_subset.site_code.unique()),
+        sites = d_subset.site_code.unique(),
+    )
+
+co2_summary = create_summaries(co2_gb)
+ch4_summary = create_summaries(ch4_gb)
+
+selected_locations_co2 = preprocessing.select_sampling_sites(co2_gb)
+selected_locations_ch4 = preprocessing.select_sampling_sites(ch4_gb)
+
+MAX_YEAR_EO_CH4 = ch4_eo.year.max()
+MIN_YEAR_EO_CH4 = ch4_eo.year.min()
+MAX_YEAR_EO_CO2 = co2_eo.year.max()
+MIN_YEAR_EO_CO2 = co2_eo.year.min()
+```
+
+The GB dataset integrates *surface in situ* and *flask* measurements for $CO_2$ [@thoning_atmospheric_co2_2025,@lan_atmospheric_co2_2025] and $CH_4$ [@thoning_atmospheric_ch4_2025,@lan_atmospheric_ch4_2025] from the NOAA network [@noaa2025], with additional $CH_4$ data acquired from the AGAGE network [@prinn_history_2000]. The combined dataset comprises `{python} co2_summary["N"]` observations for $CO_2$ across `{python} co2_summary["no_sites"]` sampling sites, and `{python} ch4_summary["N"]` observations for $CH_4$ across `{python} ch4_summary["no_sites"]` sites.
+Total temporal coverage spans from `{python} co2_summary["min_year"][:4]` to `{python} co2_summary["max_year"][:4]` for $CO_2$ and from `{python} ch4_summary["min_year"][:4]` to `{python} ch4_summary["max_year"][:4]` for $CH_4$. A complete list of site codes is provided in Appendix [-@sec-overview-site-codes]. @fig-coverage-total illustrates the geographical distribution of all sampling sites monitoring $CH_4$ (left) and $CO_2$ (right). For $CH_4$, sampling sites from both the AGAGE and NOAA networks are shown.
+
+```{python}
+#| label: fig-coverage-total
+#| fig-cap: "Geographic distribution of $CO_2$ (left) and $CH_4$ (right) sampling sites"
+
+_, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(11, 6))
+plotting.plot_map(
+    ch4_gb,
+    (
+        r"$CH_4$: NOAA and (A)GAGE sampling sites "
+        f"\n({ch4_gb.year.min()}-{ch4_gb.year.max()})"
+    ),
+    axs[0],
+)
+plotting.plot_map(
+    co2_gb,
+    (
+        r"$CO_2$: NOAA sampling sites "
+        f"\n({co2_gb.year.min()}-{co2_gb.year.max()})"
+    ),
+    axs[1],
+)
+```
+
+**Preprocessing**
+For the GB dataset, we extracted the following variables from the NOAA and AGAGE archives: `{python} list(set(co2_gb.columns).difference(set(["lat", "lon", "year", "month", "time", "bnd", "lat_bnd", "lon_bnd", "time_fractional"])))+["time"]`.
+
+Data preprocessing involved specific protocols for *in situ* and *flask* measurements to construct the `value` variable:
+
++ For NOAA *in situ* data: The `value` variable was adopted directly from the provided monthly aggregated records.
++ For NOAA *flask* data: Monthly aggregates were computed from event-level data to establish the corresponding `value`.
+
+Additionally, we extracted (in situ) or computed (flask) the the associated metadata variables
+
++ `numb`: Number of observations per aggregate.
++ `std_dev`: Standard deviation of the respective observations.
+
+To ensure data integrity, the dataset was filtered to retain only records marked with the quality flag '`...`', denoting *"good pair, no other issues"*.
+
+To facilitate spatial analysis, we added additionally variables defining the latitudinal (`lat_bnd`) and longitudinal boundaries (`lon_bnd`) of a theoretical $5^{\circ} \times 5^{\circ}$ grid. This grid spans latitudes from $-90^{\circ}$ to $90^{\circ}$ and longitudes from $-180^{\circ}$ to $180^{\circ}$ in $5^{\circ}$ increments. Upper boundaries are denoted by `bnd=1` and lower boundaries by `bnd=0`. The specific grid boundaries observed in the dataset are:
+
++ $CH_4$ Latitudes: `{python} np.sort(ch4_gb.lat_bnd.unique()).tolist()`
++ $CH_4$ Longitudes: `{python} np.sort(ch4_gb.lon_bnd.unique()).tolist()`
++ $CO_2$ Latitudes: `{python} np.sort(co2_gb.lat_bnd.unique()).tolist()`
++ $CO_2$ Longitudes: `{python} np.sort(co2_gb.lon_bnd.unique()).tolist()`
+
+Finally, we included the variables `lat` and `lon` to indicate the centroid of each $5^{\circ} \times 5^{\circ}$ grid cell, resulting in a total of `{python} len(co2_gb.columns)` variables. A description of each variable is provided in Appendix [-@sec-overview-data-variables].
+
+## Earth Observations
+The first satellite missions monitoring atmospheric $CO_2$ and $CH_4$ have been launched in 2002 [@yue2016space; @hu2024review; @reuter2013joint; @heymann2012sciamachy], initiating a series of subsequent missions including current operational platforms such as GOSAT-2 [@jaxa2025], as well as planned missions including SENTINEL CO2M [@eoportal2025]. To integrate data products from multiple satellite sensors, @reuter2013joint and @reuter2020ensemble developed the *Ensemble Median Algorithm* (EMMA). This method merges retrievals into a combined multi-sensor Level 2 (L2) product, creating a time series that exceeds the lifespan of individual sensors while maintaining high accuracy [@reuter2020ensemble]. The most recent EMMA version (v4.5) spans `{python} f"{co2_eo.year.min()}"` to `{python} f"{co2_eo.year.max()}"` [@buchwitz2024product].
+In addition to the L2 product, a corresponding Level 3 (L3) product, referred to as OBS4MIPS, is derived by spatially ($5^\circ \times 5^\circ$) and temporally (monthly) gridding the EMMA L2 dataset [@reuter2024annexD]. These products have been validated against ground-based measurements from the Total Carbon Column Observing Network [TCCON, @reuter2020ensemble].
+
+For the subsequent analysis, we utilize the OBS4MIPS data product (version 4.5) for $CO_2$ [@cds_co2_2018] and $CH_4$ [@cds_methane_2018]. Originally developed under the ESA Climate Change Initiative, it is currently generated within the Copernicus Climate Change Service framework and is publicly available via the Copernicus Climate Data Store [CDS, @buchwitz2018copernicus]. @fig-coverage-eo-ch4 and @fig-coverage-eo-co2 illustrate the spatiotemporal distributions of the satellite retrievals for methane and carbon dioxide, respectively, across selected years.
+```{python}
+#| label: fig-coverage-eo-ch4
+#| fig-cap: "Geographic distribution of $CH_4$ Earth observations across selected years."
+
+ch4_eo_year = ch4_eo.groupby(["year", "lat", "lon"]).agg({"value": "mean"}).reset_index()
+
+_, axs = plt.subplots(2, 3, constrained_layout=True, figsize=(9, 3))
+
+for ax, year in zip(axs.flatten(), [2003, 2008, 2013, 2018, 2020, 2022]):
+    plotting.plot_map(
+        ch4_eo_year[ch4_eo_year.year == year],
+        f"{year}",
+        ax,
+        "lon",
+        "lat",
+        ".",
+        5,
+    )
+```
+
+```{python}
+#| label: fig-coverage-eo-co2
+#| fig-cap: "Geographic distribution of $X_{CO_2}$ Earth observations across selected years."
+
+co2_eo_year = co2_eo.groupby(["year", "lat", "lon"]).agg({"value": "mean"}).reset_index()
+
+_, axs = plt.subplots(2, 3, constrained_layout=True, figsize=(9, 3))
+
+for ax, year in zip(axs.flatten(), [2003, 2008, 2013, 2018, 2020, 2022]):
+    plotting.plot_map(
+        co2_eo[co2_eo.year == year],
+        f"{year}",
+        ax,
+        "lon",
+        "lat",
+        ".",
+        5,
+    )
+```
+
+The OBS4MIPS dataset includes the coordinate variables `lat`, `lon`, `lat_bnd`, `lon_bnd`, and `bnd`. The specific grid boundaries (across all time points) observed in the dataset are:
+
++ $X_{CH_4}$ Latitudes: `{python} np.sort(ch4_eo.lat_bnd.unique()).tolist()`
++ $X_{CH_4}$ Longitudes: `{python} np.sort(ch4_eo.lon_bnd.unique()).tolist()`
++ $X_{CO_2}$ Latitudes: `{python} np.sort(co2_eo.lat_bnd.unique()).tolist()`
++ $X_{CO_2}$ Longitudes: `{python} np.sort(co2_eo.lon_bnd.unique()).tolist()`
+
+The target variables are $X_{CO_2}$ and $X_{CH_4}$, defined as column-averaged dry-air mole fractions. These quantities represent the vertical column density of the respective GHG gas divided by the vertical column density of dry air [@buchwitz2005atmospheric]. In the OBS4MIPS dataset, these variables are provided as dimensionless quantities (mol/mol). During preprocessing, the data are rescaled by multiplying $X_{CO_2}$ by $10^6$ (converting to ppm) and $X_{CH_4}$ by $10^9$ (converting to ppb), with the results stored in the `value` variable. Observations indicating missing data (flagged as `1e20`) are excluded. Note, the identifier `value` was adopted for the target variable to align with the schema of the GB dataset and facilitate consistent downstream processing. However, this shared nomenclature warrants caution, as it may suggest the variables are identical in nature. Specifically, the `value` column in the GB dataset represents atmospheric GHG concentrations (near surface), whereas in the EO dataset, it denotes column-averaged dry-air mole fractions.
+
+In addition to the target and coordinate variables, the EO dataset includes the following variables, which are analogous to those in the GB dataset:
+
++ `numb`: The number of individual L2 observations that enter the average L3 value.
++ `std_dev`: The corresponding standard deviation of the observations.
++ `time`, `year`, `month`: Temporal indices representing the time of observation.
+
+The EO dataset further includes variables specific to satellite retrieval processes:
+
++ `column_averaging_kernel`: The *column averaging kernel* vertical profile represents the sensitivity of the retrieved $X_{CO_2}$ or $X_{CH_4}$ to the true mole fraction depending on altitude (pressure level). Values near one are ideal and indicate that the influence of the a priori is minimal.
++ `vmr_profile_arpriori`: The $CO_2$ or $CH_4$ *a priori profile* represents the knowledge of the vertical profile of the dry-air mole fraction of $CO_2$ or $CH_4$ before the measurement. See @rodgers2000inverse for a detailed explanation.
++ `pre`:  The pressure level center (dimensionless, normalized to surface pressure), ranging from 0.05 (top-of-atmosphere) to 0.95 (surface). This variable serves as the vertical coordinate for the a priori and averaging kernel profiles. Note that because the `value` variable represents a column average, it is invariant to pressure level.
+
+A description of each variable is provided in Appendix [-@sec-overview-data-variables].
+
+# Motivation {#sec-motivation}
+While GB data are characterized by high accuracy, they typically exhibit sparse spatial coverage. In contrast, EO data offer higher spatial coverage (excluding polar regions), albeit often with higher uncertainty relative to GB measurements. @fig-coverage-eo-gb-co2 illustrates this disparity in spatial sampling between the EO (left) and GB (right) datasets, using 2018 as a representative year.
+```{python}
+#| label: fig-coverage-eo-gb-co2
+#| fig-cap: "Geographic distribution of $X_{CO_2}$ Earth observations (left) and ground-based $CO_2$ data (right) for the year 2018."
+
+_, axs = plt.subplots(1, 2, constrained_layout=True, figsize=(9, 3))
+
+plotting.plot_map(
+    co2_eo_year[co2_eo_year.year == 2018],
+    r"EO coverage of $X_{CO_2}$ for 2018",
+    axs[0],
+    "lon",
+    "lat",
+    ".",
+    5,
+)
+
+plotting.plot_map(
+    co2_gb[co2_gb.year == 2018],
+    (
+        r"GB coverage of $CO_2$ for 2018"
+    ),
+    axs[1],
+)
+```
+
+Given these complementary characteristics, it is of interest to augment the GB dataset with EO data to fill regional coverage gaps. Consequently, the objective of the subsequent analysis is to establish a preliminary workflow for constructing a composite data product that integrates EO-derived information with GB measurements. Furthermore, the proposed modeling framework aims to explicitly support uncertainty propagation.
+
+A fundamental challenge in assimilating EO and GB data arises from the distinct physical definitions of the observed quantities. EO data represent column-averaged dry-air mole fractions ($X_{CO_2}$ or $X_{CH_4}$), whereas GB instruments measure near-surface atmospheric GHG concentrations ($CO_2$ or $CH_4$). Consequently, systematic discrepancies exist between the datasets, driven primarily by *vertical gradients* in atmospheric composition of the respective GHG.
+
++ **Carbon Dioxide**: The long atmospheric lifetime facilitates mixing, resulting in a vertically well-mixed profile. Consequently, monthly column-averaged $X_{CO_2}$ closely track near-surface $CO_4$ measurements, although the amplitude of surface flux signals is attenuated by vertical integration [@olsen2004differences].
++ **Methane**: Exhibits a pronounced vertical gradient, characterized by elevated concentrations near surface sources and significant depletion in the upper troposphere and stratosphere [@bergamaschi2009inverse]. As a result, the column-averaged $X_{CH_4}$ is systematically lower than near-surface $CH_4$ concentrations, as the inclusion of lower mixing ratios from the upper atmosphere reduces the integrated column mean relative to surface values.
+
+@fig-difference-eo-gb illustrates the systematic offset between the surface-based GB data and the column-integrated EO data using global monthly averages. The upper panel depicts $CH_4$ / $X_{CH_4}$ trends, comparing GB measurements (orange) with EO-derived $X_{CH_4}$ (blue). The lower panel presents the analogous comparison for carbon dioxide.
+```{python}
+#| label: create-df-collocated
+
+df_combined_co2 = preprocessing.combine_datasets(co2_gb, co2_eo)
+df_combined_ch4 = preprocessing.combine_datasets(ch4_gb, ch4_eo)
+
+df_collocated_co2 = preprocessing.prepare_dataset(
+    df_combined_co2, condition="collocated"
+)
+df_collocated_ch4 = preprocessing.prepare_dataset(
+    df_combined_ch4, condition="collocated"
+)
+```
+
+```{python}
+#| label: fig-difference-eo-gb
+#| fig-cap: "Comparison of global, monthly averages for $CH_4$ (upper panel) and $CO_2$ (lower panel) derived from EO (blue) and GB (orange) data. The plots illustrate the systematic offset between the datasets caused by vertical gradients in the atmospheric distribution of each gas."
+
+fig, axs = plt.subplots(2, 1, figsize=(8, 5), constrained_layout=True)
+plotting.plot_monthly_average(df_collocated_ch4, "$CH_4 / X_{CH_4}$", axs[0])
+plotting.plot_monthly_average(df_collocated_co2, "$CO_2 / X_{CO_2}$", axs[1])
+fig.suptitle("Annual, global average of GHG concentration");
+```
+
+# Method {#sec-method}
+This section outlines a statistical workflow designed to achieve the following objectives:
+
+1. **Data Integration**: Construct a composite dataset that integrates EO products with GB measurements, thereby expanding the spatial coverage of the GB data.
+2. **Uncertainty Quantification**: Establish a framework that enables the computation and explicit propagation of uncertainty.
+3. **Predictive Modeling**: Develop a model capable of learning from historical observations to forecast future trends.
+
+## Data Integration: Bayesian Hierarchical Modeling for Column-to-Surface Calibration
+
+### Motivation {.unnumbered}
+To integrate EO products with GB measurements, a methodological framework is required to harmonize surface-level GB measurements with column-integrated EO data. Two primary approaches are generally considered in the literature [@yue2016space]:
+
+1. *Physics-Based Approach*: This involves using Transport Models or vertical profile climatologies to simulate the vertical distribution of the gas above the ground station. By integrating this simulated profile, one can compute a synthetic column-average ($X_{CO_2}$ or $X_{CH_4}$) that is directly comparable to the satellite retrieval. However, this method relies heavily on the accuracy of the underlying transport model and a priori vertical profile assumptions [@rodgers2003intercomparison, @wunch2011total].
+2. *Statistical Approach*: Alternatively, data-driven methods can be employed to model the mapping between surface and column quantities. These models handle the systematic bias and vertical distribution effects implicitly, learning the transfer function from co-located observations without requiring explicit simulation of atmospheric transport.
+
+For the subsequent analysis, we adopt a statistical approach, employing a Bayesian hierarchical regression model to characterize the transfer function. The approach consists of the following steps:
+
++ *Model specification*: Define a model architecture capable of learning underlying characteristics from observed data and generalizing to unseen contexts.
++ *Calibration*: Calibrate the model using spatiotemporally co-located observations to quantify the probabilistic relationship between column-averaged (EO) and surface-level (GB) measurements.
++ *Prediction*: Apply the fitted framework to infer surface mole fractions (referred to as 'GB-equivalents') at locations where only EO data are available, thereby extending the spatial coverage of the GB data.
+
+**Objective:** The primary objective of this phase is to construct a composite dataset that assimilates EO and GB data.
+
+### Statistical Model {.unnumbered}
+Distinct model specifications were developed for $CO_2$ and $CH_4$ to account for their unique physicochemical properties. These specifications are detailed in the following section.
+
+#### Model specification $CO_2$ {.unnumbered}
+To assimilate EO and GB data for $CO_2$ into a unified product that extends GB precision to the spatial coverage of EO, we developed a Bayesian hierarchical regression model. This framework incorporates a Gaussian Process (GP) component to capture residual spatiotemporal dynamics. The model was implemented using the `bambi` Python package [@Capretto_Bambi_A_simple_2022], which serves as a high-level interface for the probabilistic programming framework `PyMC` [@Abril_PyMC_2023].
+
+Let $y_i$ denote the GB measurement for the $i$-th observation. We model $y_i$ assuming a Gaussian likelihood
+$$
+y_i \sim \mathcal{N}(\mu_i, \sigma^2).
+$$
+The mean function, $\mu_i$, is defined as
+$$
+\mu_i = \underbrace{\beta_0 + \beta_1 t_i + \beta_2 t_i^2}_{\substack{\text{Global Trend}}} + \underbrace{\mathcal{S}_{g[i]}(t_i)}_{\substack{\text{Seasonality}}} + \underbrace{x_{i, \text{eo}}}_{\substack{\text{EO Calibration}}} + \underbrace{f_{\text{HSGP}}(\phi_i, \lambda_i)}_{\substack{\text{Spatial Residual}}}
+$$
+where $t_i$ represents the normalized time variable, and $x_{i, \text{eo}}$ is the scaled EO measurement. The term $\mathcal{S}_{g[i]}(t_i)$ denotes the seasonal cycle, where the harmonic coefficients are allowed to vary by the grouping factor $g[i]$ (defined by the interaction of latitude and hemispheric region (S for lat < 0, N else)).
+The term $f_{\text{HSGP}}$ models the spatial residual structure using a Hilbert Space Gaussian Process (HSGP) approximation.
+
+The `bambi` model implementation is defined by the following specification:
+```
+value_gb ~
+    1 + year_scaled + I(year_scaled**2) +
+    (1 + season_sin + season_cos | lat : region) +
+    value_eo_scaled +
+    hsgp(lat_scaled, lon_scaled, m=5, c=1.5)
+```
+Prior to model fitting, we applied the following feature engineering and standardization steps:
+
++ *Scaling:* The continuous covariates `value_eo, lat,` and `lon` were standardized using a $Z$-score transformation (centering to zero mean and scaling to unit variance) to facilitate convergence. The covariate `year` was normalized by setting the start of the time series to zero: $\text{year-scaled} = \text{year} - \min(\text{year})$
++ *Region Definition:* The variable `region` was constructed as a binary spatial indicator to distinguish between the Northern and Southern Hemispheres ($0$ for latitude $< 0^{\circ}$, $1$ otherwise).
++ *Seasonality:* Harmonic terms were derived from the month of observation to capture annual periodicity: $\text{season-sin} = \sin\left(\frac{2\pi(\text{month}-1)}{12}\right)$ and $\text{season-cos} = \cos\left(\frac{2\pi(\text{month}-1)}{12}\right)$
+
+The individual components of the model specification are interpreted as follows:
+
++ *Global Trend*: The term `1 + year_scaled + I(year_scaled**2)` captures the long-term accumulation of $CO_2$ in the atmosphere. A quadratic polynomial is included to account for non-linearities in the accumulation rate, such as the accelerating growth observed in recent years.
++ *Seasonality*: The random effects term `(1 + season_sin + season_cos | lat : region)` models the seasonal cycle using harmonic basis functions. Unlike a fixed global seasonality, this hierarchical structure estimates specific seasonal amplitudes and phases for distinct groups defined by the interaction of latitude and hemispheric region `(lat : region)`. This allows the model to adapt to local transport patterns.
++ *EO-Calibration*: The term `value_eo_scaled` estimates a linear relationship between EO and GB and applies a uniform correction coefficient.
++ *Spatial Residuals*: The final term `hsgp(lat_scaled, lon_scaled, m=5, c=1.5)` captures the static spatial structure not explained by the other covariates. The HSGP approximation projects the computationally expensive Gaussian Process covariance matrix inversion onto a summation of basis functions (eigenfunctions of the Laplacian), thereby facilitating efficient scaling to large global datasets.
+
+#### Model specification $CH_4$ {.unnumbered}
+The model specification for $CH_4$ is analogous to that of $CO_2$, with one distinction: the fixed main effect of EO is substituted with the interaction term `value_eo_scaled : lat_scaled`. This interaction serves as a spatially adaptive calibration layer, permitting the slope of the relationship between EO and GB data to vary across latitudes.
+
+#### Fitting {.unnumbered}
+For both models, calibration was first performed using the spatiotemporally co-located dataset (i.e., instances where both EO and GB measurements are existent). Utilizing the fitted parameters, we generated out-of-sample posterior predictions for data points where EO data are available but corresponding GB measurements are absent. To fully characterize uncertainty, we generated an ensemble of datasets rather than a single dataset. Specifically, we drew $N=100$ distinct datasets.
+
+### Implementation {.unnumbered}
+We implemented the Bayesian regression model using the `bambi` library, which interfaces with `PyMC` for probabilistic programming. Given the computational complexity of the HSGP approximation, we utilized the *NumPyro* backend. Posterior inference was performed using the No-U-Turn Sampler. We initialized 4 independent Markov chains, utilizing a target acceptance probability of 0.95 to ensure robust exploration of the posterior distribution and to mitigate divergent transitions common in hierarchical spatial models. Each chain consisted of 1,000 tuning (warmup) steps followed by 1,000 production draws, yielding a total of 4,000 posterior samples (4 chains x 1,000 draws). The fitting procedure was executed in approximately [XX] minutes minutes on a Lenovo Yoga Pro 9 16IAH10 equipped with an Intel Core Ultra 9 285H CPU (16 cores) and an NVIDIA GeForce RTX 5070 Laptop GPU.
+
+### Diagnostics {.unnumbered}
+To ensure the reliability of the Markov Chain Monte Carlo (MCMC) sampling, we checked several convergence diagnostics:
+
++ *Trace Plots*: Visual inspection for "fuzzy caterpillar" behavior, indicating that the chains are stationary and well-mixed around the posterior mode [@gelman2013bayesian, @betancourt2017conceptual].
++ *Gelman-Rubin statistic* ($\hat{R}$): Computation of $\hat R$ for all parameters whereby $\hat{R} <= 1.01$ suggest that the variance within individual chains is consistent with the variance between chains, implying convergence to the target distribution [@vehtari2021rank].
++ *Effective Sample Size* (ESS): Quantifying the number of independent samples drawn, with low ESS values signaling high autocorrelation that necessitates longer sampling durations or thinning [@gelman2013bayesian].
+
+## Predictive Modeling: Temporal Forecasting and Future Projection
+Following the construction of the composite dataset, we developed a predictive model for temporal extrapolation. This framework captures historical spatio-temporal patterns within the data to project atmospheric concentrations for future time steps.
+
+**Objective:** The goal of this step is to generate forward-looking projections of atmospheric $CO_2$ and $CH_4$ concentrations, extending the time series beyond the existing observational record.
+
+### Statistical Model {.unnumbered}
+To project the calibrated GHG concentrations into the future, we employ a decomposable time-series model based on the Prophet framework [@taylor2018forecasting]. Unlike the calibration phase, which focuses on spatial interpolation, this phase prioritizes temporal extrapolation while maintaining the error structure derived from the previous step.
+
+The global domain is stratified into three distinct latitudinal zones, Northern ($lat > \delta$), Tropical ($-\delta \le lat \le \delta$), and Southern ($lat < -\delta$), to explicitly account for hemispheric phase shifts in the seasonal cycle (e.g., the antiphase relationship of biospheric uptake between hemispheres).
+
+For each region $r \in \{N, T, S\}$, the observed concentration $y(t)$ is modeled as an additive sum of a trend component $g(t)$, a seasonal component $s(t)$, and a spatial linear component modeled via external regressors:
+$$
+y_r(t, \phi, \lambda) = g_r(t) + s_r(t) + \beta_{\phi, r} \phi + \beta_{\lambda, r} \lambda + \epsilon_t
+$$
+where $g_r(t)$ represents the non-periodic trend (piecewise linear growth), $s_r(t)$ represents periodic changes (annual seasonality) modeled via Fourier series, $\phi$ and $\lambda$ denote latitude and longitude, included as external linear regressors to capture residual spatial gradients within each zone, and $\epsilon_t$ is the error term.
+
+To propagate the epistemic uncertainty quantified during the *Data Integration* step, the forecasting model is calibrated independently on each of the $N$ datasets, utilizing the GB-equivalent values drawn from the posterior predictive distribution.
+
+### Implementation {.unnumbered}
+The forecasting workflow is implemented using the `prophet` library in Python. The model configuration is tailored specifically to the physical characteristics of each gas:
+
++ $\mathrm{CO}_2$ Configuration: Given the relatively stable long-term growth of $\mathrm{CO}_2$, the model utilizes a standard linear growth term and yearly seasonality. The seasonality prior scale is set to 30.0 to allow the model to adapt to robust seasonal amplitudes without overfitting to noise.
++ $\mathrm{CH}_4$ Configuration: Methane exhibits more complex inter-annual variability and trend shifts. Consequently, the hyperparameters are adjusted to increase model flexibility:
+
+    + `changepoint_prior_scale=0.5`: Relaxes the regularization on trend changes, allowing the model to capture rapid shifts in methane growth rates.
+    + `changepoint_range=0.95`: Allows trend changepoints to occur over 95% of the history (typically defaults to 80%), ensuring recent trend changes are captured.
+    + `seasonality_prior_scale=60.0`: Increases flexibility in the seasonal fit.
+
+We fit independent models for the Northern, Tropical, and Southern hemisphere. Latitude and longitude features are standardized prior to fitting to ensure numerical stability for the linear regressors.
+
+### Diagnostics {.unnumbered}
+To assess the predictive capability of the forecasting model, we employ a temporal cross-validation scheme. This approach simulates real-world forecasting scenarios by iteratively truncating the historical time series at defined `cutoff` points, training the model on the preceding data, and evaluating predictions against the withheld "future" observations. The predicted ground-based values are compared to the observed values using Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE).
+
+# Results {sec-results}
+The following sections present the results obtained from the applied methodology for $CO_2$ and $CH_4$. The analysis begins with the findings for $CO_2$, followed by the corresponding results for $CH_4$.
+
+## Carbon Dioxide
+### Data Integration
+
+```{python}
+#| label: fit-bayesian-mlm-co2
+
+cache_idata_co2 = "datasets/idata_co2.nc"
+
+formula_co2 = """
+value_gb ~
+    1 + year_scaled + I(year_scaled**2) +
+    value_eo_scaled +
+    (1 + season_sin + season_cos + value_eo_scaled | lat) +
+    hsgp(lat_scaled, lon_scaled, m=5, c=1.5)
+"""
+
+if os.path.exists(cache_idata_co2):
+    idata_co2 = az.from_netcdf(cache_idata_co2)
+    model_co2 = bmb.Model(
+        formula=formula_co2,
+        data=df_collocated_co2,
+        categorical=[]
+        )
+    model_co2.build()
+
+else:
+    model_co2, idata_co2 = analysis.fit_gb_from_eo(
+        formula=formula_co2,
+        df=df_collocated_co2,
+        categorical=[],
+        seed=SEED
+    )
+    idata_co2.to_netcdf(cache_idata_co2)
+```
+
+The following summary presents the model specification for $CO_2$ utilized during the calibration phase on the co-located dataset.
+
+```{python}
+#| label: model-co2
+#| echo: true
+model_co2
+```
+
+MCMC convergence for the fitted model was evaluated using standard diagnostics, including trace plots, $\hat{R}$ (R-hat), and Effective Sample Size (ESS). As the diagnostics indicated satisfactory convergence (see Appendix [-@sec-diagnostics-calibration]), we proceed to the interpretation of the results.
+
+```{python}
+#| label: in-sample-predictions-co2
+
+# check that model is not misspecified (in-sample predictions)
+df_collocated_co2["value_gb_pred"] = analysis.predict_gb(
+    idata_co2, model_co2, in_sample_predictions=True,
+    test_data=None
+)
+```
+
+To assess model performance, we first conducted in-sample posterior predictive checks to identify potential model misspecification. @fig-insample-predictions-co2 illustrates the correspondence between the model's predictions (solid colored lines) and the observed data (black scatter points). The alignment is shown stratified by region (Northern Hemisphere, Southern Hemisphere, and Tropics) to verify that the model captures trends across different geographical zones. The results indicate that the current model specification effectively reproduces the characteristic patterns of the $CO_2$ data and exhibits no evidence of substantial misspecification.
+
+```{python}
+#| label: fig-insample-predictions-co2
+#| fig-cap: "In-sample posterior predictive checks for the CO2 model. The plot compares the model's posterior predictions (solid colored lines) against observed ground-based measurements (black scatter points). Panels are stratified by region (Northern Hemisphere, Southern Hemisphere, and Tropics) to assess model fit across different geographical zones."
+
+# plot in-sample predictions
+df_observed_co2 = preprocessing.add_hemisphere(
+    df_collocated_co2,
+    split_value=SPLIT_VALUE
+)
+df_observed_co2 = (
+    df_observed_co2
+    .groupby(["date", "hemisphere"])
+    .agg({"value_gb":"mean", "value_gb_pred":"mean"})
+    .reset_index()
+)
+
+plotting.plot_global_hemisphere(
+    df_observed_co2,
+    gas="co2",
+    unit="ppm",
+    figsize=(6,3)
+);
+```
+
+```{python}
+#| label: out-of-sample-predictions-co2
+
+cache_df_gb_pred_co2 = "datasets/df_gb_pred_co2.csv"
+
+if os.path.exists(cache_df_gb_pred_co2):
+    df_gb_pred_co2 = pd.read_csv(cache_df_gb_pred_co2)
+else:
+    # filter eo-only data
+    df_gb_pred_co2 = preprocessing.prepare_dataset(
+        df_combined_co2, condition="eo-only"
+    )
+
+    # predict gb based on fitted model and eo-only data
+    df_gb_pred_co2 = analysis.predict_gb(
+        idata_co2, model_co2,
+        in_sample_predictions=False,
+        test_data=df_gb_pred_co2,
+        n_datasets=100,
+        seed=SEED
+    )
+    df_gb_pred_co2.to_csv(cache_df_gb_pred_co2)
+```
+
+```{python}
+#| label: create-df-partial-coverage-co2
+
+# get observed gb-only values
+df_gb_only_co2 = preprocessing.prepare_dataset(
+    df_combined_co2, condition="gb-only"
+)
+
+# combine collocated, predicted, and eo-only data
+df_partial_coverage_co2 = preprocessing.concat_datasets(
+    dfs=[df_collocated_co2, df_gb_pred_co2, df_gb_only_co2],
+    obs_gb_value=[True, False, True]
+)
+```
+
+Subsequently, we generate out-of-sample posterior predictions from the fitted model to infer GB-equivalent values for locations where only EO data are available. This approach allows us to extend the coverage of GB measurements to the domain of the EO data. Using this approach, we construct an ensemble of $N$ predicted datasets. The final *composite dataset* integrates three distinct components:
+
++ Collocated data (where both GB and EO observations exist);
++ GB-only data (where only GB observations exist);
++ Modeled GB-equivalent data (imputed values for locations with EO coverage only).
+
+@fig-partial-coverage-spatial-co2 displays the composite dataset for the year 2022 on a $5^\circ \times 5^\circ$ grid, based on a single realization (i.e., dataset) selected from the ensemble. Grid cells corresponding to GB sampling locations are highlighted with red borders.
+
+```{python}
+#| label: fig-partial-coverage-spatial-co2
+#| fig-cap: "Spatial distribution of the composite CO2 dataset for the year 2022 (5°x5° grid). The map displays a single stochastic realization from the ensemble. Grid cells outlined in red indicate locations where GB observations are present, while the remaining cells represent imputed GB-equivalent values derived from EO data."
+
+plotting.plot_coverage(
+    df_partial_coverage_co2[df_partial_coverage_co2.dataset.isin([0, np.nan])], # select dataset w/id=0 + df-collocated (nan) + df-gb-only (nan)
+    year=2022,
+    grid_size=5,
+    gas="co2",
+    unit="ppm",
+    lw=1
+);
+```
+
+@fig-partial-coverage-locations-co2 illustrates the correspondence between the composite dataset (labeled as 'fitted', blue line) and the observed ground-based $CO_2$ measurements (scatter points) for specific sampling sites. The blue shaded region represents the 95% credible interval (defined by the 2.5% and 97.5% quantiles) derived from the ensemble of the composite dataset. Although the statistical model is designed to capture global-scale trends rather than site-specific variability, the modeled data exhibit plausible behavior during periods where GB observations are absent (when only the blue line but no scatter points exist).
+
+```{python}
+#| label: fig-partial-coverage-locations-co2
+#| fig-cap: "Comparison of CO2 data at selected sampling locations. The composite dataset is shown as a blue line ('fitted'), overlaid with observed ground-based measurements (scatter points). The blue shaded region indicates the 95% credible interval derived from the ensemble."
+
+plotting.plot_locations(
+    co2_gb,
+    df_partial_coverage_co2,
+    year_min=2003,
+    gas="co2",
+    unit="ppm",
+    figsize=(10,10),
+    locations=selected_locations_co2
+);
+```
+
+@fig-partial-coverage-temporal-co2 illustrates the temporal correspondence between the composite dataset (solid lines) and the observed ground-based $CO_2$ measurements (scatter points), stratified by the Northern Hemisphere, Southern Hemisphere, and Tropics. Shaded regions represent the 95% credible interval derived from the composite dataset ensemble. While the composite dataset exhibits good performance in the Northern Hemisphere, the model shows reduced performance in the Southern Hemisphere and the Tropics. In the Southern Hemisphere, this discrepancy is likely attributable to the weaker seasonal signal, which complicates the identification of distinct patterns. In the Tropics, the model systematically underestimates the seasonal maxima (peak amplitude).
+
+```{python}
+#| label: fig-partial-coverage-temporal-co2
+#| fig-cap: "Temporal alignment between the composite dataset (solid lines) and observed ground-based CO2 measurements (scatter points), stratified by region (Northern Hemisphere, Southern Hemisphere, and Tropics). The shaded areas indicate the 95% credible interval derived from the ensemble of the composite dataset."
+
+obs_values = co2_gb.copy()
+obs_values.rename(columns={"value": "value_gb"}, inplace=True)
+
+plotting.plot_global_hemisphere_coverage(
+    obs_values[(obs_values.year > 2015)],
+    df_partial_coverage_co2[df_partial_coverage_co2.year > 2015],
+    gas="co2",
+    unit="ppm",
+    split_value=SPLIT_VALUE,
+    figsize=(5,4)
+);
+```
+
+\newpage
+
+### Predictive Modeling
+To forecast future trends, the Prophet model was calibrated on each dataset within the composite ensemble. We restricted the training window to data from 2017 onwards, under the assumption that recent observations offer the most reliable indicators of current trend and seasonality dynamics. @fig-predictions-locations-co2 illustrates the trajectories at selected sampling locations, displaying the historical composite data (blue), ground-based observations (scatter points), and the model forecasts (orange).
+```{python}
+#| label: create-df-predicted-co2
+
+cache_df_predicted_co2 = "datasets/df_predicted_co2.csv"
+
+if os.path.exists(cache_df_predicted_co2):
+    df_predicted_co2 = pd.read_csv(cache_df_predicted_co2)
+else:
+    run_prediction_model = analysis.PredictionModel("co2")
+
+    df_predicted_co2 = run_prediction_model(
+        df_partial_coverage_co2[df_partial_coverage_co2.year > 2017],
+        future_time_range = (2023, 2030),
+        split_value = SPLIT_VALUE,
+        n_datasets = 3
+    )
+
+    df_predicted_co2.to_csv(cache_df_predicted_co2)
+```
+
+```{python}
+#| label: fig-predictions-locations-co2
+#| fig-cap: "CO2 trajectories at selected sampling locations, displaying the historical composite data (blue), ground-based observations (scatter points), and the model forecasts (orange)"
+
+plotting.plot_locations(
+    co2_gb,
+    df_partial_coverage_co2,
+    year_min=2003,
+    gas="co2",
+    unit="ppm",
+    figsize=(10,10),
+    locations=selected_locations_co2,
+    df_predicted=df_predicted_co2
+);
+```
+
+@fig-predictions-hemispheres-co2 presents the monthly aggregated $CO_2$ concentrations for the Northern Hemisphere, Southern Hemisphere, and Tropics. The figure distinguishes between observed measurements (scatter points), the historical composite dataset (thin line), and model forecasts (thick line). The predictions effectively extrapolate the trends and seasonality established in the calibration period (2017–onwards). However, the visible offsets in the Southern Hemisphere and Tropics reflect the structural discrepancies previously identified in the calibrated composite data.
+
+```{python}
+#| label: fig-predictions-hemispheres-co2
+#| fig-cap: "Monthly aggregated CO2 trends for the Northern Hemisphere, Southern Hemisphere, and Tropics. The plot compares observed ground-based data (scatter points) with the historical composite dataset (thin line) and Prophet model forecasts (thick line). Predictions are based on trends derived from data starting in 2017."
+
+plotting.plot_future_predictions(
+    co2_gb,
+    df_partial_coverage_co2,
+    df_predicted_co2,
+    min_year=2015,
+    split_value=SPLIT_VALUE,
+    figsize=(5,4),
+    gas="co2", unit="ppm"
+);
+```
+
+@fig-prophet-components-co2 displays the decomposed trend and seasonality components of the Prophet model for $CO_2$. The upper row shows the trend components for each region, illustrating the long-term growth patterns. The lower row displays the yearly seasonality components, revealing the annual cycles that vary by hemisphere. The seasonality components are centered around zero, representing deviations from the trend.
+
+```{python}
+#| label: fig-prophet-components-co2
+#| fig-cap: "Decomposed trend and seasonality components of the Prophet model for CO2. The upper row shows the trend components for Southern, Tropical, and Northern regions. The lower row displays the yearly seasonality components, representing annual cycles that vary by hemisphere."
+
+run_prediction_model_co2 = analysis.PredictionModel("co2")
+
+prophet_components_co2 = analysis.extract_prophet_components(
+    run_prediction_model_co2,
+    df_partial_coverage_co2[df_partial_coverage_co2.year > 2017],
+    future_time_range=(2017, 2030),
+    split_value=SPLIT_VALUE
+)
+
+plotting.plot_prophet_components(
+    prophet_components_co2,
+    gas="co2",
+    unit="ppm",
+    figsize=(12, 6)
+);
+```
+
+\newpage
+
+## Methane
+### Data Integration
+
+```{python}
+#| label: fit-bayesian-mlm-ch4
+
+cache_idata_ch4 = "datasets/idata_ch4_6.nc"
+#
+#value_gb ~
+#    1 + year_scaled + I(year_scaled**2) +
+#    value_eo_scaled + value_eo_scaled:lat_scaled +
+#    (1 + value_eo_scaled + season_sin + season_cos | lat) +
+#    hsgp(lat_scaled, lon_scaled, m=15, c=1.5)
+
+formula_ch4 = """
+value_gb ~
+    1 +
+    hsgp(lat_scaled, lon_scaled, m=5, c=1) +
+    (
+        1 + value_eo_scaled +
+        year_scaled + I(year_scaled**2) +
+        season_sin + season_cos +
+        season_sin2 + season_cos2 | hemisphere
+    )
+"""
+df_collocated_ch4 = preprocessing.add_hemisphere(df_collocated_ch4, SPLIT_VALUE)
+
+if os.path.exists(cache_idata_ch4):
+    idata_ch4 = az.from_netcdf(cache_idata_ch4)
+    model_ch4 = bmb.Model(
+        formula=formula_ch4,
+        data=df_collocated_ch4,
+        categorical=["hemisphere"]
+        )
+    model_ch4.build()
+else:
+    model_ch4, idata_ch4 = analysis.fit_gb_from_eo(
+        formula=formula_ch4,
+        df=df_collocated_ch4,
+        categorical=["hemisphere"],
+        seed=SEED,
+        draws=2000,
+        target_accept=0.99
+    )
+    idata_ch4.to_netcdf(cache_idata_ch4)
+```
+
+The following summary presents the model specification for $CH_4$ utilized during the calibration phase on the collocated dataset.
+
+```{python}
+#| label: model-ch4
+#| echo: true
+model_ch4
+```
+
+MCMC convergence for the fitted model was evaluated using standard diagnostics, including trace plots, $\hat{R}$ (R-hat), and Effective Sample Size (ESS). As the diagnostics indicated satisfactory convergence (see Appendix [-@sec-diagnostics-calibration]), we proceed to the interpretation of the results.
+
+```{python}
+#| label: in-sample-predictions-ch4
+
+# check that model is not misspecified (in-sample predictions)
+df_collocated_ch4["value_gb_pred"] = analysis.predict_gb(
+    idata_ch4, model_ch4, in_sample_predictions=True,
+    test_data=None
+)
+```
+
+To assess model performance, we first conducted in-sample posterior predictive checks to identify potential model misspecification. @fig-insample-predictions-ch4 illustrates the correspondence between the model's predictions (solid colored lines) and the observed data (black scatter points). The alignment is shown stratified by region (Northern Hemisphere, Southern Hemisphere, and Tropics) to verify that the model captures trends across different geographical zones.
+
+```{python}
+#| label: fig-insample-predictions-ch4
+#| fig-cap: "In-sample posterior predictive checks for the CH4 model. The plot compares the model's posterior predictions (solid colored lines) against observed ground-based measurements (black scatter points). Panels are stratified by region (Northern Hemisphere, Southern Hemisphere, and Tropics) to assess model fit across different geographical zones."
+
+# plot in-sample predictions
+df_observed_ch4 = preprocessing.add_hemisphere(
+    df_collocated_ch4,
+    split_value=SPLIT_VALUE
+)
+df_observed_ch4 = (
+    df_observed_ch4
+    .groupby(["date", "hemisphere"])
+    .agg({"value_gb":"mean", "value_gb_pred":"mean"})
+    .reset_index()
+)
+
+plotting.plot_global_hemisphere(
+    df_observed_ch4,
+    gas="ch4",
+    unit="ppb",
+    figsize=(6,3)
+);
+```
+
+```{python}
+#| label: out-of-sample-predictions-ch4
+
+cache_df_gb_pred_ch4 = "datasets/df_gb_pred_ch4_5.csv"
+
+if os.path.exists(cache_df_gb_pred_ch4):
+    df_gb_pred_ch4 = pd.read_csv(cache_df_gb_pred_ch4)
+else:
+    # filter eo-only data
+    df_gb_pred_ch4 = preprocessing.prepare_dataset(
+        df_combined_ch4, condition="eo-only"
+    )
+    df_gb_pred_ch4 = preprocessing.add_hemisphere(
+        df_gb_pred_ch4, SPLIT_VALUE)
+
+    # predict gb based on fitted model and eo-only data
+    df_gb_pred_ch4 = analysis.predict_gb(
+        idata_ch4, model_ch4,
+        in_sample_predictions=False,
+        test_data=df_gb_pred_ch4,
+        n_datasets=100,
+        seed=SEED
+    )
+    df_gb_pred_ch4.to_csv(cache_df_gb_pred_ch4)
+```
+
+```{python}
+#| label: create-df-partial-coverage-ch4
+
+df_gb_only_ch4 = preprocessing.prepare_dataset(
+    df_combined_ch4, condition="gb-only"
+)
+
+# combine collocated, predicted, and eo-only data
+df_partial_coverage_ch4 = preprocessing.concat_datasets(
+    dfs=[df_collocated_ch4, df_gb_pred_ch4, df_gb_only_ch4],
+    obs_gb_value=[True, False, True]
+)
+```
+
+Subsequently, we generate out-of-sample posterior predictions from the fitted model to infer GB-equivalent values for locations where only EO data are available. This approach allows us to extend the coverage of GB measurements to the domain of the EO data. Using this approach, we construct an ensemble of $N$ predicted datasets. The final *composite dataset* integrates three distinct components:
+
++ Collocated data (where both GB and EO observations exist);
++ GB-only data (where only GB observations exist);
++ Modeled GB-equivalent data (imputed values for locations with EO coverage only).
+
+@fig-partial-coverage-spatial-ch4 displays the composite dataset for the year 2022 on a $5^\circ \times 5^\circ$ grid, based on a single realization (i.e., dataset) selected from the ensemble. Grid cells corresponding to GB sampling locations are highlighted with red borders.
+
+```{python}
+#| label: fig-partial-coverage-spatial-ch4
+#| fig-cap: "Spatial distribution of the composite CH4 dataset for the year 2022 (5°x5° grid). The map displays a single stochastic realization from the ensemble. Grid cells outlined in red indicate locations where GB observations are present, while the remaining cells represent imputed GB-equivalent values derived from EO data."
+
+plotting.plot_coverage(
+    df_partial_coverage_ch4[df_partial_coverage_ch4.dataset.isin([0, np.nan])], # select dataset w/id=0 + df-collocated (nan) + df-gb-only (nan)
+    year=2022,
+    grid_size=5,
+    gas="ch4",
+    unit="ppb",
+    lw=1
+);
+```
+
+@fig-partial-coverage-locations-ch4 illustrates the correspondence between the composite dataset (labeled as 'fitted', blue line) and the observed ground-based $CH_4$ measurements (scatter points) for specific sampling sites. The blue shaded region represents the 95% credible interval derived from the ensemble of the composite dataset. Although the statistical model is designed to capture global-scale trends rather than site-specific variability, the modeled data exhibit plausible behavior during periods where GB observations are absent (when only the blue line but no scatter points exist).
+
+```{python}
+#| label: fig-partial-coverage-locations-ch4
+#| fig-cap: "Comparison of CH4 data at selected sampling locations. The composite dataset is shown as a blue line ('fitted'), overlaid with observed ground-based measurements (scatter points). The blue shaded region indicates the 95% credible interval derived from the ensemble."
+
+plotting.plot_locations(
+    ch4_gb,
+    df_partial_coverage_ch4,
+    year_min=2003,
+    gas="ch4",
+    unit="ppb",
+    figsize=(10,10),
+    locations=selected_locations_ch4
+);
+```
+
+@fig-partial-coverage-temporal-ch4 illustrates the temporal correspondence between the composite dataset (solid lines) and the observed ground-based $CH_4$ measurements (scatter points), stratified by the Northern Hemisphere, Southern Hemisphere, and Tropics. Shaded regions represent the 95% credible interval derived from the composite dataset ensemble. As for $CO_2$ the composite dataset exhibits good performance in the Northern Hemisphere, but shows reduced performance in the Southern Hemisphere and the Tropics.
+
+```{python}
+#| label: fig-out-of-sample-temporal-ch4
+#| fig-cap: "Temporal alignment between the composite dataset (solid lines) and observed ground-based CH4 measurements (scatter points), stratified by region (Northern Hemisphere, Southern Hemisphere, and Tropics). The shaded areas indicate the 95% credible interval derived from the ensemble of the composite dataset."
+
+obs_values = ch4_gb.copy()
+obs_values.rename(columns={"value": "value_gb"}, inplace=True)
+
+plotting.plot_global_hemisphere_coverage(
+    obs_values[(obs_values.year > MIN_YEAR_EO_CH4) & (obs_values.year < MAX_YEAR_EO_CH4)],
+    df_partial_coverage_ch4[(df_partial_coverage_ch4.year > MIN_YEAR_EO_CH4) & (df_partial_coverage_ch4.year < MAX_YEAR_EO_CH4)],
+    gas="ch4",
+    unit="ppb",
+    split_value=SPLIT_VALUE,
+    figsize=(5,5)
+);
+```
+
+\newpage
+
+### Predictive Modeling
+To forecast future trends, the Prophet model was calibrated on each dataset within the composite ensemble. We restricted the training window to data from 2017 onwards, under the assumption that recent observations offer the most reliable indicators of current trend and seasonality dynamics. @fig-predictions-locations-ch4 illustrates the trajectories at selected sampling locations, displaying the historical composite data (blue), ground-based observations (scatter points), and the model forecasts (orange).
+```{python}
+#| label: create-df-predicted-ch4
+
+cache_df_predicted_ch4 = "datasets/df_predicted_ch4_5.csv"
+
+if os.path.exists(cache_df_predicted_ch4):
+    df_predicted_ch4 = pd.read_csv(cache_df_predicted_ch4)
+else:
+    run_prediction_model = analysis.PredictionModel("ch4")
+
+    df_predicted_ch4 = run_prediction_model(
+        df_partial_coverage_ch4,
+        future_time_range = (2023, 2030),
+        split_value = SPLIT_VALUE,
+        n_datasets=3
+    )
+
+    df_predicted_ch4.to_csv(cache_df_predicted_ch4)
+```
+
+```{python}
+#| label: fig-predictions-locations-ch4
+#| fig-cap: "CH4 trajectories at selected sampling locations, displaying the historical composite data (blue), ground-based observations (scatter points), and the model forecasts (orange)"
+
+plotting.plot_locations(
+    ch4_gb,
+    df_partial_coverage_ch4,
+    year_min=2003,
+    gas="ch4",
+    unit="ppb",
+    figsize=(10,10),
+    locations=selected_locations_ch4,
+    df_predicted= df_predicted_ch4
+);
+```
+
+@fig-predictions-hemispheres-ch4 presents the monthly aggregated $CH_4$ concentrations for the Northern Hemisphere, Southern Hemisphere, and Tropics. The figure distinguishes between observed measurements (scatter points), the historical composite dataset (thin line), and model forecasts (thick line).
+
+```{python}
+#| label: fig-predictions-hemispheres-ch4
+#| fig-cap: "Monthly aggregated CH4 trends for the Northern Hemisphere, Southern Hemisphere, and Tropics. The plot compares observed ground-based data (scatter points) with the historical composite dataset (thin line) and Prophet model forecasts (thick line). Predictions are based on trends derived from data starting in 2017."
+
+plotting.plot_future_predictions(
+    ch4_gb,
+    df_partial_coverage_ch4,
+    df_predicted_ch4,
+    min_year=2015,
+    split_value=SPLIT_VALUE,
+    figsize=(5,4),
+    gas="ch4", unit="ppb"
+);
+```
+
+@fig-prophet-components-ch4 displays the decomposed trend and seasonality components of the Prophet model for $CH_4$. Similar to $CO_2$, the upper row shows the trend components for each region, while the lower row displays the yearly seasonality components. The more complex inter-annual variability of methane is reflected in the trend components, which show greater flexibility compared to $CO_2$ due to the adjusted hyperparameters (changepoint_prior_scale and changepoint_range).
+
+```{python}
+#| label: fig-prophet-components-ch4
+#| fig-cap: "Decomposed trend and seasonality components of the Prophet model for CH4. The upper row shows the trend components for Southern, Tropical, and Northern regions. The lower row displays the yearly seasonality components, representing annual cycles that vary by hemisphere."
+
+run_prediction_model_ch4 = analysis.PredictionModel("ch4")
+
+prophet_components_ch4 = analysis.extract_prophet_components(
+    run_prediction_model_ch4,
+    df_partial_coverage_ch4,
+    future_time_range=(2023, 2030),
+    split_value=SPLIT_VALUE
+)
+
+plotting.plot_prophet_components(
+    prophet_components_ch4,
+    gas="ch4",
+    unit="ppb",
+    x_years=(2002, 2022),
+    figsize=(8, 3)
+);
+
+```
+
+\newpage
+
+# Discussion {sec-discussion}
+The primary objective of this analysis is the assimilation of GB and EO data to generate a unified $CO_2$ and $CH_4$ data product for GHG forcings for CMIP. By integrating these datasets, we aim to synergize the spatial coverage of EO retrievals with the high accuracy of GB measurements. This study presents a statistical framework for data assimilation that accounts for the distinct characteristics of both measurement types. Furthermore, we develop a forecasting model trained on historical GHG forcings to project concentrations into future years.
+
+## Methodological Approach and Model Performance
+
+To assimilate EO and GB data, we constructed a Bayesian multilevel model incorporating a Gaussian Process component. This formulation accounts for the latitudinal dependence of seasonality and trend patterns, as well as the spatial structure of the residual errors. Despite the spatiotemporal nature of the dataset, we prioritized a multilevel regression framework over a dynamic time series model as our primary objective is to derive a mapping (transfer function) between EO and GB observations. This strategy enables the generation of a hybrid data product comprising both observed GB measurements and bias-corrected GB-equivalent values inferred from EO retrievals.
+
+The Bayesian framework provides several advantages for this application. First, it enables explicit quantification of epistemic uncertainty through posterior predictive distributions, which is important for propagating uncertainty. Second, the hierarchical structure allows the model to share information across spatial and temporal scales, improving predictions in data-sparse regions. Third, the Gaussian Process component captures residual spatial correlations that are not explained by the parametric components.
+
+When aggregated at the monthly level, out-of-sample predictions generally align well with observed GB data across both $CO_2$ and $CH_4$. The composite datasets successfully extend GB coverage to regions where only EO data are available. At individual sampling locations, the model captures the general temporal trends and seasonal patterns. However, regional discrepancies persist, particularly in the Tropics and Southern Hemisphere. For both $CO_2$ and $CH_4$, the composite dataset exhibits strong performance in the Northern Hemisphere, where the majority of GB sampling sites are located and where seasonal signals are most pronounced. In contrast, model performance is reduced in the Southern Hemisphere and Tropics, where the model systematically underestimates the amplitude of the seasonal cycle.
+
+Several factors likely contribute to these regional biases. First, the sparser GB network in the Southern Hemisphere and Tropics provides fewer calibration points, limiting the model's ability to learn region-specific transfer functions. Second, the weaker seasonal signals in these regions may be more difficult to capture with the current model specification. Third, the vertical gradient between surface and column-averaged concentrations may exhibit stronger latitudinal dependence than captured by the current model specification.
+
+The systematic underestimation of seasonal amplitude in the Tropics could arise from multiple sources: (1) the current model specification may lack higher-order harmonics or region-specific seasonal parameters necessary to capture tropical dynamics; (2) EO retrievals may inherently exhibit weaker seasonal variability than ground measurements due to the column-averaging process, which integrates over vertical gradients that vary seasonally; (3) cloud cover and retrieval quality in tropical regions may introduce systematic biases in the EO data that propagate through the calibration model.
+
+
+## Forecasting and Future Projections
+
+The Prophet-based forecasting model successfully extrapolates historical trends and seasonality into future years, providing projections through 2030. However, the forecasts inherit the structural biases identified in the composite dataset, particularly the reduced seasonal amplitude in tropical and Southern Hemisphere regions. Furthermore, the current forecasting approach assumes that historical patterns will continue into the future, which may not hold if emission trajectories or atmospheric dynamics change substantially.
+
+The Prophet framework, while providing a convenient and interpretable decomposition of time series into trend, seasonality, and residual components, may not represent the optimal choice for this application. More established time series forecasting methods, such as ARIMA, state-space models, or structural time series models, are often considered the gold standard for temporal extrapolation and may offer superior flexibility and theoretical foundations for GHG concentration forecasting [@BMCP2021, @wilkinson2026spatial, @williams2006gaussian].
+
+One limitation of Prophet is its relatively rigid, hard-coded structure, which constrains the ability to customize or modify specific model components. The trend and seasonality components are implemented with fixed functional forms, making it difficult to incorporate domain-specific knowledge or alternative modeling approaches for individual components. For instance, if one wishes to use an external model for the trend component, the workflow becomes cumbersome: the trend is first removed from the data, then Prophet is applied to the detrended residuals to capture seasonality and other patterns, and finally the external trend model's predictions are added back to Prophet's forecasts. This two-stage approach introduces additional complexity and potential sources of error, and may not fully capture interactions between trend and seasonal components.
+
+More flexible time series frameworks, such as state-space models or Bayesian structural time series models, would allow for direct integration of external trend models or more sophisticated trend specifications within a unified framework. These approaches also provide more principled uncertainty quantification and can better handle non-stationarities and regime changes. However, implementing such models requires deeper expertise in time series methodology and more extensive model development and validation. Given time constraints and the scope of this work, which focused primarily on the data integration phase, I adopted Prophet as a pragmatic choice that provides reasonable forecasts with minimal development overhead. Future work should explore more sophisticated time series models that can better accommodate the specific characteristics of GHG concentration data and incorporate external drivers or process-based constraints.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
+
+# Appendices {.unnumbered}
+\appendix
+
+# Overview of variables in the GB and EO datasets{#sec-overview-data-variables}
+
+| Variable      | Description         |
+|------------|-----------------------|
+| `time` | Date (YYYY-MM-DD) with day standardized to the 15th of the month |
+| `time_fractional`| Decimal year coordinate computed as `year + month / 12` |
+| `year` | Range: 1968–2024 for $CO_2$ and 1983–2025 for $CH_4$ |
+| `month` | Integer representation of the month (1–12) |
+|  `value`   | Monthly aggregated mean concentration in ppm ($CO_2$) or ppb ($CH_4$) |
+| `std_dev`     | Standard deviation of the constituent observations used for the mean |
+| `numb`    | Count of individual observations contributing to the aggregated mean |
+| `gas` | Greenhouse gas species: (`co2` or `ch4`) |
+| `unit` | Unit of measurement: ppm for $CO_2$ and ppb for $CH_4$ |
+| `lat_bnd`| Latitudinal boundaries of the $5^\circ \times 5^\circ$ grid (Range: $-90^\circ$ to $90^\circ$) |
+| `lon_bnd`| Longitudinal boundaries of the $5^\circ \times 5^\circ$ grid (Range: $-180^\circ$ to $180^\circ$) |
+| `bnd` | Boundary indicator: Upper limit (`bnd=1`) or lower limit (`bnd=0`) |
+| `lat`| Latitudinal centroid of the corresponding $5^\circ \times 5^\circ$ grid cell |
+| `lon` | Longitudinal centroid of the corresponding $5^\circ \times 5^\circ$ grid cell |
+| **Specific for GB data** | |
+| `latitude` | Latitude of the sampling location (decimal degrees) |
+| `longitude` | Longitude of the sampling location (decimal degrees) |
+| `altitude` | Elevation of the sampling location in meters above sea level |
+| `site_code` | Three-character identifier for the sampling site |
+| `network`| Source network: `noaa` or `agage` |
+| `insitu_vs_flask` | Measurement method: `flask`, `insitu`, or `nan` (indicates AGAGE data) |
+| `sampling_strategy` | Sampling protocol: `surface-flask`, `surface-insitu`, `shipboard-flask`, or `nan` (indicates AGAGE data) |
+| `version` | Dataset version identifier, including creation date |
+| `instrument` | Measurement instrument. NOAA: `noaa`. AGAGE: `GAGE_GCMD`, `Picarro-2`, `GCMD`, or `Picarro` |
+| **Specific for EO data** | |
+| `column_averaging_kernel` | $X_{GHG}$ averaging kernel (dimensionless); a vertical profile. The normalized column-averaging kernel represents the sensitivity of the retrieved $X_{GHG}$ to the true mole fraction depending on pressure (height). All values represent layer averages within the corresponding pressure levels. Values near one are ideal and indicate that the influence of the a priori is minimal. Profiles are ordered from the surface to the top of atmosphere. |
+| `vmr_profile_apriori` | A priori dry-air mole fraction profile of atmospheric $CO_2$ or $CH_4$, respectively, expressed as a dimensionless fraction between 0.0 and 1.0 |
+| `pre` | Pressure level center, dimensionless as normalized to surface pressure |
+
+: Dataset variables for GB and EO dataset {#tbl-overview-variables}
+
+# Overview site codes incorporated in GB data {#sec-overview-site-codes}
+
+Site codes included in the $CO_2$ dataset:
+`{python} list(co2_summary["sites"])`
+
+Site codes included in the $CH_4$ dataset:
+`{python} list(ch4_summary["sites"])`
+
+# Diagnostics of Bayesian calibration models {#sec-diagnostics-calibration}
+## Carbon Dioxide {.unnumbered}
+```{python}
+var_names_co2 = [
+    "Intercept",
+    "year_scaled",
+    "I(year_scaled ** 2)",
+    "value_eo_scaled",
+    "1|lat",
+    "season_sin|lat",
+    "season_cos|lat",
+    "value_eo_scaled|lat",
+    "hsgp(lat_scaled, lon_scaled, m=5, c=1.5)_ell",
+    "sigma"
+    ]
+```
+### Trace plots {.unnumbered}
+Given the high dimensionality of the parameter space, we restrict the presentation of trace plots to the primary model parameters.
+```{python}
+#| label: app-mcmc-traceplots-1-co2
+
+az.plot_trace(
+    idata_co2,
+    var_names=var_names_co2[:5]
+    );
+plt.tight_layout()
+```
+
+```{python}
+#| label: app-mcmc-traceplots-2-co2
+
+az.plot_trace(
+    idata_co2,
+    var_names=var_names_co2[5:]
+    );
+plt.tight_layout()
+```
+
+### R-hat and ESS {.unnumbered}
+```{python}
+#| label: app-mcmc-rhatEss-co2
+
+summary_df = az.summary(idata_co2, var_names_co2)
+
+# effective sample size
+if not any(summary_df["ess_bulk"] > CRIT_ESS):
+    print(f"Some parameters have low (<={CRIT_ESS}) ESS Bulk values.")
+if not any(summary_df["ess_tail"] > CRIT_ESS):
+    print(f"Some parameters have low (<={CRIT_ESS}) ESS Tail values.")
+if (any(summary_df["ess_tail"] > CRIT_ESS)) & (any(summary_df["ess_bulk"] > CRIT_ESS)):
+    print(f"Effective Sample Size for all parameters is satisfactory (above {CRIT_ESS}).")
+
+# Rhat
+rhat_critical = summary_df[summary_df.r_hat > CRIT_RHAT]
+print(f"Number of parameters with Rhat > {CRIT_RHAT}: {len(rhat_critical)}.")
+if len(rhat_critical) > 0:
+    rhat_critical
+```
+
+## Methane {.unnumbered}
+```{python}
+
+var_names_ch4 = [
+    "Intercept", "bs(year_scaled, df=4)","1|hemisphere",
+    "value_eo_scaled|hemisphere", "season_sin|hemisphere",
+    "season_cos|hemisphere", "season_sin2|hemisphere",
+    "season_cos2|hemisphere","hsgp(lat_scaled, lon_scaled, m=20, c=2)_ell"
+]
+```
+
+### Trace plots {.unnumbered}
+```{python}
+#| label: app-mcmc-traceplots-1-ch4
+
+az.plot_trace(
+    idata_ch4,
+    var_names=var_names_ch4[:5]
+    );
+plt.tight_layout()
+```
+
+```{python}
+#| label: app-mcmc-traceplots-2-ch4
+az.plot_trace(
+    idata_ch4,
+    var_names=var_names_ch4[5:]
+    );
+plt.tight_layout()
+```
+
+### R-hat and ESS {.unnumbered}
+
+```{python}
+#| label: app-mcmc-rhatEss-ch4
+
+summary_df = az.summary(idata_ch4, var_names_ch4)
+
+# effective sample size
+if not any(summary_df["ess_bulk"] > CRIT_ESS):
+    print(f"Some parameters have low (<={CRIT_ESS}) ESS Bulk values.")
+if not any(summary_df["ess_tail"] > CRIT_ESS):
+    print(f"Some parameters have low (<={CRIT_ESS}) ESS Tail values.")
+if (any(summary_df["ess_tail"] > CRIT_ESS)) & (any(summary_df["ess_bulk"] > CRIT_ESS)):
+    print(f"Effective Sample Size for all parameters is satisfactory (above {CRIT_ESS}).")
+
+# Rhat
+rhat_critical = summary_df[summary_df.r_hat > CRIT_RHAT]
+print(f"Number of parameters with Rhat > {CRIT_RHAT}: {len(rhat_critical)}.")
+if len(rhat_critical) > 0:
+    rhat_critical
+```
+
+# Posterior Predictive Validation {#sec-validation-posterior-predictive}
+
+Beyond MCMC convergence diagnostics, we validate the fitted models by comparing posterior predictions to observed data. While MCMC diagnostics ensure that the sampling algorithm has converged to the target posterior distribution, posterior predictive validation assesses whether the model itself adequately captures the data-generating process. This section presents comprehensive posterior predictive checks to assess model calibration, residual patterns, coverage properties, and quantitative performance metrics.
+
+**Interpretation Guidelines:**
+- **Posterior Predictive Checks (PPC)**: The observed data should fall within the distribution of simulated data. Systematic deviations suggest model misspecification.
+- **Residual Analysis**: Residuals should be randomly distributed around zero with constant variance. Patterns or trends indicate systematic biases or heteroscedasticity.
+- **Coverage Statistics**: Coverage percentages close to the nominal levels (50%, 80%, 95%) indicate well-calibrated uncertainty quantification. Over-coverage suggests conservative uncertainty estimates, while under-coverage indicates overconfident predictions.
+- **Quantitative Metrics**: Lower RMSE and MAE values indicate better predictive accuracy, while R² values closer to 1.0 indicate better explanatory power.
+
+## Carbon Dioxide {.unnumbered}
+
+### Posterior Predictive Checks {.unnumbered}
+
+Posterior predictive checks compare the distribution of simulated data from the model to the observed data. If the model is well-calibrated, the observed data should appear as a typical realization from the posterior predictive distribution.
+
+```{python}
+#| label: app-validation-ppc-co2
+
+az.plot_ppc(idata_co2, num_pp_samples=100);
+plt.tight_layout()
+```
+
+### Residual Analysis {.unnumbered}
+
+Residual analysis examines the differences between observed and predicted values to identify systematic patterns, heteroscedasticity, or outliers that may indicate model misspecification.
+
+```{python}
+#| label: app-validation-residuals-co2
+
+model_co2_pred = model_co2
+model_co2_pred.predict(idata_co2, kind="response")
+
+# Compute residuals using posterior mean predictions
+y_obs = df_collocated_co2["value_gb"].values
+y_pred_mean = idata_co2.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
+residuals = y_obs - y_pred_mean
+
+# Create residual plots
+fig, axs = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+
+# Residuals vs. predicted values
+axs[0].scatter(y_pred_mean, residuals, alpha=0.5, s=10)
+axs[0].axhline(y=0, color='r', linestyle='--', linewidth=1)
+axs[0].set_xlabel("Predicted values (ppm)")
+axs[0].set_ylabel("Residuals (ppm)")
+axs[0].set_title("Residuals vs. Predicted Values")
+axs[0].spines[["right", "top"]].set_visible(False)
+
+# Q-Q plot of residuals
+from scipy import stats
+stats.probplot(residuals, dist="norm", plot=axs[1])
+axs[1].set_title("Q-Q Plot of Residuals")
+axs[1].spines[["right", "top"]].set_visible(False)
+```
+
+### Coverage Statistics {.unnumbered}
+
+Coverage statistics assess whether the posterior predictive credible intervals contain the observed data at the expected frequency. For a well-calibrated model, approximately 50%, 80%, and 95% of observations should fall within the corresponding credible intervals.
+
+```{python}
+#| label: app-validation-coverage-co2
+
+y_obs = df_collocated_co2["value_gb"].values
+y_pred_samples = idata_co2.posterior_predictive["value_gb"].stack(sample=("chain", "draw")).values
+
+# Calculate quantiles for each observation (percentiles along sample dimension)
+n_obs = len(y_obs)
+q25 = np.percentile(y_pred_samples, 25, axis=1)
+q75 = np.percentile(y_pred_samples, 75, axis=1)
+q10 = np.percentile(y_pred_samples, 10, axis=1)
+q90 = np.percentile(y_pred_samples, 90, axis=1)
+q025 = np.percentile(y_pred_samples, 2.5, axis=1)
+q975 = np.percentile(y_pred_samples, 97.5, axis=1)
+
+coverage_50 = np.sum((y_obs >= q25) & (y_obs <= q75)) / n_obs
+coverage_80 = np.sum((y_obs >= q10) & (y_obs <= q90)) / n_obs
+coverage_95 = np.sum((y_obs >= q025) & (y_obs <= q975)) / n_obs
+
+print(f"Coverage at 50% credible interval: {coverage_50:.3f} (expected: 0.500)")
+print(f"Coverage at 80% credible interval: {coverage_80:.3f} (expected: 0.800)")
+print(f"Coverage at 95% credible interval: {coverage_95:.3f} (expected: 0.950)")
+```
+
+### Quantitative Metrics {.unnumbered}
+
+Quantitative metrics provide summary statistics comparing posterior mean predictions to observed values, including Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and the coefficient of determination (R²).
+
+```{python}
+#| label: app-validation-metrics-co2
+
+y_obs = df_collocated_co2["value_gb"].values
+y_pred_mean = idata_co2.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
+
+rmse = np.sqrt(mean_squared_error(y_obs, y_pred_mean))
+mae = mean_absolute_error(y_obs, y_pred_mean)
+r2 = r2_score(y_obs, y_pred_mean)
+
+metrics_df = pd.DataFrame({
+    "Metric": ["RMSE (ppm)", "MAE (ppm)", "R²"],
+    "Value": [f"{rmse:.3f}", f"{mae:.3f}", f"{r2:.3f}"]
+})
+
+print(metrics_df.to_string(index=False))
+```
+
+## Methane {.unnumbered}
+
+### Posterior Predictive Checks {.unnumbered}
+
+Posterior predictive checks compare the distribution of simulated data from the model to the observed data. If the model is well-calibrated, the observed data should appear as a typical realization from the posterior predictive distribution.
+
+```{python}
+#| label: app-validation-ppc-ch4
+
+az.plot_ppc(idata_ch4, num_pp_samples=100);
+plt.tight_layout()
+```
+
+### Residual Analysis {.unnumbered}
+
+Residual analysis examines the differences between observed and predicted values to identify systematic patterns, heteroscedasticity, or outliers that may indicate model misspecification.
+
+```{python}
+#| label: app-validation-residuals-ch4
+
+model_ch4_pred = model_ch4
+model_ch4_pred.predict(idata_ch4, kind="response")
+
+# Compute residuals using posterior mean predictions
+y_obs = df_collocated_ch4["value_gb"].values
+y_pred_mean = idata_ch4.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
+residuals = y_obs - y_pred_mean
+
+# Create residual plots
+fig, axs = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+
+# Residuals vs. predicted values
+axs[0].scatter(y_pred_mean, residuals, alpha=0.5, s=10)
+axs[0].axhline(y=0, color='r', linestyle='--', linewidth=1)
+axs[0].set_xlabel("Predicted values (ppb)")
+axs[0].set_ylabel("Residuals (ppb)")
+axs[0].set_title("Residuals vs. Predicted Values")
+axs[0].spines[["right", "top"]].set_visible(False)
+
+# Q-Q plot of residuals
+from scipy import stats
+stats.probplot(residuals, dist="norm", plot=axs[1])
+axs[1].set_title("Q-Q Plot of Residuals")
+axs[1].spines[["right", "top"]].set_visible(False)
+```
+
+### Coverage Statistics {.unnumbered}
+
+Coverage statistics assess whether the posterior predictive credible intervals contain the observed data at the expected frequency. For a well-calibrated model, approximately 50%, 80%, and 95% of observations should fall within the corresponding credible intervals.
+
+```{python}
+#| label: app-validation-coverage-ch4
+
+# Ensure posterior predictions are available
+y_obs = df_collocated_ch4["value_gb"].values
+y_pred_samples = idata_ch4.posterior_predictive["value_gb"].stack(sample=("chain", "draw")).values
+
+# Calculate quantiles for each observation (percentiles along sample dimension)
+n_obs = len(y_obs)
+q25 = np.percentile(y_pred_samples, 25, axis=1)
+q75 = np.percentile(y_pred_samples, 75, axis=1)
+q10 = np.percentile(y_pred_samples, 10, axis=1)
+q90 = np.percentile(y_pred_samples, 90, axis=1)
+q025 = np.percentile(y_pred_samples, 2.5, axis=1)
+q975 = np.percentile(y_pred_samples, 97.5, axis=1)
+
+coverage_50 = np.sum((y_obs >= q25) & (y_obs <= q75)) / n_obs
+coverage_80 = np.sum((y_obs >= q10) & (y_obs <= q90)) / n_obs
+coverage_95 = np.sum((y_obs >= q025) & (y_obs <= q975)) / n_obs
+
+print(f"Coverage at 50% credible interval: {coverage_50:.3f} (expected: 0.500)")
+print(f"Coverage at 80% credible interval: {coverage_80:.3f} (expected: 0.800)")
+print(f"Coverage at 95% credible interval: {coverage_95:.3f} (expected: 0.950)")
+```
+
+### Quantitative Metrics {.unnumbered}
+
+Quantitative metrics provide summary statistics comparing posterior mean predictions to observed values, including Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and the coefficient of determination (R²).
+
+```{python}
+#| label: app-validation-metrics-ch4
+
+y_obs = df_collocated_ch4["value_gb"].values
+y_pred_mean = idata_ch4.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
+
+rmse = np.sqrt(mean_squared_error(y_obs, y_pred_mean))
+mae = mean_absolute_error(y_obs, y_pred_mean)
+r2 = r2_score(y_obs, y_pred_mean)
+
+metrics_df = pd.DataFrame({
+    "Metric": ["RMSE (ppb)", "MAE (ppb)", "R²"],
+    "Value": [f"{rmse:.3f}", f"{mae:.3f}", f"{r2:.3f}"]
+})
+
+print(metrics_df.to_string(index=False))
+```
+
+# Diagnostics Prediction model {#sec-diagnostics-predictions}
+## Carbon Dioxide {.unnumbered}
+```{python}
+#| label: app-predictions-eval-co2
+#| eval: false
+
+run_prediction_model = analysis.PredictionModel("co2")
+
+validation_pred_co2 = analysis.evaluate_prediction_model(
+    run_prediction_model,
+    df_partial_coverage_co2,
+    [2005, 2010, 2015, 2020],
+    split_value=SPLIT_VALUE,
+    future_years=1
+    )
+
+validation_pred_co2
+```
+
+## Methane {.unnumbered}
+```{python}
+#| label: app-predictions-eval-ch4
+#| eval: false
+
+run_prediction_model = analysis.PredictionModel("ch4")
+
+validation_pred_ch4 = analysis.evaluate_prediction_model(
+    run_prediction_model,
+    df_partial_coverage_ch4,
+    [2005, 2010, 2015, 2020],
+    split_value=SPLIT_VALUE,
+    future_years=1
+    )
+
+validation_pred_ch4
+```
+
+# Reproducibility
+```{python}
+%load_ext watermark
+%watermark -n -u -v -iv -w
+```

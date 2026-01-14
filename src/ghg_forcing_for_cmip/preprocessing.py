@@ -6,10 +6,9 @@ Prepare data for statistical analysis to create a GHG forcing dataset.
 
 import itertools
 from enum import Enum
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 
@@ -29,7 +28,7 @@ class Condition(str, Enum):
     BOTH_NONE = "both-none"
 
 
-def standardize_feature(series: pd.Series) -> pd.Series:
+def standardize_feature(series: pd.Series) -> Any:
     """
     Standardize a pandas Series
 
@@ -38,7 +37,53 @@ def standardize_feature(series: pd.Series) -> pd.Series:
     series :
         pandas Series to be standardized
     """
-    return (series - series.mean()) / series.std()
+    return np.float32((series - series.mean()) / series.std())
+
+
+def do_feature_engineering(
+    d: pd.DataFrame,
+    eo_included: bool = True,
+    day: int = 15,
+) -> pd.DataFrame:
+    """
+    Feature engineering for statistical analysis
+
+    Parameters
+    ----------
+    d :
+        dataframe to be processed
+
+    eo_included :
+        whether satellite data is included
+
+    day :
+        day used for creating a date, by default 15
+
+    Returns
+    -------
+    :
+        dataframe with additional and/or scaled features
+    """
+    d["date"] = pd.to_datetime(d[["year", "month"]].assign(day=day))
+
+    # Feature engineering
+    # Seasonal features
+    d["season_sin"] = np.sin(2 * np.pi * (d["month"] - 1) / 12)
+    d["season_cos"] = np.cos(2 * np.pi * (d["month"] - 1) / 12)
+    d["season_sin2"] = np.sin(4 * np.pi * (d["month"] - 1) / 12)
+    d["season_cos2"] = np.cos(4 * np.pi * (d["month"] - 1) / 12)
+
+    # Standardize lat, lon, value_eo for easier model convergence
+    d["lat_scaled"] = standardize_feature(d["lat"])
+    d["lon_scaled"] = standardize_feature(d["lon"])
+    d["year_scaled"] = d["year"] - d["year"].min()
+
+    if eo_included:
+        d["value_eo_scaled"] = standardize_feature(d["value_eo"])
+
+    d["region"] = (d["lat"] < 0).astype(int)
+
+    return d
 
 
 def prepare_dataset(
@@ -61,6 +106,9 @@ def prepare_dataset(
         "eo-only": only satellite data is present
         "gb-only": only ground-based data is present
         "both-none": neither ground-based nor satellite data is present
+
+    day :
+        day used for creating a date, by default 15
 
     Returns
     -------
@@ -88,18 +136,8 @@ def prepare_dataset(
 
     df_clean = df.drop_duplicates().reset_index(drop=True)
 
-    df_clean["date"] = pd.to_datetime(df_clean[["year", "month"]].assign(day=day))
-
     # Feature engineering
-    # Seasonal features
-    df_clean["season_sin"] = np.sin(2 * np.pi * (df_clean["month"] - 1) / 11)
-    df_clean["season_cos"] = np.cos(2 * np.pi * (df_clean["month"] - 1) / 11)
-
-    # Standardize lat, lon, value_eo for easier model convergence
-    df_clean["lat_scaled"] = standardize_feature(df_clean["lat"])
-    df_clean["lon_scaled"] = standardize_feature(df_clean["lon"])
-    df_clean["value_eo_scaled"] = standardize_feature(df_clean["value_eo"])
-    df_clean["year_scaled"] = df_clean["year"] - df_clean["year"].min()
+    df_clean = do_feature_engineering(df_clean, eo_included=True, day=day)
 
     return df_clean
 
@@ -167,6 +205,7 @@ def add_hemisphere(df: pd.DataFrame, split_value: Union[float, int]) -> pd.DataF
     except AttributeError:
         raise AttributeError("The dataframe has no variable 'lat'.")  # noqa: TRY003
 
+    df = df.copy()
     conditions = [(df["lat"] > split_value), (df["lat"] < -split_value)]
     choices = ["northern", "southern"]
     df["hemisphere"] = np.select(conditions, choices, default="tropics")
@@ -206,7 +245,7 @@ def concat_datasets(dfs: list[pd.DataFrame], obs_gb_value: list[bool]) -> pd.Dat
 
 def add_missing_lat_lon_combinations(  # noqa: PLR0913
     df: pd.DataFrame,
-    year_seq: npt.NDArray,
+    year_seq: Any,
     grid_cell_size: int,
     day: int = 15,
     months: int = 12,
@@ -315,3 +354,102 @@ def preprocess_prediction_dataset(df: pd.DataFrame) -> pd.DataFrame:
     df_feat["year_squared"] = df_feat["decimal_year"] ** 2
 
     return df_feat
+
+
+def create_future_dataset(  # noqa: PLR0913
+    pred_year_range: tuple[int, int],
+    lat_only: bool = False,
+    months: int = 12,
+    max_lat: int = 90,
+    max_lon: int = 180,
+    grid_cell_size: int = 5,
+) -> pd.DataFrame:
+    """
+    Create a dataframe with future data
+
+    Includes variables: year, month, lat, lon
+
+    Parameters
+    ----------
+    pred_year_range :
+        range of years for prediction (start, end)
+
+    lat_only :
+        whether only latitudes should be included
+
+    months :
+        number of months in a year, by default 12
+
+    max_lat :
+        latitudinal limit, by default 90
+
+    max_lon :
+        longitudinal limit, by default 180
+
+    grid_cell_size :
+        size of grid cell, by default 5
+
+    Returns
+    -------
+    :
+        dataframe with future data combinations
+    """
+    if lat_only:
+        return pd.DataFrame(
+            itertools.product(
+                np.arange(pred_year_range[0], pred_year_range[1], 1),  # years
+                np.arange(1, months, 1),  # months
+                np.arange(
+                    -(max_lat - (grid_cell_size / 2)), max_lat, grid_cell_size
+                ),  # latitudes
+            ),
+            columns=["year", "month", "lat"],
+        )
+    else:
+        return pd.DataFrame(
+            itertools.product(
+                np.arange(pred_year_range[0], pred_year_range[1], 1),  # years
+                np.arange(1, months, 1),  # months
+                np.arange(
+                    -(max_lat - (grid_cell_size / 2)), max_lat, grid_cell_size
+                ),  # latitudes
+                np.arange(
+                    -(max_lon - (grid_cell_size / 2)), max_lon, grid_cell_size
+                ),  # longitudes
+            ),
+            columns=["year", "month", "lat", "lon"],
+        )
+
+
+def select_sampling_sites(
+    raw_data: pd.DataFrame, year_min: int = 2003, no_sites: int = 12
+) -> pd.DataFrame:
+    """
+    Select sampling sites incl. site_code, lat, lon
+
+    sites with highest number of observations after year_min
+    are selected
+
+    Parameters
+    ----------
+    raw_data :
+        raw data
+
+    year_min :
+        minimum year for selecting sampling sites
+
+    no_sites :
+        number of sampling sites to be selected
+
+    Returns
+    -------
+    :
+        dataframe with selected sampling sites and their
+        lat, lon coordinates
+    """
+    return (
+        raw_data[raw_data.year > year_min][["lat", "lon", "site_code"]]
+        .drop_duplicates()
+        .iloc[:no_sites]
+        .reset_index()
+    )

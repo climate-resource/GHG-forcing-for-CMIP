@@ -15,12 +15,11 @@ import xarray as xr
 from ecmwf.datastores import Client
 from prefect import flow, task
 
-from ghg_forcing_for_cmip import CONFIG
+from ghg_forcing_for_cmip import CONFIG, validation
 from ghg_forcing_for_cmip.utils import (
     clean_and_save,
     unzip_download,
 )
-from ghg_forcing_for_cmip.validation import validate_eo_dataframe
 
 # Configure logging
 logging.basicConfig(
@@ -148,7 +147,7 @@ def validate_obs4mips_data(
         df_raw[f"vmr_profile_{gas}_apriori"].astype(np.float64) * factor
     )
 
-    validate_eo_dataframe(df)
+    validation.validate_eo_dataframe(df)
 
     return df
 
@@ -200,4 +199,4 @@ def download_satellite_data(
 
 
 if __name__ == "__main__":
-    download_satellite_data(gas="co2", remove_original_files=False)
+    download_satellite_data(gas="ch4", remove_original_files=False)

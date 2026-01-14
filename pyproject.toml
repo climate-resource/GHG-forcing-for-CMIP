@@ -10,19 +10,16 @@ requires-python = ">=3.9"
 dependencies = [
     "arviz>=0.17.1",
     "bambi>=0.13.0",
-    "ecmwf-datastores-client>=0.4.0",
-    "h5netcdf>=1.6.4",
-    "ipywidgets>=8.1.8",
-    "jupyter>=1.1.1",
-    "lightgbm>=4.6.0",
-    "netcdf4>=1.7.2",
-    "numpyro>=0.19.0",
+    "ecmwf-datastores-client>=0.4.0", # for downloading EO data
+    "h5netcdf>=1.6.4", # used by xarray
+    "netcdf4>=1.7.2", # used by xarray
+    "numpyro>=0.19.0", # used via bambi
     "pandas>=2.3.2",
     "prefect>=3.3.1",
-    "ruamel-yaml-clib==0.2.15",
-    "tqdm>=4.67.1",
+    "prophet>=1.2.1",
+    "tqdm>=4.67.1", # required?
+    "watermark>=2.6.0",
     "xarray>=2024.7.0",
-    "xgboost>=2.1.4",
 ]
 readme = "README.md"
 classifiers = [
@@ -57,8 +54,14 @@ plots = [
     "matplotlib>=3.9.4",
     "geodatasets>=2024.8.0",
     "geopandas>=1.0.1",
+    "fiona>=1.10.1", # used by geopandas
     "matplotlib>=3.9.4",
     "seaborn>=0.13.2",
+]
+notebooks = [
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "jupyter-cache>=1.0.1",
 ]
 eval = [
     "scikit-learn>=1.6.1",
