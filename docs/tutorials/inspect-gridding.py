@@ -50,19 +50,3 @@ plotting.plot_gridsizes(df_co2, CONFIG.GRID_CELL_SIZE, True)
 # plot entire grid
 # shows only grid-average values
 plotting.plot_gridsizes(df_co2, CONFIG.GRID_CELL_SIZE, False)
-
-# %% [markdown]
-# ## Inspect coverage for ground-based vs. satellite data
-# + show only subset of grid for better visualization
-# + ground-based data are not adjusted for vertical dimension therefore we
-# see clear differences in the value between ground-based and satellite observations
-#
-# Satellite product would clearly improve the coverage information.
-# Question is how to assimilate satellite and ground-based data given
-# that both products measure different things?
-
-# %%
-plotting.plot_coverage(df_ch4_eo, df_ch4, CONFIG.GRID_CELL_SIZE)
-
-# %%
-plotting.plot_coverage(df_co2_eo, df_co2, CONFIG.GRID_CELL_SIZE)

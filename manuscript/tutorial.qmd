@@ -593,7 +593,7 @@ else:
         df_partial_coverage_co2,
         future_time_range = (MAX_YEAR_EO_CO2, 2030),
         split_value = SPLIT_VALUE,
-        n_datasets = 3
+        n_datasets = REPLICATIONS
     )
 
     df_predicted_co2.to_csv(cache_df_predicted_co2)
@@ -861,7 +861,7 @@ else:
         df_partial_coverage_ch4,
         future_time_range = (MAX_YEAR_EO_CH4, 2030),
         split_value = SPLIT_VALUE,
-        n_datasets=3
+        n_datasets=REPLICATIONS
     )
 
     df_predicted_ch4.to_csv(cache_df_predicted_ch4)
