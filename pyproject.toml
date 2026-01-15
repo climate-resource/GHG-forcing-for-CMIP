@@ -6,7 +6,7 @@ authors = [
     { name = "Florence Bockting", email = "florence.bockting@climate-resource.com" },
 ]
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9"
+requires-python = ">3.9"
 dependencies = [
     "arviz>=0.17.1",
     "bambi>=0.13.0",
@@ -34,7 +34,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
+    # "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

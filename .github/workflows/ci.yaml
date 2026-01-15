@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ "ubuntu-latest" ]
-        python-version: [ "3.9" ]
+        python-version: [ "3.10" ]
     runs-on: "${{ matrix.os }}"
     steps:
       - name: Check out repository
@@ -81,7 +81,7 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         # Test against all security and bugfix versions: https://devguide.python.org/versions/
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
@@ -129,7 +129,7 @@ jobs:
         # Only test against the oldest supported python version
         # because python is itself a direct dependency
         # (so we're testing against the lowest direct python too).
-        python-version: [ "3.9" ]
+        python-version: [ "3.10" ]
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
@@ -202,7 +202,7 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         # Test against all security and bugfix versions: https://devguide.python.org/versions/
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     runs-on: "${{ matrix.os }}"
     steps:
       - name: Check out repository
