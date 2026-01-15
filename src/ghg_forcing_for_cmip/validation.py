@@ -45,8 +45,8 @@ class GroundDataRow(BaseModel):
     network: Literal["agage", "gage", "noaa"]
 
     altitude: Optional[float] = Field(default=None, ge=0.0)
-    insitu_vs_flask: Optional[Literal["flask", "insitu"]] = None
-    sampling_strategy: Optional[str] = None
+    insitu_vs_flask: Optional[Literal["flask", "insitu"]] | float = None
+    sampling_strategy: Optional[str] | float = None
 
     gas: Literal["ch4", "co2"]
     unit: Literal["ppb", "ppm"]
