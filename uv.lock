@@ -1730,7 +1730,16 @@ dependencies = [
     { name = "bambi", version = "0.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "bambi", version = "0.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "ecmwf-datastores-client" },
+    { name = "fiona" },
+    { name = "geodatasets" },
+    { name = "geopandas", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "geopandas", version = "1.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "h5netcdf" },
+    { name = "ipywidgets" },
+    { name = "jupyter" },
+    { name = "jupyter-cache" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "matplotlib", version = "3.10.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "netcdf4", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "netcdf4", version = "1.7.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*' and platform_machine == 'ARM64' and sys_platform == 'win32'" },
     { name = "netcdf4", version = "1.7.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.10' and platform_machine != 'ARM64') or (python_full_version >= '3.11' and platform_machine == 'ARM64' and sys_platform == 'win32') or (python_full_version >= '3.10' and sys_platform != 'win32')" },
@@ -1741,39 +1750,12 @@ dependencies = [
     { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "seaborn" },
     { name = "tqdm" },
     { name = "watermark" },
     { name = "xarray", version = "2024.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "xarray", version = "2025.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "xarray", version = "2025.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-
-[package.optional-dependencies]
-full = [
-    { name = "fiona" },
-    { name = "geodatasets" },
-    { name = "geopandas", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "geopandas", version = "1.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "ipywidgets" },
-    { name = "jupyter" },
-    { name = "jupyter-cache" },
-    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "matplotlib", version = "3.10.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "seaborn" },
-]
-notebooks = [
-    { name = "ipywidgets" },
-    { name = "jupyter" },
-    { name = "jupyter-cache" },
-]
-plots = [
-    { name = "fiona" },
-    { name = "geodatasets" },
-    { name = "geopandas", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "geopandas", version = "1.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "matplotlib", version = "3.10.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "seaborn" },
 ]
 
 [package.dev-dependencies]
@@ -2114,28 +2096,25 @@ requires-dist = [
     { name = "arviz", specifier = ">=0.17.1" },
     { name = "bambi", specifier = ">=0.13.0" },
     { name = "ecmwf-datastores-client", specifier = ">=0.4.0" },
-    { name = "fiona", marker = "extra == 'plots'", specifier = ">=1.10.1" },
-    { name = "geodatasets", marker = "extra == 'plots'", specifier = ">=2024.8.0" },
-    { name = "geopandas", marker = "extra == 'plots'", specifier = ">=1.0.1" },
-    { name = "ghg-forcing-for-cmip", extras = ["notebooks"], marker = "extra == 'full'" },
-    { name = "ghg-forcing-for-cmip", extras = ["plots"], marker = "extra == 'full'" },
+    { name = "fiona", specifier = ">=1.10.1" },
+    { name = "geodatasets", specifier = ">=2024.8.0" },
+    { name = "geopandas", specifier = ">=1.0.1" },
     { name = "h5netcdf", specifier = ">=1.6.4" },
-    { name = "ipywidgets", marker = "extra == 'notebooks'", specifier = ">=8.1.8" },
-    { name = "jupyter", marker = "extra == 'notebooks'", specifier = ">=1.1.1" },
-    { name = "jupyter-cache", marker = "extra == 'notebooks'", specifier = ">=1.0.1" },
-    { name = "matplotlib", marker = "extra == 'plots'", specifier = ">=3.9.4" },
+    { name = "ipywidgets", specifier = ">=8.1.8" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "jupyter-cache", specifier = ">=1.0.1" },
+    { name = "matplotlib", specifier = ">=3.9.4" },
     { name = "netcdf4", specifier = ">=1.7.2" },
     { name = "numpyro", specifier = ">=0.19.0" },
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "prefect", specifier = ">=3.3.1" },
     { name = "prophet", specifier = ">=1.2.1" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
-    { name = "seaborn", marker = "extra == 'plots'", specifier = ">=0.13.2" },
+    { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "watermark", specifier = ">=2.6.0" },
     { name = "xarray", specifier = ">=2024.7.0" },
 ]
-provides-extras = ["plots", "notebooks", "full"]
 
 [package.metadata.requires-dev]
 all-dev = [

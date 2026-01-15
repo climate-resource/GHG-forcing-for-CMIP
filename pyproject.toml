@@ -8,6 +8,7 @@ authors = [
 license = { text = "BSD-3-Clause" }
 requires-python = ">3.9"
 dependencies = [
+    # main package
     "arviz>=0.17.1",
     "bambi>=0.13.0",
     "ecmwf-datastores-client>=0.4.0", # for downloading EO data
@@ -21,6 +22,17 @@ dependencies = [
     "watermark>=2.6.0",
     "xarray>=2024.7.0",
     "scikit-learn>=1.6.1",
+    # plotting
+    "matplotlib>=3.9.4",
+    "geodatasets>=2024.8.0",
+    "geopandas>=1.0.1",
+    "fiona>=1.10.1", # used by geopandas
+    "matplotlib>=3.9.4",
+    "seaborn>=0.13.2",
+    # notebook
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "jupyter-cache>=1.0.1",
 ]
 readme = "README.md"
 classifiers = [
@@ -51,23 +63,7 @@ Issues = "https://github.com/climate-resource/GHG-forcing-for-CMIP/issues"
 
 
 [project.optional-dependencies]
-plots = [
-    "matplotlib>=3.9.4",
-    "geodatasets>=2024.8.0",
-    "geopandas>=1.0.1",
-    "fiona>=1.10.1", # used by geopandas
-    "matplotlib>=3.9.4",
-    "seaborn>=0.13.2",
-]
-notebooks = [
-    "ipywidgets>=8.1.8",
-    "jupyter>=1.1.1",
-    "jupyter-cache>=1.0.1",
-]
-full = [
-    "ghg-forcing-for-cmip[plots]",
-    "ghg-forcing-for-cmip[notebooks]",
-]
+
 
 [dependency-groups]
 # The development dependencies are pinned
