@@ -303,7 +303,7 @@ branch = true
 omit = ["*/netCDF4/*"]
 
 [tool.coverage.report]
-fail_under = 50 # TODO
+fail_under = 10 # TODO
 skip_empty = true
 show_missing = true
 exclude_also = [

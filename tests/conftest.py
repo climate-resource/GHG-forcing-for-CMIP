@@ -4,8 +4,12 @@ Re-useable fixtures etc. for tests
 See https://docs.pytest.org/en/7.1.x/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files
 """
 
+import matplotlib
 import pandas as pd
 import pytest
+
+# Use non-interactive backend for tests to avoid tkinter issues
+matplotlib.use("Agg")
 
 
 def pytest_runtest_setup(item):
