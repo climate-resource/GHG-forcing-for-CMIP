@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ "ubuntu-latest" ]
-        python-version: [ "3.9" ]
+        python-version: [ "3.10" ]
     runs-on: "${{ matrix.os }}"
     steps:
       - name: Check out repository
@@ -81,7 +81,7 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         # Test against all security and bugfix versions: https://devguide.python.org/versions/
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
@@ -108,7 +108,7 @@ jobs:
           uv run pytest -r a -v src tests --doctest-modules --doctest-report ndiff --cov=src --cov-report=term-missing --cov-report=xml
           uv run coverage report
       - name: Upload coverage reports to Codecov with GitHub Action
-        uses: codecov/codecov-action@v4.2.0
+        uses: codecov/codecov-action@v5 # 4.2.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -129,7 +129,7 @@ jobs:
         # Only test against the oldest supported python version
         # because python is itself a direct dependency
         # (so we're testing against the lowest direct python too).
-        python-version: [ "3.9" ]
+        python-version: [ "3.10" ]
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
@@ -202,7 +202,7 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         # Test against all security and bugfix versions: https://devguide.python.org/versions/
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     runs-on: "${{ matrix.os }}"
     steps:
       - name: Check out repository

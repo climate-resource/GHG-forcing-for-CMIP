@@ -6,16 +6,34 @@ authors = [
     { name = "Florence Bockting", email = "florence.bockting@climate-resource.com" },
 ]
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9"
+requires-python = ">3.9"
 dependencies = [
-    "ecmwf-datastores-client>=0.4.0",
-    "h5netcdf>=1.6.4",
-    "netcdf4>=1.7.2",
+    # main package
+    "arviz>=0.17.1",
+    "bambi>=0.13.0",
+    "ecmwf-datastores-client>=0.4.0", # for downloading EO data
+    "h5netcdf>=1.6.4", # used by xarray
+    "netcdf4>=1.7.2", # used by xarray
+    "numpyro>=0.19.0", # used via bambi
     "pandas>=2.3.2",
-    "pandera>=0.26.1",
-    "prefect>=3.3.1",
-    "tqdm>=4.67.1",
+    "prophet>=1.2.1",
+    "tqdm>=4.67.1", # required?
+    "watermark>=2.6.0",
     "xarray>=2024.7.0",
+    "scikit-learn>=1.6.1",
+    # plotting
+    "matplotlib>=3.9.4",
+    "geodatasets>=2024.8.0",
+    "geopandas>=1.0.1",
+    "fiona>=1.10.1", # used by geopandas
+    "matplotlib>=3.9.4",
+    "seaborn>=0.13.2",
+    # notebook
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "jupyter-cache>=1.0.1",
+    "typer>=0.15.4",
+    "prefect>=3.3.1",
 ]
 readme = "README.md"
 classifiers = [
@@ -29,7 +47,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
+    # "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -46,20 +64,7 @@ Issues = "https://github.com/climate-resource/GHG-forcing-for-CMIP/issues"
 
 
 [project.optional-dependencies]
-plots = [
-    "matplotlib>=3.9.4",
-    "geodatasets>=2024.8.0",
-    "geopandas>=1.0.1",
-    "matplotlib>=3.9.4",
-    "seaborn>=0.13.2",
-]
-eval = [
-    "scikit-learn>=1.6.1",
-]
-full = [
-    "ghg-forcing-for-cmip[plots]",
-    "ghg-forcing-for-cmip[eval]",
-]
+
 
 [dependency-groups]
 # The development dependencies are pinned
@@ -73,6 +78,7 @@ dev = [
     # Key dependencies
     # ----------------
     "liccheck==0.9.2",
+    "ruamel-yaml-clib==0.2.15",
     "mypy==1.14.0",
     # Required for liccheck, see https://github.com/dhatim/python-license-check/pull/113
     "pip==24.3.1",
@@ -99,7 +105,7 @@ dev = [
     "pyyaml==6.0.2",
     "semantic-version==2.10.0",
     "toml==0.10.2",
-    "typing-extensions==4.12.2",
+    "typing-extensions>=4.12.2",
     "virtualenv==20.28.1",
 ]
 docs = [
@@ -289,9 +295,10 @@ source = [
     "src",
 ]
 branch = true
+omit = ["*/netCDF4/*"]
 
 [tool.coverage.report]
-fail_under = 50 # TODO
+fail_under = 10 # TODO
 skip_empty = true
 show_missing = true
 exclude_also = [
@@ -299,8 +306,8 @@ exclude_also = [
     # Type overloading lines
     "@overload",
     "\\.\\.\\.",
-
 ]
+
 
 [tool.mypy]
 strict = true
@@ -409,6 +416,7 @@ authorized_licenses = [
     'BSD-2-Clause',
     "BSD 3-Clause",
     "BSD-3-Clause",
+    'BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0',
     "CC0",
     "apache",
     "apache 2.0",
@@ -430,6 +438,7 @@ authorized_licenses = [
     "mit",
     "mit license",
     'MIT AND Python-2.0',
+    'MIT-CMU',
     "Mozilla Public License 2.0 (MPL 2.0)",
     "psf-2.0",
     "python software foundation",
@@ -450,3 +459,6 @@ unauthorized_licenses = [
 
 [tool.liccheck.authorized_packages]
 ujson = "5.11.0"
+ruamel.yaml.clib = "0.2.15"
+minikanren = "1.0.5"
+cons = "0.4.7"

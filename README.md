@@ -212,6 +212,39 @@ or an issue with how this has been set up.
 TODO: make an issue then decide whether we tackle this now or later.
 Decision question: does Flo have/care about this issue or not?]
 
+### Download the GB data
+```
+# select for gas either co2 or ch4
+# the following example runs the download for co2 and removes the original files after processing (and remains only the final datasets)
+uv run python .\src\ghg_forcing_for_cmip\download_ground_based.py --gas co2 --remove-original-files
+```
+
+### Download the satellite data
+```
+# select for gas either co2 or ch4
+# the following example runs the download for co2 and removes the original files after processing (and remains only the final datasets)
+uv run python .\src\ghg_forcing_for_cmip\download_satellite.py --gas co2 --remove-original-files
+```
+
+## Run the manuscript/tutorial
+The manuscript is built with `[quarto](https://quarto.org/)` and can be found in the `manuscript/` folder.
+
+Find installation instructions for quarto [here](https://quarto.org/docs/get-started/).
+
+The main two commands you will need are:
+- To preview the manuscript locally in your browser (best for authoring), run:
+  ```sh
+  quarto preview manuscript/tutorial.qmd
+  ```
+
+- To render the final manuscript, run:
+  ```sh
+  quarto render manuscript/tutorial.qmd
+  ```
+
+Find further information about the possibilites with quarto
+in the [quarto guide](https://quarto.org/docs/guide).
+
 ## Original template
 
 This project was generated from this template:

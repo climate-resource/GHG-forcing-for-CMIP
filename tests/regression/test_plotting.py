@@ -36,6 +36,9 @@ def df_test3():
 
 os.makedirs("tests/regression/test_plotting", exist_ok=True)
 
+pytest.importorskip("geopandas")
+pytest.importorskip("geodatasets")
+
 
 def test_plot_map(image_regression, df_test1):
     fig, axs = plt.subplots()

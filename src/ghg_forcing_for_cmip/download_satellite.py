@@ -15,12 +15,11 @@ import xarray as xr
 from ecmwf.datastores import Client
 from prefect import flow, task
 
-from ghg_forcing_for_cmip import CONFIG
+from ghg_forcing_for_cmip import CONFIG, validation
 from ghg_forcing_for_cmip.utils import (
     clean_and_save,
     unzip_download,
 )
-from ghg_forcing_for_cmip.validation import EODataSchema
 
 # Configure logging
 logging.basicConfig(
@@ -148,7 +147,7 @@ def validate_obs4mips_data(
         df_raw[f"vmr_profile_{gas}_apriori"].astype(np.float64) * factor
     )
 
-    EODataSchema.validate(df)
+    validation.validate_eo_dataframe(df)
 
     return df
 
@@ -200,4 +199,24 @@ def download_satellite_data(
 
 
 if __name__ == "__main__":
-    download_satellite_data(gas="co2", remove_original_files=False)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Download satellite GHG data")
+    parser.add_argument(
+        "--gas",
+        type=str,
+        default="co2",
+        choices=["co2", "ch4"],
+        help="Target greenhouse gas (default: co2)",
+    )
+    parser.add_argument(
+        "--remove-original-files",
+        action="store_true",
+        help="Remove original files after processing",
+    )
+
+    args = parser.parse_args()
+
+    download_satellite_data(
+        gas=args.gas, remove_original_files=args.remove_original_files
+    )

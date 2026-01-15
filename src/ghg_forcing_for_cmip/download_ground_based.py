@@ -480,7 +480,7 @@ def validate_surface_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     df["time_fractional"] = df.year + df.month / 12
     df["time"] = pd.to_datetime(
-        pd.DataFrame({"year": df.year, "month": df.month, "day": 16, "hour": 12}),
+        pd.DataFrame({"year": df.year, "month": df.month, "day": 15, "hour": 12}),
         utc=True,
     )
     df["year"] = df.year.astype(np.int64)
@@ -502,7 +502,7 @@ def validate_surface_data(df: pd.DataFrame) -> pd.DataFrame:
     df["version"] = df.version.astype(str)
     df["instrument"] = df.instrument.astype(str)
 
-    validation.GroundDataSchema.validate(df)
+    validation.validate_gb_dataframe(df)
 
     return df
 
@@ -580,4 +580,24 @@ def download_surface_data(
 
 
 if __name__ == "__main__":
-    download_surface_data(gas="co2", remove_original_files=False)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Download ground-based GHG data")
+    parser.add_argument(
+        "--gas",
+        type=str,
+        default="co2",
+        choices=["co2", "ch4"],
+        help="Target greenhouse gas (default: co2)",
+    )
+    parser.add_argument(
+        "--remove-original-files",
+        action="store_true",
+        help="Remove original files after processing",
+    )
+
+    args = parser.parse_args()
+
+    download_surface_data(
+        gas=args.gas, remove_original_files=args.remove_original_files
+    )
