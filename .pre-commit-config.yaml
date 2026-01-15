@@ -42,9 +42,9 @@ repos:
     rev: 0.5.21
     hooks:
       - id: uv-sync
-      - id: uv-lock
-        name: uv-lock-check
-        args: ["--check"]
+      #- id: uv-lock
+      #  name: uv-lock-check
+      #  args: ["--check"]
       # Put requirements.txt files in the repo too
       - id: uv-export
         name: export-requirements

@@ -421,6 +421,7 @@ authorized_licenses = [
     'BSD-2-Clause',
     "BSD 3-Clause",
     "BSD-3-Clause",
+    'BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0',
     "CC0",
     "apache",
     "apache 2.0",
@@ -442,6 +443,7 @@ authorized_licenses = [
     "mit",
     "mit license",
     'MIT AND Python-2.0',
+    'MIT-CMU',
     "Mozilla Public License 2.0 (MPL 2.0)",
     "psf-2.0",
     "python software foundation",
@@ -463,3 +465,5 @@ unauthorized_licenses = [
 [tool.liccheck.authorized_packages]
 ujson = "5.11.0"
 ruamel.yaml.clib = "0.2.15"
+minikanren = "1.0.5"
+cons = "0.4.7"
