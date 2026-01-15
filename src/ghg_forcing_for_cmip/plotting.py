@@ -1056,11 +1056,11 @@ def plot_prophet_components(
         for ax in row:
             ax.set_xlim(xlim_start, xlim_end)
             ax.set_xticks(tick_years)
-            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))  # type: ignore[no-untyped-call]
             ax.tick_params(axis="x", labelsize=8)
 
-    if fig._suptitle is not None:
-        current_text = fig._suptitle.get_text()
+    if fig._suptitle is not None:  # type: ignore[attr-defined]
+        current_text = fig._suptitle.get_text()  # type: ignore[attr-defined]
         fig.suptitle(current_text, fontsize=14, y=1.08)
 
     return fig, axs

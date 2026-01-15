@@ -560,7 +560,7 @@ def extract_prophet_components(
         ("northern", m_n, lambda x: x.lat > split_value),
     ]:
         # Get representative coordinates for this region
-        region_data = df_prophet[region_filter(df_prophet)]
+        region_data = df_prophet[region_filter(df_prophet)]  # type: ignore[no-untyped-call]
         if len(region_data) == 0:
             continue
 
