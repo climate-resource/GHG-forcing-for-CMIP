@@ -38,22 +38,8 @@ if not os.path.exists(folder_path):
 ```
 
 ::: {.callout-note}
-+ This document lives in the following PR: https://github.com/climate-resource/GHG-forcing-for-CMIP/pull/37
-+ Prerequisit: This analysis document expect the CO2 and CH4  EO and GB data to live in the directory `data/downloads/`. If not yet existing run the prefect workflow to create these files:
-
-GB data:
-
-+ go to last line of
-`src/ghg_forcing_for_cmip/download_ground_based.py`
-+ select "co2" or "ch4" for `download_surface_data()`
-+ `uv run prefect src/ghg_forcing_for_cmip/download_ground_based.py`
-
-EO data:
-
-+ go to last line of
-`src/ghg_forcing_for_cmip/download_satellite.py`
-+ select "co2" or "ch4" for `download_satellite_data()`
-+ `uv run prefect src/ghg_forcing_for_cmip/download_satellite.py`
++ This document lives in the following GitHub repo: https://github.com/climate-resource/GHG-forcing-for-CMIP
++ Prerequisit: This analysis document expect the CO2 and CH4  EO and GB data to live in the directory `data/downloads/`. If they do not yet exist, run the data pipelines as described in the README of the repo ("Download the GB/EO data").
 
 :::
 

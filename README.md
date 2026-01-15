@@ -219,7 +219,7 @@ Decision question: does Flo have/care about this issue or not?]
 uv run python .\src\ghg_forcing_for_cmip\download_ground_based.py --gas co2 --remove-original-files
 ```
 
-### Download the satellite data
+### Download the EO data
 ```
 # select for gas either co2 or ch4
 # the following example runs the download for co2 and removes the original files after processing (and remains only the final datasets)
