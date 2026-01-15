@@ -37,17 +37,37 @@ if not os.path.exists(folder_path):
     os.makedirs(folder_path)
 ```
 
+::: {.callout-note}
++ This document lives in the following PR: https://github.com/climate-resource/GHG-forcing-for-CMIP/pull/37
++ Prerequisit: This analysis document expect the CO2 and CH4  EO and GB data to live in the directory `data/downloads/`. If not yet existing run the prefect workflow to create these files:
+
+GB data:
+
++ go to last line of
+`src/ghg_forcing_for_cmip/download_ground_based.py`
++ select "co2" or "ch4" for `download_surface_data()`
++ `uv run prefect src/ghg_forcing_for_cmip/download_ground_based.py`
+
+EO data:
+
++ go to last line of
+`src/ghg_forcing_for_cmip/download_satellite.py`
++ select "co2" or "ch4" for `download_satellite_data()`
++ `uv run prefect src/ghg_forcing_for_cmip/download_satellite.py`
+
+:::
+
 # Introduction
-Earth observations (EO) provide an effective means of monitoring the global distribution of greenhouse gases with high spatiotemporal resolution and are considered a valuable complement to ground-based (GB) observations by improving overall monitoring coverage, frequency and resolution [@yue2016space;@hu2024review].
+Earth observations (EO) provide an effective means of monitoring the global distribution of greenhouse gases (GHG) with high spatiotemporal resolution and are considered a valuable complement to ground-based (GB) observations by improving overall monitoring coverage, frequency and resolution [@yue2016space;@hu2024review].
 
-However, integrating EO and GB datasets presents methodological challenges. EO data represent column-averaged dry-air mole fractions ($X_{CO_2}$ or $X_{CH_4}$), while GB instruments measure near-surface concentrations ($CO_2$ or $CH_4$). Systematic discrepancies arise from vertical gradients in atmospheric composition, which differ substantially between $CO_2$ (relatively well-mixed) and $CH_4$ (pronounced vertical gradients). A mapping is therefore required to calibrate EO measurements to GB-equivalent surface values, accounting for these physical differences while propagating uncertainty appropriately.
+However, integrating EO and GB GHG datasets presents methodological challenges. EO data represent column-averaged dry-air mole fractions ($X_{CO_2}$ or $X_{CH_4}$), while GB instruments measure near-surface GHG concentrations ($CO_2$ or $CH_4$). Systematic discrepancies arise from vertical gradients in atmospheric composition, which leads to a difference the column-average and the surface concentration of a GHG. A mapping is therefore required to calibrate EO measurements to GB-equivalent surface values.
 
-This work, we use a statistical approach to compute this mapping using a Bayesian hierarchical modeling framework for assimilating EO and GB data to generate unified $CO_2$ and $CH_4$ concentration datasets suitable for CMIP applications. The approach employs Gaussian Process components to capture spatial structure and hierarchical seasonality to account for latitudinal variations. We demonstrate the methodology using OBS4MIPS satellite products and NOAA/AGAGE ground-based measurements, generating composite datasets that extend GB coverage globally while maintaining explicit uncertainty quantification. Additionally, we provide an initial idea for a forecasting model to project concentrations into future years, enabling scenario development for climate projections.
+In this work, we use a statistical approach to compute this mapping using a Bayesian hierarchical modeling framework for assimilating EO and GB data to generate unified $CO_2$ and $CH_4$ concentration datasets. We demonstrate the methodology using OBS4MIPS satellite products and NOAA/AGAGE ground-based measurements, generating composite datasets that extend GB coverage globally. Additionally, we provide an initial idea for a forecasting model to project GHG concentrations into future years.
 
-The remainder of this paper is structured as follows. @sec-datasets introduces the GB and EO datasets used in the analysis. @sec-motivation recapture the motivationg and the challenge for the current analysis. @sec-method outlines the methodological framework, including the Bayesian calibration model for data integration and the forecasting approach for temporal extrapolation. @sec-results presents results for both $CO_2$ and $CH_4$, evaluating model performance and examining regional patterns. Finally, @sec-discussion discusses the findings and limitations.
+The remainder of this work is structured as follows. @sec-datasets introduces the GB and EO datasets used in the analysis. @sec-motivation restates the motivation and corresponding challenges for the current analysis. @sec-method outlines the methodological framework, including the Bayesian calibration model for data integration and the forecasting approach for temporal extrapolation. @sec-results presents results for both $CO_2$ and $CH_4$. Finally, we discuss the results and their limitations in @sec-discussion.
 
 # Datasets {#sec-datasets}
-In the following section we introduce the ground-based (GB) and earth observation (EO) data set used throughout this working paper.
+In the following section we introduce the ground-based (GB) and earth observation (EO) data set used throughout this work.
 
 ## Ground-based Data
 
@@ -369,7 +389,7 @@ We fit independent models for the Northern, Tropical, and Southern hemisphere. L
 ### Diagnostics {.unnumbered}
 To assess the predictive capability of the forecasting model, we employ a temporal cross-validation scheme. This approach simulates real-world forecasting scenarios by iteratively truncating the historical time series at defined `cutoff` points, training the model on the preceding data, and evaluating predictions against the withheld "future" observations. The predicted ground-based values are compared to the observed values using Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE).
 
-# Results {sec-results}
+# Results {#sec-results}
 The following sections present the results obtained from the applied methodology for $CO_2$ and $CH_4$. The analysis begins with the findings for $CO_2$, followed by the corresponding results for $CH_4$.
 
 ## Carbon Dioxide
@@ -908,7 +928,7 @@ fig, axs = plotting.plot_prophet_components(
 
 \newpage
 
-# Discussion {sec-discussion}
+# Discussion {#sec-discussion}
 The primary objective of this analysis is the assimilation of GB and EO data to generate a unified $CO_2$ and $CH_4$ data product for GHG forcings for CMIP. By integrating these datasets, we aim to synergize the spatial coverage of EO retrievals with the high accuracy of GB measurements. This study presents a statistical framework for data assimilation that accounts for the distinct characteristics of both measurement types. Furthermore, we develop a forecasting model trained on historical GHG forcings to project concentrations into future years.
 
 ## Methodological Approach and Model Performance
@@ -1039,6 +1059,16 @@ if len(rhat_critical) > 0:
     print(rhat_critical)
 ```
 
+### Posterior Predictive Checks {.unnumbered}
+Posterior predictive checks compare the distribution of simulated data from the model to the observed data. If the model is well-calibrated, the observed data should appear as a typical realization from the posterior predictive distribution.
+
+```{python}
+#| label: app-validation-ppc-co2
+
+az.plot_ppc(idata_co2, num_pp_samples=100);
+plt.tight_layout()
+```
+
 ## Methane {.unnumbered}
 ```{python}
 
@@ -1092,19 +1122,8 @@ if len(rhat_critical) > 0:
     print(rhat_critical)
 ```
 
-# Posterior Predictive Checks {#sec-validation-posterior-predictive}
-
+### Posterior Predictive Checks {.unnumbered}
 Posterior predictive checks compare the distribution of simulated data from the model to the observed data. If the model is well-calibrated, the observed data should appear as a typical realization from the posterior predictive distribution.
-
-## Carbon Dioxide {.unnumbered}
-```{python}
-#| label: app-validation-ppc-co2
-
-az.plot_ppc(idata_co2, num_pp_samples=100);
-plt.tight_layout()
-```
-
-## Methane {.unnumbered}
 
 ```{python}
 #| label: app-validation-ppc-ch4
@@ -1117,14 +1136,13 @@ plt.tight_layout()
 ## Carbon Dioxide {.unnumbered}
 ```{python}
 #| label: app-predictions-eval-co2
-#| eval: false
 
 run_prediction_model = analysis.PredictionModel("co2")
 
 validation_pred_co2 = analysis.evaluate_prediction_model(
     run_prediction_model,
     df_partial_coverage_co2,
-    [2005, 2010, 2015, 2020],
+    [2007, 2015, 2020],
     split_value=SPLIT_VALUE,
     future_years=1
     )
@@ -1135,14 +1153,13 @@ validation_pred_co2
 ## Methane {.unnumbered}
 ```{python}
 #| label: app-predictions-eval-ch4
-#| eval: false
 
 run_prediction_model = analysis.PredictionModel("ch4")
 
 validation_pred_ch4 = analysis.evaluate_prediction_model(
     run_prediction_model,
     df_partial_coverage_ch4,
-    [2005, 2010, 2015, 2020],
+    [2007, 2015, 2020],
     split_value=SPLIT_VALUE,
     future_years=1
     )
