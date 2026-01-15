@@ -20,6 +20,7 @@ dependencies = [
     "tqdm>=4.67.1", # required?
     "watermark>=2.6.0",
     "xarray>=2024.7.0",
+    "scikit-learn>=1.6.1",
 ]
 readme = "README.md"
 classifiers = [
@@ -63,12 +64,9 @@ notebooks = [
     "jupyter>=1.1.1",
     "jupyter-cache>=1.0.1",
 ]
-eval = [
-    "scikit-learn>=1.6.1",
-]
 full = [
     "ghg-forcing-for-cmip[plots]",
-    "ghg-forcing-for-cmip[eval]",
+    "ghg-forcing-for-cmip[notebooks]",
 ]
 
 [dependency-groups]

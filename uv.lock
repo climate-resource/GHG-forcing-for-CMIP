@@ -1756,6 +1756,9 @@ dependencies = [
     { name = "pandas" },
     { name = "prefect" },
     { name = "prophet" },
+    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "tqdm" },
     { name = "watermark" },
     { name = "xarray", version = "2024.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -1764,21 +1767,16 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-eval = [
-    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
-    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
 full = [
     { name = "fiona" },
     { name = "geodatasets" },
     { name = "geopandas", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "geopandas", version = "1.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "ipywidgets" },
+    { name = "jupyter" },
+    { name = "jupyter-cache" },
     { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "matplotlib", version = "3.10.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
-    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "seaborn" },
 ]
 notebooks = [
@@ -2137,7 +2135,7 @@ requires-dist = [
     { name = "fiona", marker = "extra == 'plots'", specifier = ">=1.10.1" },
     { name = "geodatasets", marker = "extra == 'plots'", specifier = ">=2024.8.0" },
     { name = "geopandas", marker = "extra == 'plots'", specifier = ">=1.0.1" },
-    { name = "ghg-forcing-for-cmip", extras = ["eval"], marker = "extra == 'full'" },
+    { name = "ghg-forcing-for-cmip", extras = ["notebooks"], marker = "extra == 'full'" },
     { name = "ghg-forcing-for-cmip", extras = ["plots"], marker = "extra == 'full'" },
     { name = "h5netcdf", specifier = ">=1.6.4" },
     { name = "ipywidgets", marker = "extra == 'notebooks'", specifier = ">=8.1.8" },
@@ -2149,13 +2147,13 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "prefect", specifier = ">=3.3.1" },
     { name = "prophet", specifier = ">=1.2.1" },
-    { name = "scikit-learn", marker = "extra == 'eval'", specifier = ">=1.6.1" },
+    { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "seaborn", marker = "extra == 'plots'", specifier = ">=0.13.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "watermark", specifier = ">=2.6.0" },
     { name = "xarray", specifier = ">=2024.7.0" },
 ]
-provides-extras = ["plots", "notebooks", "eval", "full"]
+provides-extras = ["plots", "notebooks", "full"]
 
 [package.metadata.requires-dev]
 all-dev = [
