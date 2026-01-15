@@ -1056,8 +1056,8 @@ def plot_prophet_components(
         for ax in row:
             ax.set_xlim(xlim_start, xlim_end)
             ax.set_xticks(tick_years)
-            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))  # Show only year
-            ax.tick_params(axis="x", labelsize=8)  # Make x-tick labels smaller
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+            ax.tick_params(axis="x", labelsize=8)
 
     if fig._suptitle is not None:
         current_text = fig._suptitle.get_text()

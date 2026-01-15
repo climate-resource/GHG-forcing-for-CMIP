@@ -284,8 +284,6 @@ For the subsequent analysis, we adopt a statistical approach, employing a Bayesi
 **Objective:** The primary objective of this phase is to construct a composite dataset that assimilates EO and GB data.
 
 ### Statistical Model {.unnumbered}
-Distinct model specifications were developed for $CO_2$ and $CH_4$ to account for their unique physicochemical properties. These specifications are detailed in the following section.
-
 #### Model specification $CO_2$ {.unnumbered}
 To assimilate EO and GB data for $CO_2$ into a unified product that extends GB precision to the spatial coverage of EO, we developed a Bayesian hierarchical regression model. This framework incorporates a Gaussian Process (GP) component to capture residual spatiotemporal dynamics. The model was implemented using the `bambi` Python package [@Capretto_Bambi_A_simple_2022], which serves as a high-level interface for the probabilistic programming framework `PyMC` [@Abril_PyMC_2023].
 
@@ -295,34 +293,35 @@ y_i \sim \mathcal{N}(\mu_i, \sigma^2).
 $$
 The mean function, $\mu_i$, is defined as
 $$
-\mu_i = \underbrace{\beta_0 + \beta_1 t_i + \beta_2 t_i^2}_{\substack{\text{Global Trend}}} + \underbrace{\mathcal{S}_{g[i]}(t_i)}_{\substack{\text{Seasonality}}} + \underbrace{x_{i, \text{eo}}}_{\substack{\text{EO Calibration}}} + \underbrace{f_{\text{HSGP}}(\phi_i, \lambda_i)}_{\substack{\text{Spatial Residual}}}
+\mu_i = \underbrace{\beta_0 + \beta_1 t_i + \beta_2 t_i^2}_{\substack{\text{Global Trend}}} + \underbrace{\mathcal{S}_{h[i]}(t_i)}_{\substack{\text{Seasonality}}} + \underbrace{\beta_{h[i]}x_{i, \text{eo}}}_{\substack{\text{EO Calibration}}} + \underbrace{f_{\text{HSGP}}(\phi_i, \lambda_i)}_{\substack{\text{Spatial Residual}}}
 $$
-where $t_i$ represents the normalized time variable, and $x_{i, \text{eo}}$ is the scaled EO measurement. The term $\mathcal{S}_{g[i]}(t_i)$ denotes the seasonal cycle, where the harmonic coefficients are allowed to vary by the grouping factor $g[i]$ (defined by the interaction of latitude and hemispheric region (S for lat < 0, N else)).
+where $t_i$ represents the normalized time variable, and $x_{i, \text{eo}}$ is the scaled EO measurement. The term $\mathcal{S}_{h[i]}(t_i)$ denotes the seasonal cycle, where harmonic coefficients vary by the hemispheric grouping factor $h[i]$. The term $\beta_{h[i]} x_{i, \text{eo}}$ represents the EO calibration, where the slope interaction allows the relationship between EO and GB to vary by hemisphere.
 The term $f_{\text{HSGP}}$ models the spatial residual structure using a Hilbert Space Gaussian Process (HSGP) approximation.
 
 The `bambi` model implementation is defined by the following specification:
 ```
 value_gb ~
-    1 + year_scaled + I(year_scaled**2) +
-    (1 + season_sin + season_cos | lat : region) +
-    value_eo_scaled +
-    hsgp(lat_scaled, lon_scaled, m=5, c=1.5)
+    1 +
+    hsgp(lat_scaled, lon_scaled, m=10, c=1.5) +
+    value_eo_scaled:hemisphere +
+    year_scaled + I(year_scaled**2) +
+    (1 + season_sin + season_cos | hemisphere)
 ```
 Prior to model fitting, we applied the following feature engineering and standardization steps:
 
 + *Scaling:* The continuous covariates `value_eo, lat,` and `lon` were standardized using a $Z$-score transformation (centering to zero mean and scaling to unit variance) to facilitate convergence. The covariate `year` was normalized by setting the start of the time series to zero: $\text{year-scaled} = \text{year} - \min(\text{year})$
-+ *Region Definition:* The variable `region` was constructed as a binary spatial indicator to distinguish between the Northern and Southern Hemispheres ($0$ for latitude $< 0^{\circ}$, $1$ otherwise).
++ *Hemisphere Definition:* The variable `hemisphere` was constructed as a three-level grouping factor with levels: Southern (lat < -30°), Northern (lat > 30°), Tropics (-30° < lat < 30°).
 + *Seasonality:* Harmonic terms were derived from the month of observation to capture annual periodicity: $\text{season-sin} = \sin\left(\frac{2\pi(\text{month}-1)}{12}\right)$ and $\text{season-cos} = \cos\left(\frac{2\pi(\text{month}-1)}{12}\right)$
 
 The individual components of the model specification are interpreted as follows:
 
-+ *Global Trend*: The term `1 + year_scaled + I(year_scaled**2)` captures the long-term accumulation of $CO_2$ in the atmosphere. A quadratic polynomial is included to account for non-linearities in the accumulation rate, such as the accelerating growth observed in recent years.
-+ *Seasonality*: The random effects term `(1 + season_sin + season_cos | lat : region)` models the seasonal cycle using harmonic basis functions. Unlike a fixed global seasonality, this hierarchical structure estimates specific seasonal amplitudes and phases for distinct groups defined by the interaction of latitude and hemispheric region `(lat : region)`. This allows the model to adapt to local transport patterns.
-+ *EO-Calibration*: The term `value_eo_scaled` estimates a linear relationship between EO and GB and applies a uniform correction coefficient.
-+ *Spatial Residuals*: The final term `hsgp(lat_scaled, lon_scaled, m=5, c=1.5)` captures the static spatial structure not explained by the other covariates. The HSGP approximation projects the computationally expensive Gaussian Process covariance matrix inversion onto a summation of basis functions (eigenfunctions of the Laplacian), thereby facilitating efficient scaling to large global datasets.
++ *Global Trend*: The term `1 + year_scaled + I(year_scaled**2)` captures the long-term accumulation of $CO_2$ in the atmosphere. A quadratic polynomial is included to account for non-linearities in the accumulation rate.
++ *Seasonality*: The random effects term `(1 + season_sin + season_cos | hemisphere)` models the seasonal cycle using harmonic basis functions. This hierarchical structure estimates specific seasonal amplitudes, phases, and baselines for the three hemispheric regions.
++ *EO-Calibration*: The interaction term `value_eo_scaled:hemisphere` estimates the relationship between EO and GB data, allowing for distinct calibration slopes for the three hemispheric regions.
++ *Spatial Residuals*: The final term `hsgp(lat_scaled, lon_scaled, m=10, c=1.5)` captures the static spatial structure not explained by the other covariates. The HSGP approximation projects the computationally expensive Gaussian Process covariance matrix inversion onto a summation of basis functions (eigenfunctions of the Laplacian), thereby facilitating efficient scaling to large global datasets.
 
 #### Model specification $CH_4$ {.unnumbered}
-The model specification for $CH_4$ is analogous to that of $CO_2$, with one distinction: the fixed main effect of EO is substituted with the interaction term `value_eo_scaled : lat_scaled`. This interaction serves as a spatially adaptive calibration layer, permitting the slope of the relationship between EO and GB data to vary across latitudes.
+The model specification for $CH_4$ is analogous to that of $CO_2$, except that the number of basis functions in the HSGP was increased to $m=15$ to capture finer-scale spatial variations.
 
 #### Fitting {.unnumbered}
 For both models, calibration was first performed using the spatiotemporally co-located dataset (i.e., instances where both EO and GB measurements are existent). Utilizing the fitted parameters, we generated out-of-sample posterior predictions for data points where EO data are available but corresponding GB measurements are absent. To fully characterize uncertainty, we generated an ensemble of datasets rather than a single dataset. Specifically, we drew $N=100$ distinct datasets.
@@ -383,18 +382,20 @@ cache_idata_co2 = "datasets/idata_co2.nc"
 
 formula_co2 = """
 value_gb ~
-    1 + year_scaled + I(year_scaled**2) +
-    value_eo_scaled +
-    (1 + season_sin + season_cos + value_eo_scaled | lat) +
-    hsgp(lat_scaled, lon_scaled, m=5, c=1.5)
+    1 +
+    hsgp(lat_scaled, lon_scaled, m=10, c=1.5) +
+    value_eo_scaled:hemisphere +
+    year_scaled + I(year_scaled**2) +
+    (1 + season_sin + season_cos | hemisphere)
 """
+df_collocated_co2 = preprocessing.add_hemisphere(df_collocated_co2, SPLIT_VALUE)
 
 if os.path.exists(cache_idata_co2):
     idata_co2 = az.from_netcdf(cache_idata_co2)
     model_co2 = bmb.Model(
         formula=formula_co2,
         data=df_collocated_co2,
-        categorical=[]
+        categorical=["hemisphere"]
         )
     model_co2.build()
 
@@ -402,7 +403,7 @@ else:
     model_co2, idata_co2 = analysis.fit_gb_from_eo(
         formula=formula_co2,
         df=df_collocated_co2,
-        categorical=[],
+        categorical=["hemisphere"],
         seed=SEED
     )
     idata_co2.to_netcdf(cache_idata_co2)
@@ -466,6 +467,9 @@ else:
     df_gb_pred_co2 = preprocessing.prepare_dataset(
         df_combined_co2, condition="eo-only"
     )
+
+    df_gb_pred_co2 = preprocessing.add_hemisphere(
+        df_gb_pred_co2, SPLIT_VALUE)
 
     # predict gb based on fitted model and eo-only data
     df_gb_pred_co2 = analysis.predict_gb(
@@ -542,8 +546,8 @@ obs_values = co2_gb.copy()
 obs_values.rename(columns={"value": "value_gb"}, inplace=True)
 
 plotting.plot_global_hemisphere_coverage(
-    obs_values[(obs_values.year > 2015)],
-    df_partial_coverage_co2[df_partial_coverage_co2.year > 2015],
+    obs_values[(obs_values.year > MIN_YEAR_EO_CO2) & (obs_values.year < MAX_YEAR_EO_CO2)],
+    df_partial_coverage_co2[(df_partial_coverage_co2.year > MIN_YEAR_EO_CO2) & (df_partial_coverage_co2.year < MAX_YEAR_EO_CO2)],
     gas="co2",
     unit="ppm",
     split_value=SPLIT_VALUE,
@@ -566,8 +570,8 @@ else:
     run_prediction_model = analysis.PredictionModel("co2")
 
     df_predicted_co2 = run_prediction_model(
-        df_partial_coverage_co2[df_partial_coverage_co2.year > 2017],
-        future_time_range = (2023, 2030),
+        df_partial_coverage_co2,
+        future_time_range = (MAX_YEAR_EO_CO2, 2030),
         split_value = SPLIT_VALUE,
         n_datasets = 3
     )
@@ -581,7 +585,7 @@ else:
 
 plotting.plot_locations(
     co2_gb,
-    df_partial_coverage_co2,
+    df_partial_coverage_co2[df_partial_coverage_co2.year < MAX_YEAR_EO_CO2],
     year_min=2003,
     gas="co2",
     unit="ppm",
@@ -599,7 +603,7 @@ plotting.plot_locations(
 
 plotting.plot_future_predictions(
     co2_gb,
-    df_partial_coverage_co2,
+    df_partial_coverage_co2[df_partial_coverage_co2.year < MAX_YEAR_EO_CO2],
     df_predicted_co2,
     min_year=2015,
     split_value=SPLIT_VALUE,
@@ -618,17 +622,20 @@ run_prediction_model_co2 = analysis.PredictionModel("co2")
 
 prophet_components_co2 = analysis.extract_prophet_components(
     run_prediction_model_co2,
-    df_partial_coverage_co2[df_partial_coverage_co2.year > 2017],
-    future_time_range=(2017, 2030),
+    df_partial_coverage_co2,
+    future_time_range=(2023, 2030),
     split_value=SPLIT_VALUE
 )
 
-plotting.plot_prophet_components(
+fig, axs = plotting.plot_prophet_components(
     prophet_components_co2,
     gas="co2",
     unit="ppm",
-    figsize=(12, 6)
-);
+    x_years=(2020, 2021),
+    figsize=(8, 3)
+)
+
+[axs[0, h].set_ylim(400, 420) for h in range(3)];
 ```
 
 \newpage
@@ -639,26 +646,19 @@ plotting.plot_prophet_components(
 ```{python}
 #| label: fit-bayesian-mlm-ch4
 
-cache_idata_ch4 = "datasets/idata_ch4_6.nc"
-#
-#value_gb ~
-#    1 + year_scaled + I(year_scaled**2) +
-#    value_eo_scaled + value_eo_scaled:lat_scaled +
-#    (1 + value_eo_scaled + season_sin + season_cos | lat) +
-#    hsgp(lat_scaled, lon_scaled, m=15, c=1.5)
+cache_idata_ch4 = "datasets/idata_ch4.nc"
 
 formula_ch4 = """
 value_gb ~
     1 +
-    hsgp(lat_scaled, lon_scaled, m=5, c=1) +
-    (
-        1 + value_eo_scaled +
-        year_scaled + I(year_scaled**2) +
-        season_sin + season_cos +
-        season_sin2 + season_cos2 | hemisphere
-    )
+    hsgp(lat_scaled, lon_scaled, m=15, c=1.5) +
+    value_eo_scaled:hemisphere +
+    year_scaled + I(year_scaled**2) +
+    (1 + season_sin + season_cos | hemisphere)
 """
-df_collocated_ch4 = preprocessing.add_hemisphere(df_collocated_ch4, SPLIT_VALUE)
+
+df_collocated_ch4 = preprocessing.add_hemisphere(
+    df_collocated_ch4, SPLIT_VALUE)
 
 if os.path.exists(cache_idata_ch4):
     idata_ch4 = az.from_netcdf(cache_idata_ch4)
@@ -674,7 +674,6 @@ else:
         df=df_collocated_ch4,
         categorical=["hemisphere"],
         seed=SEED,
-        draws=2000,
         target_accept=0.99
     )
     idata_ch4.to_netcdf(cache_idata_ch4)
@@ -729,7 +728,7 @@ plotting.plot_global_hemisphere(
 ```{python}
 #| label: out-of-sample-predictions-ch4
 
-cache_df_gb_pred_ch4 = "datasets/df_gb_pred_ch4_5.csv"
+cache_df_gb_pred_ch4 = "datasets/df_gb_pred_ch4.csv"
 
 if os.path.exists(cache_df_gb_pred_ch4):
     df_gb_pred_ch4 = pd.read_csv(cache_df_gb_pred_ch4)
@@ -831,7 +830,7 @@ To forecast future trends, the Prophet model was calibrated on each dataset with
 ```{python}
 #| label: create-df-predicted-ch4
 
-cache_df_predicted_ch4 = "datasets/df_predicted_ch4_5.csv"
+cache_df_predicted_ch4 = "datasets/df_predicted_ch4.csv"
 
 if os.path.exists(cache_df_predicted_ch4):
     df_predicted_ch4 = pd.read_csv(cache_df_predicted_ch4)
@@ -840,7 +839,7 @@ else:
 
     df_predicted_ch4 = run_prediction_model(
         df_partial_coverage_ch4,
-        future_time_range = (2023, 2030),
+        future_time_range = (MAX_YEAR_EO_CH4, 2030),
         split_value = SPLIT_VALUE,
         n_datasets=3
     )
@@ -854,7 +853,7 @@ else:
 
 plotting.plot_locations(
     ch4_gb,
-    df_partial_coverage_ch4,
+    df_partial_coverage_ch4[df_partial_coverage_ch4.year < MAX_YEAR_EO_CH4],
     year_min=2003,
     gas="ch4",
     unit="ppb",
@@ -872,7 +871,7 @@ plotting.plot_locations(
 
 plotting.plot_future_predictions(
     ch4_gb,
-    df_partial_coverage_ch4,
+    df_partial_coverage_ch4[df_partial_coverage_ch4.year < MAX_YEAR_EO_CH4],
     df_predicted_ch4,
     min_year=2015,
     split_value=SPLIT_VALUE,
@@ -896,14 +895,15 @@ prophet_components_ch4 = analysis.extract_prophet_components(
     split_value=SPLIT_VALUE
 )
 
-plotting.plot_prophet_components(
+fig, axs = plotting.plot_prophet_components(
     prophet_components_ch4,
     gas="ch4",
     unit="ppb",
-    x_years=(2002, 2022),
+    x_years=(2020, 2021),
     figsize=(8, 3)
-);
+)
 
+[axs[0, h].set_ylim(1800, 2010) for h in range(3)];
 ```
 
 \newpage
@@ -989,18 +989,13 @@ Site codes included in the $CH_4$ dataset:
 ## Carbon Dioxide {.unnumbered}
 ```{python}
 var_names_co2 = [
-    "Intercept",
-    "year_scaled",
-    "I(year_scaled ** 2)",
-    "value_eo_scaled",
-    "1|lat",
-    "season_sin|lat",
-    "season_cos|lat",
-    "value_eo_scaled|lat",
-    "hsgp(lat_scaled, lon_scaled, m=5, c=1.5)_ell",
-    "sigma"
-    ]
+    "Intercept", "year_scaled", "I(year_scaled ** 2)",
+    "1|hemisphere", "value_eo_scaled:hemisphere",
+    "season_sin|hemisphere", "season_cos|hemisphere",
+    "hsgp(lat_scaled, lon_scaled, m=10, c=1.5)_ell"
+]
 ```
+
 ### Trace plots {.unnumbered}
 Given the high dimensionality of the parameter space, we restrict the presentation of trace plots to the primary model parameters.
 ```{python}
@@ -1041,17 +1036,17 @@ if (any(summary_df["ess_tail"] > CRIT_ESS)) & (any(summary_df["ess_bulk"] > CRIT
 rhat_critical = summary_df[summary_df.r_hat > CRIT_RHAT]
 print(f"Number of parameters with Rhat > {CRIT_RHAT}: {len(rhat_critical)}.")
 if len(rhat_critical) > 0:
-    rhat_critical
+    print(rhat_critical)
 ```
 
 ## Methane {.unnumbered}
 ```{python}
 
 var_names_ch4 = [
-    "Intercept", "bs(year_scaled, df=4)","1|hemisphere",
-    "value_eo_scaled|hemisphere", "season_sin|hemisphere",
-    "season_cos|hemisphere", "season_sin2|hemisphere",
-    "season_cos2|hemisphere","hsgp(lat_scaled, lon_scaled, m=20, c=2)_ell"
+    "Intercept", "year_scaled", "I(year_scaled ** 2)",
+    "1|hemisphere", "value_eo_scaled:hemisphere",
+    "season_sin|hemisphere", "season_cos|hemisphere",
+    "hsgp(lat_scaled, lon_scaled, m=15, c=1.5)_ell"
 ]
 ```
 
@@ -1094,25 +1089,14 @@ if (any(summary_df["ess_tail"] > CRIT_ESS)) & (any(summary_df["ess_bulk"] > CRIT
 rhat_critical = summary_df[summary_df.r_hat > CRIT_RHAT]
 print(f"Number of parameters with Rhat > {CRIT_RHAT}: {len(rhat_critical)}.")
 if len(rhat_critical) > 0:
-    rhat_critical
+    print(rhat_critical)
 ```
 
-# Posterior Predictive Validation {#sec-validation-posterior-predictive}
-
-Beyond MCMC convergence diagnostics, we validate the fitted models by comparing posterior predictions to observed data. While MCMC diagnostics ensure that the sampling algorithm has converged to the target posterior distribution, posterior predictive validation assesses whether the model itself adequately captures the data-generating process. This section presents comprehensive posterior predictive checks to assess model calibration, residual patterns, coverage properties, and quantitative performance metrics.
-
-**Interpretation Guidelines:**
-- **Posterior Predictive Checks (PPC)**: The observed data should fall within the distribution of simulated data. Systematic deviations suggest model misspecification.
-- **Residual Analysis**: Residuals should be randomly distributed around zero with constant variance. Patterns or trends indicate systematic biases or heteroscedasticity.
-- **Coverage Statistics**: Coverage percentages close to the nominal levels (50%, 80%, 95%) indicate well-calibrated uncertainty quantification. Over-coverage suggests conservative uncertainty estimates, while under-coverage indicates overconfident predictions.
-- **Quantitative Metrics**: Lower RMSE and MAE values indicate better predictive accuracy, while R² values closer to 1.0 indicate better explanatory power.
-
-## Carbon Dioxide {.unnumbered}
-
-### Posterior Predictive Checks {.unnumbered}
+# Posterior Predictive Checks {#sec-validation-posterior-predictive}
 
 Posterior predictive checks compare the distribution of simulated data from the model to the observed data. If the model is well-calibrated, the observed data should appear as a typical realization from the posterior predictive distribution.
 
+## Carbon Dioxide {.unnumbered}
 ```{python}
 #| label: app-validation-ppc-co2
 
@@ -1120,184 +1104,13 @@ az.plot_ppc(idata_co2, num_pp_samples=100);
 plt.tight_layout()
 ```
 
-### Residual Analysis {.unnumbered}
-
-Residual analysis examines the differences between observed and predicted values to identify systematic patterns, heteroscedasticity, or outliers that may indicate model misspecification.
-
-```{python}
-#| label: app-validation-residuals-co2
-
-model_co2_pred = model_co2
-model_co2_pred.predict(idata_co2, kind="response")
-
-# Compute residuals using posterior mean predictions
-y_obs = df_collocated_co2["value_gb"].values
-y_pred_mean = idata_co2.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
-residuals = y_obs - y_pred_mean
-
-# Create residual plots
-fig, axs = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
-
-# Residuals vs. predicted values
-axs[0].scatter(y_pred_mean, residuals, alpha=0.5, s=10)
-axs[0].axhline(y=0, color='r', linestyle='--', linewidth=1)
-axs[0].set_xlabel("Predicted values (ppm)")
-axs[0].set_ylabel("Residuals (ppm)")
-axs[0].set_title("Residuals vs. Predicted Values")
-axs[0].spines[["right", "top"]].set_visible(False)
-
-# Q-Q plot of residuals
-from scipy import stats
-stats.probplot(residuals, dist="norm", plot=axs[1])
-axs[1].set_title("Q-Q Plot of Residuals")
-axs[1].spines[["right", "top"]].set_visible(False)
-```
-
-### Coverage Statistics {.unnumbered}
-
-Coverage statistics assess whether the posterior predictive credible intervals contain the observed data at the expected frequency. For a well-calibrated model, approximately 50%, 80%, and 95% of observations should fall within the corresponding credible intervals.
-
-```{python}
-#| label: app-validation-coverage-co2
-
-y_obs = df_collocated_co2["value_gb"].values
-y_pred_samples = idata_co2.posterior_predictive["value_gb"].stack(sample=("chain", "draw")).values
-
-# Calculate quantiles for each observation (percentiles along sample dimension)
-n_obs = len(y_obs)
-q25 = np.percentile(y_pred_samples, 25, axis=1)
-q75 = np.percentile(y_pred_samples, 75, axis=1)
-q10 = np.percentile(y_pred_samples, 10, axis=1)
-q90 = np.percentile(y_pred_samples, 90, axis=1)
-q025 = np.percentile(y_pred_samples, 2.5, axis=1)
-q975 = np.percentile(y_pred_samples, 97.5, axis=1)
-
-coverage_50 = np.sum((y_obs >= q25) & (y_obs <= q75)) / n_obs
-coverage_80 = np.sum((y_obs >= q10) & (y_obs <= q90)) / n_obs
-coverage_95 = np.sum((y_obs >= q025) & (y_obs <= q975)) / n_obs
-
-print(f"Coverage at 50% credible interval: {coverage_50:.3f} (expected: 0.500)")
-print(f"Coverage at 80% credible interval: {coverage_80:.3f} (expected: 0.800)")
-print(f"Coverage at 95% credible interval: {coverage_95:.3f} (expected: 0.950)")
-```
-
-### Quantitative Metrics {.unnumbered}
-
-Quantitative metrics provide summary statistics comparing posterior mean predictions to observed values, including Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and the coefficient of determination (R²).
-
-```{python}
-#| label: app-validation-metrics-co2
-
-y_obs = df_collocated_co2["value_gb"].values
-y_pred_mean = idata_co2.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
-
-rmse = np.sqrt(mean_squared_error(y_obs, y_pred_mean))
-mae = mean_absolute_error(y_obs, y_pred_mean)
-r2 = r2_score(y_obs, y_pred_mean)
-
-metrics_df = pd.DataFrame({
-    "Metric": ["RMSE (ppm)", "MAE (ppm)", "R²"],
-    "Value": [f"{rmse:.3f}", f"{mae:.3f}", f"{r2:.3f}"]
-})
-
-print(metrics_df.to_string(index=False))
-```
-
 ## Methane {.unnumbered}
-
-### Posterior Predictive Checks {.unnumbered}
-
-Posterior predictive checks compare the distribution of simulated data from the model to the observed data. If the model is well-calibrated, the observed data should appear as a typical realization from the posterior predictive distribution.
 
 ```{python}
 #| label: app-validation-ppc-ch4
 
 az.plot_ppc(idata_ch4, num_pp_samples=100);
 plt.tight_layout()
-```
-
-### Residual Analysis {.unnumbered}
-
-Residual analysis examines the differences between observed and predicted values to identify systematic patterns, heteroscedasticity, or outliers that may indicate model misspecification.
-
-```{python}
-#| label: app-validation-residuals-ch4
-
-model_ch4_pred = model_ch4
-model_ch4_pred.predict(idata_ch4, kind="response")
-
-# Compute residuals using posterior mean predictions
-y_obs = df_collocated_ch4["value_gb"].values
-y_pred_mean = idata_ch4.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
-residuals = y_obs - y_pred_mean
-
-# Create residual plots
-fig, axs = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
-
-# Residuals vs. predicted values
-axs[0].scatter(y_pred_mean, residuals, alpha=0.5, s=10)
-axs[0].axhline(y=0, color='r', linestyle='--', linewidth=1)
-axs[0].set_xlabel("Predicted values (ppb)")
-axs[0].set_ylabel("Residuals (ppb)")
-axs[0].set_title("Residuals vs. Predicted Values")
-axs[0].spines[["right", "top"]].set_visible(False)
-
-# Q-Q plot of residuals
-from scipy import stats
-stats.probplot(residuals, dist="norm", plot=axs[1])
-axs[1].set_title("Q-Q Plot of Residuals")
-axs[1].spines[["right", "top"]].set_visible(False)
-```
-
-### Coverage Statistics {.unnumbered}
-
-Coverage statistics assess whether the posterior predictive credible intervals contain the observed data at the expected frequency. For a well-calibrated model, approximately 50%, 80%, and 95% of observations should fall within the corresponding credible intervals.
-
-```{python}
-#| label: app-validation-coverage-ch4
-
-# Ensure posterior predictions are available
-y_obs = df_collocated_ch4["value_gb"].values
-y_pred_samples = idata_ch4.posterior_predictive["value_gb"].stack(sample=("chain", "draw")).values
-
-# Calculate quantiles for each observation (percentiles along sample dimension)
-n_obs = len(y_obs)
-q25 = np.percentile(y_pred_samples, 25, axis=1)
-q75 = np.percentile(y_pred_samples, 75, axis=1)
-q10 = np.percentile(y_pred_samples, 10, axis=1)
-q90 = np.percentile(y_pred_samples, 90, axis=1)
-q025 = np.percentile(y_pred_samples, 2.5, axis=1)
-q975 = np.percentile(y_pred_samples, 97.5, axis=1)
-
-coverage_50 = np.sum((y_obs >= q25) & (y_obs <= q75)) / n_obs
-coverage_80 = np.sum((y_obs >= q10) & (y_obs <= q90)) / n_obs
-coverage_95 = np.sum((y_obs >= q025) & (y_obs <= q975)) / n_obs
-
-print(f"Coverage at 50% credible interval: {coverage_50:.3f} (expected: 0.500)")
-print(f"Coverage at 80% credible interval: {coverage_80:.3f} (expected: 0.800)")
-print(f"Coverage at 95% credible interval: {coverage_95:.3f} (expected: 0.950)")
-```
-
-### Quantitative Metrics {.unnumbered}
-
-Quantitative metrics provide summary statistics comparing posterior mean predictions to observed values, including Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and the coefficient of determination (R²).
-
-```{python}
-#| label: app-validation-metrics-ch4
-
-y_obs = df_collocated_ch4["value_gb"].values
-y_pred_mean = idata_ch4.posterior_predictive["value_gb"].mean(dim=("chain", "draw")).values
-
-rmse = np.sqrt(mean_squared_error(y_obs, y_pred_mean))
-mae = mean_absolute_error(y_obs, y_pred_mean)
-r2 = r2_score(y_obs, y_pred_mean)
-
-metrics_df = pd.DataFrame({
-    "Metric": ["RMSE (ppb)", "MAE (ppb)", "R²"],
-    "Value": [f"{rmse:.3f}", f"{mae:.3f}", f"{r2:.3f}"]
-})
-
-print(metrics_df.to_string(index=False))
 ```
 
 # Diagnostics Prediction model {#sec-diagnostics-predictions}
