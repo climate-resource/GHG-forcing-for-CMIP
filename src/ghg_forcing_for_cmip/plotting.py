@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns  # type: ignore[import-untyped]
 
-from ghg_forcing_for_cmip import preprocessing
+from ghg_forcing_for_cmip import preprocessing, utils
 from ghg_forcing_for_cmip.exceptions import MissingOptionalDependencyError
 from ghg_forcing_for_cmip.validation import compute_discrepancy_collocated
 
@@ -1062,5 +1062,134 @@ def plot_prophet_components(
     if fig._suptitle is not None:  # type: ignore[attr-defined]
         current_text = fig._suptitle.get_text()  # type: ignore[attr-defined]
         fig.suptitle(current_text, fontsize=14, y=1.08)
+
+    return fig, axs
+
+
+def plot_gridsizes(df: pd.DataFrame, grid_size: int, subset: bool) -> Any:
+    """
+    Plot earth gridding
+
+    Parameters
+    ----------
+    df :
+        raw ground-based data frame
+
+    grid_size :
+        size of grid cell;
+        should be CONFIG.GRID_CELL_SIZE
+
+    subset :
+        if true shows only Europe
+        if false shows Earth
+
+    Returns
+    -------
+    :
+        fig, axs from plot
+
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="matplotlib"
+        ) from exc
+
+    try:
+        import geopandas
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geopandas"
+        ) from exc
+
+    try:
+        from geodatasets import get_path
+    except ImportError as exc:
+        raise MissingOptionalDependencyError(
+            "plotting", requirement="geodatasets"
+        ) from exc
+
+    # compute grid-cell average
+    df_binned = utils.weighted_average(df, ["lat", "lon"])
+
+    # min,max to standardize colorbar
+    vmin, vmax = np.min(df_binned.value), np.max(df_binned.value)
+
+    # raw data points
+    gdf = geopandas.GeoDataFrame(
+        df,
+        geometry=geopandas.points_from_xy(df.longitude, df.latitude),
+        crs="EPSG:4326",
+    )
+
+    # binned data points
+    gdf2 = geopandas.GeoDataFrame(
+        df_binned,
+        geometry=geopandas.points_from_xy(df_binned.lon, df_binned.lat),
+        crs="EPSG:4326",
+    )
+
+    world = geopandas.read_file(get_path("naturalearth.land"))
+
+    fig, axs = plt.subplots(1, 1)
+    world.plot(ax=axs, color="lightgrey", edgecolor="grey")
+    if subset:
+        gdf.plot(
+            ax=axs,
+            column=df.value,
+            marker="s",
+            markersize=5,
+            zorder=4,
+            vmin=vmin,
+            vmax=vmax,
+            legend=True,
+            legend_kwds={
+                "shrink": 0.8,
+                "label": f"{df.gas.iloc[0].upper()} [{df.unit.iloc[0]}]",
+                "orientation": "vertical",
+            },
+        )
+        gdf2.plot(
+            ax=axs,
+            column=df_binned.value,
+            marker="s",
+            markersize=50,
+            zorder=2,
+            vmin=vmin,
+            vmax=vmax,
+            edgecolor="black",
+        )
+    else:
+        gdf2.plot(
+            ax=axs,
+            column=df_binned.value,
+            marker="s",
+            markersize=int((5 * grid_size) / 2),
+            zorder=4,
+            vmin=vmin,
+            vmax=vmax,
+            legend=True,
+            legend_kwds={
+                "shrink": 0.5,
+                "label": f"{df.gas.iloc[0].upper()} [{df.unit.iloc[0]}]",
+                "orientation": "vertical",
+            },
+        )
+
+    for hl in np.arange(0, 90 + grid_size, grid_size):
+        axs.axhline(float(hl), color="black", lw=0.5)
+        axs.axhline(-float(hl), color="black", lw=0.5)
+    for vl in np.arange(0, 180 + grid_size, grid_size):
+        axs.axvline(float(vl), color="black", lw=0.5)
+        axs.axvline(-float(vl), color="black", lw=0.5)
+
+    if subset:
+        axs.set_xlim(-10, 40)
+        axs.set_ylim(30, 70)
+
+    axs.set_title(f"{grid_size} x {grid_size} grid size")
+    axs.set_xlabel("longitude")
+    axs.set_ylabel("latitude")
 
     return fig, axs
